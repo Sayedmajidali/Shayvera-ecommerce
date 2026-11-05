@@ -80,3 +80,17 @@
   product create + ledger, validation, duplicate SKU, min-price recompute, delete-vs-archive, stock never < 0,
   valid upload re-encoded, rejected disguised script/SVG/php/tiny/oversized/non-admin uploads, search/filter/
   sort/pagination. Total integration: 30 passing.
+
+## Phase 5 — Cart & pricing engine ✅
+
+- `pricing.ts`: pure engine — subtotal, MRP savings, coupon evaluation (percentage/fixed, caps, min order,
+  windows, global and per-customer limits), pro-rata discount allocation (largest remainder), shipping with
+  free threshold, COD fee, GST inclusive/exclusive with CGST/SGST vs IGST split, integer paise throughout.
+- `cart.ts`: guest (httpOnly `shv_cart` token) and user carts, add/update/remove with stock + per-line limits,
+  coupon apply/remove (rate limited), guest→user merge after login, `getCartView` re-validates availability,
+  stock and coupon on every read; prices are always read live from the catalog.
+- APIs: `GET /api/cart`, `POST /api/cart/items`, `PATCH|DELETE /api/cart/items/:id`, `POST|DELETE /api/cart/coupon`,
+  `POST /api/cart/merge`. Cart page with quantity steppers, issues, coupon form and server-computed summary.
+- Tests: unit 41 (money, India validators, allocation, tax, coupons, pricing); integration cart 16
+  (cookie, stock limits, invalid quantities, draft products, cross-guest isolation, stock drop/deactivation,
+  live price changes, coupon re-validation and rejection reasons, per-customer limits, merge, auth).
