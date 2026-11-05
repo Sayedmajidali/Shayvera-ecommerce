@@ -67,6 +67,9 @@ OutboundEmail, NewsletterSubscriber, ContactMessage, RateLimitBucket
 | `Sequence`                             | Atomic counters (`UPDATE … RETURNING`)                                     | PK `key`                                                                                                   |
 | `OutboundEmail`                        | Dev email sink / outbox                                                    | idx `to`                                                                                                   |
 | `RateLimitBucket`                      | Fixed-window counters                                                      | PK `key`                                                                                                   |
+| `rateLimit`                            | Better Auth rate-limit storage (auth endpoints)                            | unique `key`                                                                                               |
+| `NewsletterSubscriber`                 | Newsletter sign-ups                                                        | unique `email`                                                                                             |
+| `ContactMessage`                       | Contact-form submissions (Admin → Messages)                                | idx (`handled`,`createdAt`)                                                                                |
 
 ## Deletion behaviour
 
