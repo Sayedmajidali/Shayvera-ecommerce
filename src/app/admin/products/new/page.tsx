@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { ProductForm } from "@/components/admin/product-form";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { db } from "@/lib/db";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "New product" };
 
 export default async function NewProductPage() {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const categories = await db.category.findMany({
     orderBy: { name: "asc" },
     select: { id: true, name: true },

@@ -11,6 +11,7 @@ import { formatINR } from "@/lib/money";
 import type { AddressSnapshot } from "@/lib/validation/checkout";
 import { getOrderAdmin } from "@/server/services/admin-orders";
 import { ORDER_TRANSITIONS } from "@/server/services/order-status";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -45,6 +46,8 @@ function Addr({ a, title }: { a: AddressSnapshot; title: string }) {
 }
 
 export default async function AdminOrderPage({ params }: PageProps<"/admin/orders/[id]">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const { id } = await params;
   const order = await getOrderAdmin(id).catch(() => null);
   if (!order) notFound();

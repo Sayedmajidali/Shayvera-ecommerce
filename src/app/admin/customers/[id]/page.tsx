@@ -16,10 +16,13 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { stateName } from "@/lib/india";
 import { formatINR } from "@/lib/money";
 import { getCustomer } from "@/server/services/admin-misc";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Customer" };
 
 export default async function CustomerPage({ params }: PageProps<"/admin/customers/[id]">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const { id } = await params;
   const c = await getCustomer(id).catch(() => null);
   if (!c) notFound();

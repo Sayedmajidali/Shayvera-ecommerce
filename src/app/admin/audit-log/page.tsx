@@ -14,11 +14,14 @@ import { FilterBar } from "@/components/admin/filter-bar";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { db } from "@/lib/db";
 import { firstValues } from "@/lib/search-params";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Audit log" };
 const PAGE = 30;
 
 export default async function AuditLogPage({ searchParams }: PageProps<"/admin/audit-log">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const raw = firstValues(await searchParams);
   const f = z
     .object({

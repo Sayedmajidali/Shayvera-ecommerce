@@ -17,6 +17,7 @@ import { AdminPageHeader } from "@/components/admin/page-header";
 import { StockAdjustButton } from "@/components/admin/stock-adjust-button";
 import { db } from "@/lib/db";
 import { firstValues } from "@/lib/search-params";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Inventory" };
 
@@ -40,6 +41,8 @@ const schema = z.object({
 const PAGE = 25;
 
 export default async function InventoryPage({ searchParams }: PageProps<"/admin/inventory">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const raw = firstValues(await searchParams);
   const f = schema.parse(raw);
   const textFilter: Prisma.ProductVariantWhereInput = f.q

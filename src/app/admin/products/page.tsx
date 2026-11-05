@@ -22,6 +22,7 @@ import { db } from "@/lib/db";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import { listProductsAdmin } from "@/server/services/catalog-admin";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -34,6 +35,8 @@ const schema = z.object({
 });
 
 export default async function AdminProductsPage({ searchParams }: PageProps<"/admin/products">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const raw = firstValues(await searchParams);
   const f = schema.parse(raw);
   const [result, categories] = await Promise.all([

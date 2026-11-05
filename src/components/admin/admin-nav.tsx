@@ -33,7 +33,7 @@ export const ADMIN_LINKS = [
   { href: "/admin/coupons", label: "Coupons", icon: TicketPercent },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/audit-log", label: "Audit log", icon: ScrollText },
-  { href: "/admin/emails", label: "Email outbox", icon: Mail },
+  { href: "/admin/emails", label: "Messages & emails", icon: Mail },
 ] as const;
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {

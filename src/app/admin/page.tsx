@@ -29,10 +29,13 @@ import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import { getDashboardStats, RANGES, type RangeKey } from "@/server/services/analytics";
 import { maybeExpireStaleOrders } from "@/server/services/payments";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function AdminDashboard({ searchParams }: PageProps<"/admin">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   maybeExpireStaleOrders();
   const sp = firstValues(await searchParams);
   const range = (sp.range && sp.range in RANGES ? sp.range : "30d") as RangeKey;

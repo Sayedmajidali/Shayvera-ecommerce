@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { loadStoreSettings } from "@/server/queries/settings";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const s = await loadStoreSettings();
   return (
     <>

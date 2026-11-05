@@ -167,3 +167,12 @@
   vs "Invoice" when unregistered, printable page `/invoice/:orderNumber` for admins, owners and guests (token).
 - Shipping: flat fee, free-shipping threshold, minimum order; COD eligibility (enable, fee, min/max, blocked PINs).
 - Manual shipment tracking via `Shipment` records (extensible for courier APIs).
+
+## Phase 10 — Security hardening ✅
+
+- See `SECURITY_REVIEW.md` for the full control matrix, fixed findings, dependency audit and remaining risks.
+- Fixed: per-page admin authorization (layouts don't re-run on client navigation), server-side password
+  complexity hook, proxy-aware client IP for rate limits, 400 on bad payment signatures, duplicate-payment
+  refund accounting, contact messages visible to staff.
+- New tests: `tests/unit/security.test.ts`, `tests/integration/security.test.ts` (traversal, open redirect,
+  password policy, body size limits, malformed JSON, missing Origin, error leakage). Total: 177 passing.

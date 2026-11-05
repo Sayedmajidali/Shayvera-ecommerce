@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import { CategoryManager } from "@/components/admin/category-manager";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { listCategoriesAdmin } from "@/server/services/catalog-admin";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Categories" };
 
 export default async function AdminCategoriesPage() {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const categories = await listCategoriesAdmin();
   return (
     <>

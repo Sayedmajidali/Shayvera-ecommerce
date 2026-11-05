@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { APIError } from "better-auth/api";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { db } from "@/lib/db";
 import { sendEmail, escapeHtml } from "@/server/email/email-service";
@@ -8,6 +8,17 @@ import { sendEmail, escapeHtml } from "@/server/email/email-service";
 const appUrl =
   process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const isProd = process.env.NODE_ENV === "production";
+
+/** Server-side password policy (the UI mirrors it, but the server is authoritative). */
+const PASSWORD_PATHS = new Set(["/sign-up/email", "/reset-password", "/change-password"]);
+function assertStrongPassword(pw: unknown) {
+  if (typeof pw !== "string") return;
+  if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) {
+    throw new APIError("BAD_REQUEST", {
+      message: "Password must contain at least one letter and one number",
+    });
+  }
+}
 
 export const auth = betterAuth({
   appName: "Shayvera",
@@ -62,6 +73,14 @@ export const auth = betterAuth({
   advanced: {
     useSecureCookies: isProd && appUrl.startsWith("https://"),
     defaultCookieAttributes: { sameSite: "lax", httpOnly: true },
+  },
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (!PASSWORD_PATHS.has(ctx.path)) return;
+      const body = (ctx.body ?? {}) as { password?: unknown; newPassword?: unknown };
+      assertStrongPassword(body.password);
+      assertStrongPassword(body.newPassword);
+    }),
   },
   databaseHooks: {
     session: {

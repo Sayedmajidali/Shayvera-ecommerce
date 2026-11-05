@@ -19,6 +19,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import { listCustomers } from "@/server/services/admin-misc";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -29,6 +30,8 @@ const schema = z.object({
 });
 
 export default async function CustomersPage({ searchParams }: PageProps<"/admin/customers">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const raw = firstValues(await searchParams);
   const { customers, total, page, pageCount } = await listCustomers(schema.parse(raw));
   return (

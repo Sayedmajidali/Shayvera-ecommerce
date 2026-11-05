@@ -18,6 +18,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import { adminOrderFiltersSchema, listOrdersAdmin } from "@/server/services/admin-orders";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -31,6 +32,8 @@ const opt = (vals: string[]) =>
   }));
 
 export default async function AdminOrdersPage({ searchParams }: PageProps<"/admin/orders">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const raw = firstValues(await searchParams);
   const f = adminOrderFiltersSchema.parse(raw);
   const { orders, total, page, pageCount } = await listOrdersAdmin(f);

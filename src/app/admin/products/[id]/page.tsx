@@ -10,10 +10,13 @@ import { ProductForm } from "@/components/admin/product-form";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { VariantsEditor } from "@/components/admin/variants-editor";
 import { db } from "@/lib/db";
+import { requireAdminPage } from "@/server/auth/session";
 
 export const metadata: Metadata = { title: "Edit product" };
 
 export default async function EditProductPage({ params }: PageProps<"/admin/products/[id]">) {
+  // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
+  await requireAdminPage();
   const { id } = await params;
   const [product, categories] = await Promise.all([
     db.product.findUnique({
