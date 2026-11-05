@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
+import { eventually } from "../helpers/db";
 import * as ordersRoute from "@/app/api/admin/orders/route";
 import * as statusRoute from "@/app/api/admin/orders/[id]/status/route";
 import * as shipRoute from "@/app/api/admin/orders/[id]/shipments/route";
@@ -113,10 +114,13 @@ describe("admin order management", () => {
     ]);
     expect(await db.adminAuditLog.count({ where: { entityId: id } })).toBeGreaterThanOrEqual(3);
     expect(
-      await db.outboundEmail.count({
-        where: { template: { in: ["order-shipped", "order-delivered"] } },
-      }),
-    ).toBe(2);
+      await eventually(
+        async () =>
+          (await db.outboundEmail.count({
+            where: { template: { in: ["order-shipped", "order-delivered"] } },
+          })) === 2,
+      ),
+    ).toBe(true);
   });
 
   it("rejects invalid transitions and manual confirmation of unpaid online orders", async () => {

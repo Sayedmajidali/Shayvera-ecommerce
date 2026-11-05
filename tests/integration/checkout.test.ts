@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
+import { eventually } from "../helpers/db";
 import * as orderRoute from "@/app/api/orders/[orderNumber]/route";
 import * as cancelRoute from "@/app/api/orders/[orderNumber]/cancel/route";
 import * as ordersRoute from "@/app/api/orders/route";
@@ -49,10 +50,13 @@ describe("COD checkout", () => {
     expect(await db.cartItem.count()).toBe(0);
     expect((await db.product.findUniqueOrThrow({ where: { id: p.id } })).salesCount).toBe(2);
     expect(
-      await db.outboundEmail.count({
-        where: { template: "order-confirmed", to: "buyer@example.com" },
-      }),
-    ).toBe(1);
+      await eventually(
+        async () =>
+          (await db.outboundEmail.count({
+            where: { template: "order-confirmed", to: "buyer@example.com" },
+          })) === 1,
+      ),
+    ).toBe(true);
 
     // Later catalog price change does not alter the order snapshot.
     await db.productVariant.update({ where: { id: v.id }, data: { pricePaise: 99_900 } });

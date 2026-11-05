@@ -9,3 +9,13 @@ export async function resetDatabase() {
   await db.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
   await db.storeSettings.create({ data: { id: "default" } });
 }
+
+/** Polls until `fn` returns true (for fire-and-forget side effects such as emails). */
+export async function eventually(fn: () => Promise<boolean>, timeoutMs = 3000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (await fn()) return true;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  return false;
+}
