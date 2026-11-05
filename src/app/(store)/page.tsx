@@ -53,39 +53,28 @@ export default async function HomePage() {
         <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
           <div className="animate-fade-up">
             <p className="text-brand text-xs font-medium tracking-[0.25em] uppercase">
-              New season · Autumn edit
+              Spices · Dry fruits · Nuts · Makhana
             </p>
             <h1 className="heading-display mt-5 text-5xl leading-[1.05] sm:text-6xl xl:text-7xl">
-              Everyday objects, <em className="text-brand not-italic">made with care.</em>
+              Rooted in trust, <em className="text-brand not-italic">crafted with care.</em>
             </h1>
             <p className="text-muted-foreground mt-6 max-w-lg text-lg leading-8">
-              Stoneware, textiles and small luxuries from independent Indian makers — designed to be
-              used, loved and kept for years.
+              Simple, authentic food made from ingredients we can trust — carefully selected,
+              processed with care and hygienically packed for Indian kitchens.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
                 <Link href="/shop">
-                  Shop the collection <ArrowRight />
+                  Shop the pantry <ArrowRight />
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline">
-                <Link href="/about">Our story</Link>
+                <Link href="/about">Our promise</Link>
               </Button>
             </div>
-            <dl className="mt-10 grid max-w-md grid-cols-3 gap-6 border-t pt-6">
-              <div>
-                <dt className="text-muted-foreground text-xs">Makers</dt>
-                <dd className="heading-display text-2xl">40+</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">Pin codes</dt>
-                <dd className="heading-display text-2xl">19k+</dd>
-              </div>
-              <div>
-                <dt className="text-muted-foreground text-xs">Rating</dt>
-                <dd className="heading-display text-2xl">4.8★</dd>
-              </div>
-            </dl>
+            <p className="text-muted-foreground mt-10 max-w-md border-t pt-6 text-sm italic">
+              “What we wouldn’t feed our own family, we won’t sell to yours.”
+            </p>
           </div>
           <div className="relative grid grid-cols-5 gap-4">
             {heroImages[0] && (
@@ -135,8 +124,16 @@ export default async function HomePage() {
                 ? "UPI, cards & Cash on Delivery"
                 : "UPI, cards & netbanking",
             },
-            { icon: RotateCcw, title: "Easy returns", text: "7-day hassle-free returns" },
-            { icon: Leaf, title: "Responsibly made", text: "Small-batch, low-waste packaging" },
+            {
+              icon: RotateCcw,
+              title: "Freshness promise",
+              text: "Damaged or wrong item? We replace it",
+            },
+            {
+              icon: Leaf,
+              title: "Hygienically packed",
+              text: "Sourced responsibly, processed carefully",
+            },
           ].map(({ icon: Icon, title, text }) => (
             <div key={title} className="flex items-start gap-3">
               <div className="bg-brand-soft text-brand flex size-10 shrink-0 items-center justify-center rounded-full">
@@ -190,7 +187,7 @@ export default async function HomePage() {
       {/* Featured products */}
       {featured.length > 0 && (
         <section className="container-page pb-20">
-          <SectionHeading eyebrow="Curated" title="Featured pieces" href="/shop?sort=featured" />
+          <SectionHeading eyebrow="Curated" title="Our favourites" href="/shop?sort=featured" />
           <ProductGrid products={featured.slice(0, 8)} />
         </section>
       )}
@@ -273,9 +270,11 @@ export default async function HomePage() {
       {/* Newsletter */}
       <section className="container-page pt-20">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="heading-display text-3xl sm:text-4xl">Letters from the studio</h2>
+          <h2 className="heading-display text-3xl sm:text-4xl">
+            Recipes & offers from our kitchen
+          </h2>
           <p className="text-muted-foreground mt-3">
-            Be first to see new collections, maker stories and members-only offers.
+            New harvests, simple recipes and members-only offers — once a month.
           </p>
           <div className="mt-6 flex justify-center">
             <NewsletterForm />

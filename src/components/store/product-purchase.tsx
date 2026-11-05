@@ -18,7 +18,7 @@ type Variant = {
 };
 
 const MAX_PER_LINE = 10;
-const OPTION_ORDER = ["Colour", "Color", "Material", "Size", "Pack"];
+const OPTION_ORDER = ["Weight", "Flavour", "Colour", "Color", "Material", "Size", "Pack"];
 
 export function ProductPurchase({ variants }: { variants: Variant[] }) {
   const optionNames = useMemo(() => {

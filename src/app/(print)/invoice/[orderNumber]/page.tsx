@@ -55,6 +55,9 @@ export default async function InvoicePage({
               {inv.seller.phone ? ` · ${inv.seller.phone}` : ""}
             </p>
             {inv.seller.gstin && <p className="mt-1 font-medium">GSTIN: {inv.seller.gstin}</p>}
+            {inv.seller.fssaiLicense && (
+              <p className="font-medium">FSSAI Lic. No.: {inv.seller.fssaiLicense}</p>
+            )}
           </div>
           <div className="text-right">
             <h1 className="text-xl font-semibold tracking-wide uppercase">{inv.documentTitle}</h1>

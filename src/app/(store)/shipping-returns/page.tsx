@@ -34,15 +34,18 @@ export default async function ShippingReturnsPage() {
           ? `COD is available on eligible orders${s.codFeePaise > 0 ? ` with a handling fee of ${formatINR(s.codFeePaise)}` : ""}${s.codMaxOrderPaise ? ` up to ${formatINR(s.codMaxOrderPaise)}` : ""}.`
           : "Cash on Delivery is currently unavailable."}
       </p>
-      <h2>Returns</h2>
+      <h2>Returns & replacements</h2>
       <ul>
-        <li>Unused items in original packaging can be returned within 7 days of delivery.</li>
         <li>
-          Damaged or incorrect items: email us photos within 48 hours of delivery and we’ll replace
-          or refund at no cost.
+          For food safety and hygiene, food products cannot be returned once the seal is opened.
         </li>
         <li>
-          Personal-care items (soaps, oils) cannot be returned once opened, for hygiene reasons.
+          Damaged, leaking, expired or incorrect items: email us photos (including the batch number
+          on the pack) within 48 hours of delivery and we’ll replace the item or refund it at no
+          cost.
+        </li>
+        <li>
+          Unopened items in original sealed packaging may be returned within 7 days of delivery.
         </li>
       </ul>
       <h2>Refunds</h2>

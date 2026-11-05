@@ -354,6 +354,11 @@ describe("store settings", () => {
     expect((await put({ ...base, gstEnabled: true, gstin: "29AAGCB7383J1Z5" })).status).toBe(400); // bad checksum
     expect((await put({ ...base, gstEnabled: true, gstin: "27AAPFU0939F1ZV" })).status).toBe(400); // state mismatch (MH vs KA)
     expect((await put({ ...base, gstEnabled: true, gstin: "29AAGCB7383J1Z4" })).status).toBe(200);
+    expect((await put({ ...base, fssaiLicense: "12345" })).status).toBe(400);
+    expect((await put({ ...base, fssaiLicense: "10020042000123" })).status).toBe(200);
+    expect(
+      (await db.storeSettings.findUniqueOrThrow({ where: { id: "default" } })).fssaiLicense,
+    ).toBe("10020042000123");
     const p = await makeProduct({ price: 30_000 });
     const cookieCart = await cartWith(p.variants[0]!.id);
     const { json } = await checkout(cookieCart, checkoutBody());

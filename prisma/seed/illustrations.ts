@@ -24,7 +24,12 @@ export type Shape =
   | "teapot"
   | "board"
   | "diffuser"
-  | "throw";
+  | "throw"
+  | "jar"
+  | "standup"
+  | "heap"
+  | "makhana"
+  | "giftbox";
 
 const W = 1200;
 const H = 1500;
@@ -118,6 +123,51 @@ function objectSvg(shape: Shape, c: string): string {
         <line x1="600" y1="760" x2="610" y2="430" stroke="#6d5a46" stroke-width="10"/>
         <line x1="640" y1="760" x2="740" y2="470" stroke="#6d5a46" stroke-width="10"/>
         <path d="M520 760 h160 q90 50 90 170 v120 q0 50 -50 50 h-240 q-50 0 -50 -50 v-120 q0 -120 90 -170z" fill="url(#g)" opacity="0.92"/>`;
+    case "jar":
+      // Glass spice jar with wooden lid; contents in the product colour.
+      return `<rect x="430" y="560" width="340" height="80" rx="18" fill="#a8774f"/>
+        <rect x="430" y="600" width="340" height="12" fill="#8c603d"/>
+        <path d="M440 650 h320 v380 q0 60 -60 60 h-200 q-60 0 -60 -60z" fill="#f4efe6" opacity="0.55" stroke="#d9cfc0" stroke-width="6"/>
+        <path d="M452 740 h296 v290 q0 48 -48 48 h-200 q-48 0 -48 -48z" fill="url(#g)"/>
+        <path d="M452 740 q74 -26 148 0 t148 0" fill="${l}" opacity="0.5"/>
+        <rect x="490" y="830" width="220" height="140" rx="10" fill="#fbf8f2"/>
+        <rect x="520" y="870" width="160" height="14" rx="7" fill="${d}"/><rect x="545" y="900" width="110" height="10" rx="5" fill="${d}" opacity="0.6"/>`;
+    case "standup":
+      // Kraft stand-up pouch with a window showing the contents.
+      return `<path d="M410 560 h380 l20 520 q0 20 -20 20 h-380 q-20 0 -20 -20z" fill="#c9a77c"/>
+        <rect x="410" y="560" width="380" height="40" fill="#b8956a"/>
+        <rect x="430" y="616" width="340" height="6" rx="3" fill="#a5835a"/>
+        <rect x="470" y="700" width="260" height="230" rx="110" fill="url(#g)"/>
+        <rect x="470" y="700" width="260" height="230" rx="110" fill="none" stroke="#f3eadb" stroke-width="8"/>
+        <rect x="490" y="960" width="220" height="16" rx="8" fill="#3a2f27" opacity="0.8"/><rect x="530" y="990" width="140" height="10" rx="5" fill="#3a2f27" opacity="0.5"/>`;
+    case "heap": {
+      // Bowl heaped with nuts / dry fruits.
+      const pts = Array.from({ length: 26 }, (_, i) => {
+        const row = Math.floor(i / 7);
+        const x = 390 + (i % 7) * 70 + (row % 2) * 35;
+        const y = 790 - row * 52 - (Math.abs(3 - (i % 7)) < 2 ? 20 : 0);
+        return `<ellipse cx="${x}" cy="${y}" rx="44" ry="30" transform="rotate(${((i * 37) % 70) - 35} ${x} ${y})" fill="${i % 3 === 0 ? d : i % 3 === 1 ? c : l}"/>`;
+      }).join("");
+      return `${pts}<path d="M320 800 h560 q-20 260 -280 260 q-260 0 -280 -260z" fill="#e7ddcd"/>
+        <ellipse cx="600" cy="800" rx="280" ry="30" fill="#d9ccb7" opacity="0.6"/>`;
+    }
+    case "makhana": {
+      // Bowl of roasted fox nuts with seasoning flecks.
+      const puffs = Array.from({ length: 22 }, (_, i) => {
+        const row = Math.floor(i / 6);
+        const x = 400 + (i % 6) * 80 + (row % 2) * 40;
+        const y = 790 - row * 58;
+        return `<circle cx="${x}" cy="${y}" r="40" fill="#f6efe2" stroke="#e2d4bd" stroke-width="5"/><circle cx="${x - 10}" cy="${y - 8}" r="6" fill="${c}" opacity="0.8"/><circle cx="${x + 12}" cy="${y + 6}" r="4" fill="${d}" opacity="0.7"/>`;
+      }).join("");
+      return `${puffs}<path d="M320 800 h560 q-20 260 -280 260 q-260 0 -280 -260z" fill="url(#g)"/>
+        <ellipse cx="600" cy="800" rx="280" ry="30" fill="${d}" opacity="0.35"/>`;
+    }
+    case "giftbox":
+      return `<rect x="380" y="700" width="440" height="380" rx="14" fill="url(#g)"/>
+        <rect x="360" y="640" width="480" height="90" rx="14" fill="${d}"/>
+        <rect x="575" y="640" width="50" height="440" fill="#d9b25f"/>
+        <rect x="360" y="670" width="480" height="30" fill="#d9b25f" opacity="0.9"/>
+        <path d="M600 640 q-120 -120 -150 -40 q-10 40 150 40z" fill="#d9b25f"/><path d="M600 640 q120 -120 150 -40 q10 40 -150 40z" fill="#c9a24f"/>`;
     case "throw":
       return `<path d="M360 700 h480 v360 q-240 60 -480 0z" fill="url(#g)"/>
         <g stroke="${d}" stroke-width="6" opacity="0.5">${Array.from({ length: 8 }, (_, i) => `<line x1="${400 + i * 56}" y1="700" x2="${400 + i * 56}" y2="1070"/>`).join("")}</g>

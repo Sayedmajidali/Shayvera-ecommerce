@@ -3,7 +3,7 @@ import { addProductToCart, db, fillCheckout, orderFromUrl, sendWebhook } from ".
 
 async function startOnlineCheckout(
   page: import("@playwright/test").Page,
-  slug = "walnut-phone-stand",
+  slug = "california-almonds",
 ) {
   await addProductToCart(page, slug);
   await page.goto("/checkout");

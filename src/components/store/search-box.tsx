@@ -104,7 +104,7 @@ export function SearchBox({
               setActive((a) => Math.max(a - 1, -1));
             } else if (e.key === "Escape") setOpen(false);
           }}
-          placeholder="Search mugs, candles, notebooks…"
+          placeholder="Search spices, almonds, makhana…"
           autoComplete="off"
           role="combobox"
           aria-expanded={showList}

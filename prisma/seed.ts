@@ -20,14 +20,10 @@ async function upsertSettings() {
     update: {},
     create: {
       id: "default",
-      storeName: "Shayvera",
-      legalName: "Shayvera Lifestyle (Demo)",
-      supportEmail: "support@shayvera.example",
-      supportPhone: "+91 80 4000 1234",
-      addressLine1: "2nd Floor, 14 Lavelle Road",
-      city: "Bengaluru",
-      stateCode: "KA",
-      pincode: "560001",
+      // Business contact, address, state, GSTIN and FSSAI number are intentionally NOT seeded:
+      // enter the real details in Admin → Settings (state drives the CGST/SGST vs IGST split).
+      storeName: "Shayvera Foods",
+      supportEmail: "support@example.com",
     },
   });
 }
@@ -66,8 +62,8 @@ async function seedProducts(categoryIds: Record<string, string>) {
   for (const p of products) {
     if (await db.product.findUnique({ where: { slug: p.slug } })) continue;
     const category = categories.find((c) => c.slug === p.category)!;
-    const firstColor = p.variants[0]!.color ?? category.colors[0]!;
-    const imageColors = [...new Set(p.variants.map((v) => v.color ?? firstColor))];
+    const firstColor = p.color ?? p.variants[0]!.color ?? category.colors[0]!;
+    const imageColors = [firstColor];
 
     const images: {
       url: string;
@@ -105,7 +101,12 @@ async function seedProducts(categoryIds: Record<string, string>) {
       data: {
         slug: p.slug,
         name: p.name,
-        brand: p.brand,
+        brand: "Shayvera Foods",
+        ingredients: p.ingredients,
+        shelfLife: p.shelfLife,
+        storageInfo: p.storage,
+        countryOfOrigin: "India",
+        isVegetarian: true,
         shortDescription: p.short,
         description: p.description,
         categoryId: categoryIds[p.category]!,

@@ -382,3 +382,48 @@ describe("catalog search, filters, sorting, pagination", () => {
     expect(p1.pageCount).toBe(2);
   });
 });
+
+describe("food product information", () => {
+  it("stores ingredients, shelf life, storage, origin and veg flag", async () => {
+    const { cookie } = await createAdmin();
+    const cat = await makeCategory("Spices");
+    const res = await productsRoute.POST(
+      apiRequest("/api/admin/products", {
+        method: "POST",
+        cookie,
+        body: {
+          ...productBody(cat.id, "TURMERIC-200"),
+          name: "Turmeric Powder",
+          ingredients: "Turmeric (100%)",
+          shelfLife: "12 months from packing",
+          storageInfo: "Store in a cool, dry place",
+          countryOfOrigin: "India",
+          isVegetarian: true,
+        },
+      }),
+      undefined,
+    );
+    expect(res.status).toBe(201);
+    const p = (await res.json()).data;
+    expect(p).toMatchObject({
+      ingredients: "Turmeric (100%)",
+      shelfLife: "12 months from packing",
+      countryOfOrigin: "India",
+      isVegetarian: true,
+    });
+    // Partial updates leave food fields untouched unless sent.
+    const upd = await productRoute.PATCH(
+      apiRequest(`/api/admin/products/${p.id}`, {
+        method: "PATCH",
+        cookie,
+        body: { name: "Turmeric Powder (Haldi)" },
+      }),
+      params({ id: p.id }),
+    );
+    expect((await upd.json()).data).toMatchObject({
+      name: "Turmeric Powder (Haldi)",
+      ingredients: "Turmeric (100%)",
+      isVegetarian: true,
+    });
+  });
+});

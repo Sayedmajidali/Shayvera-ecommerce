@@ -29,9 +29,9 @@ test.describe("accessibility (axe, WCAG 2.1 AA)", () => {
   for (const path of [
     "/",
     "/shop",
-    "/category/kitchen-dining",
-    "/product/handloom-cushion-cover",
-    "/search?q=mug",
+    "/category/dry-fruits",
+    "/product/makhana-himalayan-salt-pepper",
+    "/search?q=makhana",
     "/login",
     "/register",
     "/contact",
@@ -44,7 +44,7 @@ test.describe("accessibility (axe, WCAG 2.1 AA)", () => {
   }
 
   test("cart and checkout", async ({ page }) => {
-    await addProductToCart(page, "stoneware-coffee-mug");
+    await addProductToCart(page, "california-almonds");
     await page.goto("/cart");
     expect(await scan(page)).toEqual([]);
     await page.goto("/checkout");

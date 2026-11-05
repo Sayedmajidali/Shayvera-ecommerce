@@ -1,7 +1,8 @@
-# Shayvera — E-Commerce Platform
+# Shayvera Foods — E-Commerce Platform
 
-A production-grade e-commerce application for a small Indian business selling physical products:
-a customer storefront and an admin dashboard in one Next.js application, backed by PostgreSQL.
+_Rooted in Trust, Crafted with Care._ A production-grade online store for **Shayvera Foods** — spices and
+masalas, dry fruits, nuts and roasted makhana — with a customer storefront and an admin dashboard in one
+Next.js application, backed by PostgreSQL.
 
 - **Storefront:** catalog with search/filters/sorting, product variants, guest & account carts, coupons,
   checkout with saved addresses, **Razorpay** online payments and **Cash on Delivery**, order tracking,
@@ -10,6 +11,8 @@ a customer storefront and an admin dashboard in one Next.js application, backed 
   shipments, refunds, invoices, payment reconciliation), customers, coupons, store/GST/COD settings, audit log.
 - **India-ready:** INR formatting, Indian mobile/PIN validation, configurable GST (CGST/SGST vs IGST),
   GSTIN validation, financial-year invoice numbering, free-shipping threshold, COD rules.
+- **Food labelling:** per-product ingredients, net quantity (weight variants), best-before/shelf life, storage,
+  country of origin and FSSAI veg mark on product pages; FSSAI licence number in footer, product pages and invoices.
 
 > Status: **development-complete for local use**. It is _not_ production-deployment-ready until the items in
 > [Production deployment tasks](#production-deployment-tasks) are done. See `PROGRESS.md` for the phase log.
@@ -167,10 +170,13 @@ that script existed, create them once:
 docker exec -it shayvera-postgres psql -U shayvera -d shayvera -c "CREATE DATABASE shayvera_test;" -c "CREATE DATABASE shayvera_e2e;"
 ```
 
-**Seed data:** 6 categories, 25 products (60+ variants, stock, reviews), coupons (`WELCOME10`, `FLAT200`,
-expired `EXPIRED50`), a demo customer and ~45 historical orders created through the real checkout services so the
-dashboard has data. Product images are generated studio-style illustrations — replace them with real photos from
-the admin product editor. Money is stored in **paise**; see `DATABASE_DESIGN.md`.
+**Seed data (demo only):** 6 food categories (Whole Spices, Masalas & Powders, Dry Fruits, Nuts, Roasted Makhana,
+Gift Boxes), 23 products with weight variants, food labelling, stock and demo reviews; coupons (`WELCOME10`,
+`FLAT200`, expired `EXPIRED50`); a demo customer and ~45 historical orders created through the real checkout services
+so the dashboard has data. **Product names, prices, stock, GST rates, HSN codes, ingredients and reviews are
+placeholders** — replace them with the real catalog in Admin → Products (and have tax codes reviewed). Product images
+are generated illustrations — upload real photos from the product editor. Business contact details, address, state,
+GSTIN and FSSAI number are deliberately not seeded: enter them in Admin → Settings. Money is stored in **paise**; see `DATABASE_DESIGN.md`.
 
 ## Authentication & admin accounts
 

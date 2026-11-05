@@ -76,6 +76,12 @@ const productBase = z.object({
     .nullable()
     .optional()
     .or(z.literal("").transform(() => null)),
+  // Food labelling information shown on the product page.
+  ingredients: optionalTrimmed(2000),
+  shelfLife: optionalTrimmed(100),
+  storageInfo: optionalTrimmed(300),
+  countryOfOrigin: z.string().trim().min(2, "Country of origin is required").max(60).optional(),
+  isVegetarian: z.boolean().optional(),
   seoTitle: optionalTrimmed(70),
   seoDescription: optionalTrimmed(160),
 });

@@ -3,14 +3,14 @@ import { addProductToCart, db } from "./helpers";
 
 test.describe("edge cases", () => {
   test("out-of-stock variants cannot be added", async ({ page }) => {
-    await page.goto("/product/terracotta-bud-vase");
-    await page.getByRole("button", { name: /Charcoal/ }).click();
+    await page.goto("/product/cinnamon-sticks");
+    await page.getByRole("button", { name: "100 g (out of stock)" }).click();
     await expect(page.getByText("Sold out").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Sold out" })).toBeDisabled();
   });
 
   test("invalid and expired coupons are rejected with clear messages", async ({ page }) => {
-    await addProductToCart(page, "arc-table-lamp");
+    await addProductToCart(page, "green-cardamom");
     await page.goto("/cart");
     await page.getByLabel("Coupon code").fill("NOTREAL");
     await page.getByRole("button", { name: "Apply" }).click();
@@ -21,9 +21,9 @@ test.describe("edge cases", () => {
   });
 
   test("stock that disappears before checkout blocks the order", async ({ page }) => {
-    await addProductToCart(page, "brass-fountain-pen", { option: "Black" });
+    await addProductToCart(page, "black-pepper-whole", { option: "250 g" });
     await db.inventory.updateMany({
-      where: { variant: { product: { slug: "brass-fountain-pen" }, name: "Black" } },
+      where: { variant: { product: { slug: "black-pepper-whole" }, name: "250 g" } },
       data: { quantityOnHand: 0 },
     });
     await page.goto("/cart");

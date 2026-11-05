@@ -14,7 +14,8 @@ export async function SiteFooter() {
         <div className="lg:col-span-4">
           <Logo />
           <p className="text-muted-foreground mt-4 max-w-xs text-sm leading-6">
-            Thoughtfully made everyday goods from independent Indian makers, delivered to your door.
+            Rooted in trust, crafted with care. Spices, masalas, dry fruits, nuts and roasted
+            makhana — carefully selected and hygienically packed.
           </p>
           <ul className="text-muted-foreground mt-6 space-y-2 text-sm">
             <li className="flex items-center gap-2">
@@ -76,9 +77,9 @@ export async function SiteFooter() {
           </ul>
         </div>
         <div className="md:col-span-2 lg:col-span-4">
-          <h2 className="text-sm font-semibold">The Shayvera letter</h2>
+          <h2 className="text-sm font-semibold">The Shayvera kitchen letter</h2>
           <p className="text-muted-foreground mt-4 mb-4 text-sm">
-            New collections, maker stories and members-only offers. Once a month, never more.
+            New harvests, recipes and members-only offers. Once a month, never more.
           </p>
           <NewsletterForm />
         </div>
@@ -88,6 +89,7 @@ export async function SiteFooter() {
           <p>
             © {new Date().getFullYear()} {settings.legalName ?? settings.storeName}. All prices in
             INR.
+            {settings.fssaiLicense ? ` FSSAI Lic. No. ${settings.fssaiLicense}.` : ""}
           </p>
           <nav aria-label="Legal" className="flex flex-wrap gap-x-5 gap-y-2">
             <Link href="/privacy" className="hover:text-foreground">

@@ -244,6 +244,13 @@ export const settingsSchema = z
       .nullable()
       .optional()
       .or(z.literal("").transform(() => null)),
+    fssaiLicense: z
+      .string()
+      .trim()
+      .regex(/^\d{14}$/, "FSSAI licence numbers are 14 digits")
+      .nullable()
+      .optional()
+      .or(z.literal("").transform(() => null)),
     gstEnabled: z.boolean(),
     gstin: z
       .string()

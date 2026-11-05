@@ -36,6 +36,7 @@ export type SettingsValues = {
   pincode: string;
   gstEnabled: boolean;
   gstin: string;
+  fssaiLicense: string;
   pricesIncludeTax: boolean;
   defaultTaxRateBps: number;
   shippingFlatPaise: number;
@@ -217,6 +218,11 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
               </Select>
             </div>
             {field("pincode", "PIN code", { inputMode: "numeric", maxLength: 6 })}
+            {field("fssaiLicense", "FSSAI licence / registration no.", {
+              inputMode: "numeric",
+              maxLength: 14,
+              className: "font-mono",
+            })}
             <div className="grid gap-2">
               <Label>Currency</Label>
               <Input value="INR (₹)" disabled />

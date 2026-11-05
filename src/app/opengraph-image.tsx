@@ -21,14 +21,14 @@ export default function OpengraphImage() {
       }}
     >
       <div style={{ display: "flex", fontSize: 40, letterSpacing: -1 }}>
-        Shayvera<span style={{ color: "#b5643f" }}>.</span>
+        Shayvera Foods<span style={{ color: "#b5643f" }}>.</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 76, lineHeight: 1.05, letterSpacing: -2, maxWidth: 900 }}>
-          Everyday objects, made with care.
+          Rooted in trust, crafted with care.
         </div>
         <div style={{ fontSize: 30, marginTop: 24, color: "#6b6258" }}>
-          Home · Kitchen · Wellness · Stationery — delivered across India
+          Spices · Masalas · Dry fruits · Nuts · Roasted makhana
         </div>
       </div>
       <div

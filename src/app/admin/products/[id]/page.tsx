@@ -81,6 +81,11 @@ export default async function EditProductPage({ params }: PageProps<"/admin/prod
             isFeatured: product.isFeatured,
             taxRateBps: product.taxRateBps === null ? "" : String(product.taxRateBps),
             hsnCode: product.hsnCode ?? "",
+            ingredients: product.ingredients ?? "",
+            shelfLife: product.shelfLife ?? "",
+            storageInfo: product.storageInfo ?? "",
+            countryOfOrigin: product.countryOfOrigin,
+            isVegetarian: product.isVegetarian,
             seoTitle: product.seoTitle ?? "",
             seoDescription: product.seoDescription ?? "",
           }}

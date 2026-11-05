@@ -29,17 +29,17 @@ test.describe("admin dashboard", () => {
     writeFileSync(bad, "<script>alert(1)</script>".repeat(20));
 
     await page.goto("/admin/products/new");
-    await page.getByLabel("Name", { exact: true }).fill("E2E Ceramic Tumbler");
+    await page.getByLabel("Name", { exact: true }).fill("E2E Jaggery Powder");
     await page
       .getByLabel("Description", { exact: true })
-      .fill("A sturdy ceramic tumbler created by the E2E suite.");
+      .fill("Stone-ground jaggery powder created by the E2E suite.");
     await page.locator("#p-status").click();
     await page.getByRole("option", { name: "Active (visible)" }).click();
-    await page.locator("#v-0-sku").fill("E2E-TUMBLER-01");
+    await page.locator("#v-0-sku").fill("E2E-JAGGERY-01");
     await page.locator("#v-0-price").fill("499");
     await page.locator("#v-0-stock").fill("7");
     await page.getByRole("button", { name: "Create product" }).click();
-    await expect(page.getByRole("heading", { name: "E2E Ceramic Tumbler" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "E2E Jaggery Powder" })).toBeVisible();
 
     await page.getByTestId("image-upload-input").setInputFiles(img);
     await expect(page.getByText("Cover")).toBeVisible();
@@ -48,19 +48,17 @@ test.describe("admin dashboard", () => {
       page.getByText(/fake\.png: The file contents are not a valid image/),
     ).toBeVisible();
 
-    await page.getByRole("button", { name: "Adjust stock for E2E-TUMBLER-01" }).click();
+    await page.getByRole("button", { name: "Adjust stock for E2E-JAGGERY-01" }).click();
     await page.getByLabel("Change (+/−)").fill("5");
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("Stock updated")).toBeVisible();
     const inv = await db.inventory.findFirstOrThrow({
-      where: { variant: { sku: "E2E-TUMBLER-01" } },
+      where: { variant: { sku: "E2E-JAGGERY-01" } },
     });
     expect(inv.quantityOnHand).toBe(12);
 
-    await page.goto("/product/e2e-ceramic-tumbler");
-    await expect(
-      page.getByRole("heading", { level: 1, name: "E2E Ceramic Tumbler" }),
-    ).toBeVisible();
+    await page.goto("/product/e2e-jaggery-powder");
+    await expect(page.getByRole("heading", { level: 1, name: "E2E Jaggery Powder" })).toBeVisible();
   });
 
   test("creates a coupon", async ({ page }) => {
@@ -78,7 +76,7 @@ test.describe("admin dashboard", () => {
 
   test("views orders and updates an order status", async ({ page }) => {
     // Place a COD order (admins can shop too) so this test is independent of other specs.
-    await addProductToCart(page, "zip-pouch-trio");
+    await addProductToCart(page, "chole-masala");
     await page.goto("/checkout");
     await fillCheckout(page, { email: "admin-flow@example.com" });
     await page.locator("#pm-cod").click();

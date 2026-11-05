@@ -33,6 +33,11 @@ export default async function NewProductPage() {
           isFeatured: false,
           taxRateBps: "",
           hsnCode: "",
+          ingredients: "",
+          shelfLife: "",
+          storageInfo: "",
+          countryOfOrigin: "India",
+          isVegetarian: true,
           seoTitle: "",
           seoDescription: "",
         }}

@@ -11,7 +11,8 @@ import {
 describe("money", () => {
   it("formats INR with Indian digit grouping", () => {
     expect(formatINR(129_900)).toBe("₹1,299");
-    expect(formatINR(12_345_678_90)).toBe("₹1,23,45,678.9");
+    expect(formatINR(12_345_678_90)).toBe("₹1,23,45,678.90");
+    expect(formatINR(161_730)).toBe("₹1,617.30");
     expect(formatINRExact(129_950)).toBe("₹1,299.50");
   });
   it("parses rupee input into integer paise without floating point error", () => {

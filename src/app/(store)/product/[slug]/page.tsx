@@ -12,6 +12,7 @@ import { ProductGrid } from "@/components/store/product-card";
 import { ProductGallery } from "@/components/store/product-gallery";
 import { ProductPurchase } from "@/components/store/product-purchase";
 import { RatingStars } from "@/components/store/rating-stars";
+import { VegMark } from "@/components/store/veg-mark";
 import { formatINR } from "@/lib/money";
 import { siteConfig } from "@/lib/site";
 import { getProductBySlug, getRelatedProducts } from "@/server/queries/catalog";
@@ -98,9 +99,10 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
               {product.brand}
             </p>
           )}
-          <h1 className="heading-display mt-2 text-4xl leading-tight sm:text-5xl">
-            {product.name}
-          </h1>
+          <div className="mt-2 flex items-start gap-3">
+            <h1 className="heading-display text-4xl leading-tight sm:text-5xl">{product.name}</h1>
+            <VegMark vegetarian={product.isVegetarian} className="mt-3" />
+          </div>
           {product.ratingCount > 0 && (
             <a href="#reviews" className="mt-3 inline-flex">
               <RatingStars rating={product.ratingAverage} count={product.ratingCount} />
@@ -126,22 +128,66 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
               </li>
             )}
             <li className="flex items-center gap-3">
-              <RotateCcw className="text-brand size-4" aria-hidden /> 7-day easy returns
+              <RotateCcw className="text-brand size-4" aria-hidden /> Damaged or wrong item? We
+              replace it free
             </li>
           </ul>
-          <Accordion type="multiple" defaultValue={["description"]} className="mt-8">
+          <Accordion type="multiple" defaultValue={["description", "info"]} className="mt-8">
             <AccordionItem value="description">
               <AccordionTrigger>Description</AccordionTrigger>
               <AccordionContent className="text-muted-foreground space-y-3 leading-7 whitespace-pre-line">
                 {product.description}
               </AccordionContent>
             </AccordionItem>
+            <AccordionItem value="info">
+              <AccordionTrigger>Product information</AccordionTrigger>
+              <AccordionContent>
+                <dl className="grid gap-x-6 gap-y-2.5 text-sm sm:grid-cols-[150px_1fr]">
+                  {product.ingredients && (
+                    <>
+                      <dt className="text-muted-foreground">Ingredients</dt>
+                      <dd>{product.ingredients}</dd>
+                    </>
+                  )}
+                  <dt className="text-muted-foreground">Net quantity</dt>
+                  <dd>{product.variants.map((v) => v.name).join(" · ")}</dd>
+                  {product.shelfLife && (
+                    <>
+                      <dt className="text-muted-foreground">Best before</dt>
+                      <dd>{product.shelfLife}</dd>
+                    </>
+                  )}
+                  {product.storageInfo && (
+                    <>
+                      <dt className="text-muted-foreground">Storage</dt>
+                      <dd>{product.storageInfo}</dd>
+                    </>
+                  )}
+                  <dt className="text-muted-foreground">Country of origin</dt>
+                  <dd>{product.countryOfOrigin}</dd>
+                  <dt className="text-muted-foreground">Food type</dt>
+                  <dd className="flex items-center gap-2">
+                    <VegMark vegetarian={product.isVegetarian} />
+                    {product.isVegetarian ? "Vegetarian" : "Non-vegetarian"}
+                  </dd>
+                  {settings.fssaiLicense && (
+                    <>
+                      <dt className="text-muted-foreground">FSSAI Lic. No.</dt>
+                      <dd className="font-mono">{settings.fssaiLicense}</dd>
+                    </>
+                  )}
+                  <dt className="text-muted-foreground">Marketed by</dt>
+                  <dd>{settings.legalName ?? settings.storeName}</dd>
+                </dl>
+              </AccordionContent>
+            </AccordionItem>
             <AccordionItem value="shipping">
               <AccordionTrigger>Shipping & returns</AccordionTrigger>
               <AccordionContent className="text-muted-foreground leading-7">
                 Orders are dispatched within 1–2 business days and delivered in 3–7 business days
-                across India. Unused items can be returned within 7 days of delivery. See our
-                shipping & returns policy for details.
+                across India. Being food products, items can’t be returned once opened — but if
+                anything arrives damaged, leaking or incorrect, tell us within 48 hours and we’ll
+                replace or refund it. See our shipping & returns policy for details.
               </AccordionContent>
             </AccordionItem>
           </Accordion>

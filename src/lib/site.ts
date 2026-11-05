@@ -1,8 +1,9 @@
-/** Static brand metadata. Operational settings (contact, GST, shipping) live in StoreSettings. */
+/** Static brand metadata. Operational settings (contact, GST, FSSAI, shipping) live in StoreSettings. */
 export const siteConfig = {
-  name: "Shayvera",
-  tagline: "Thoughtfully made everyday goods",
+  name: "Shayvera Foods",
+  shortName: "Shayvera",
+  tagline: "Rooted in Trust, Crafted with Care",
   description:
-    "Shayvera curates thoughtfully made home, kitchen, wellness and lifestyle essentials, delivered across India.",
+    "Shayvera Foods brings honest, everyday food back to Indian kitchens — spices and masalas, dry fruits, nuts and roasted makhana, carefully selected and hygienically packed.",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
 } as const;

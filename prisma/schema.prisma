@@ -255,6 +255,12 @@ model Product {
   /// GST rate for this product in basis points (e.g. 1800 = 18%). Null → store default.
   taxRateBps       Int?
   hsnCode          String?       @db.VarChar(8)
+  // Food product information (Legal Metrology / FSSAI labelling shown on the product page).
+  ingredients      String?
+  shelfLife        String?
+  storageInfo      String?
+  countryOfOrigin  String        @default("India")
+  isVegetarian     Boolean       @default(true)
   /// Denormalised minimum active variant price, maintained by the catalog service for fast sorting/filtering.
   minPricePaise    Int           @default(0)
   /// Denormalised units sold (DELIVERED/CONFIRMED orders), used for "bestsellers".
@@ -641,10 +647,10 @@ model Invoice {
 
 model StoreSettings {
   id                         String   @id @default("default")
-  storeName                  String   @default("Shayvera")
+  storeName                  String   @default("Shayvera Foods")
   legalName                  String?
   logoUrl                    String?
-  supportEmail               String   @default("support@shayvera.example")
+  supportEmail               String   @default("support@example.com")
   supportPhone               String?
   addressLine1               String?
   addressLine2               String?
@@ -655,6 +661,8 @@ model StoreSettings {
   // GST
   gstEnabled                 Boolean  @default(false)
   gstin                      String?  @db.VarChar(15)
+  /// 14-digit FSSAI licence/registration number (footer, product pages, invoices).
+  fssaiLicense               String?  @db.VarChar(14)
   pricesIncludeTax           Boolean  @default(true)
   defaultTaxRateBps          Int      @default(1800)
   // Shipping

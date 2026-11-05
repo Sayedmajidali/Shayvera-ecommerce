@@ -216,3 +216,20 @@
 
 **Not yet verified outside the sandbox:** real Razorpay test-mode round trip, Docker Compose start-up on Windows.
 **Not production-ready until:** the "Production deployment tasks" in README.md are completed.
+
+## Re-theme — Shayvera Foods (post-handover)
+
+- Business confirmed as **Shayvera Foods** (spices & masalas, dry fruits, nuts, roasted makhana). Brand copy,
+  About page (client-supplied text verbatim), homepage, SEO metadata, Open Graph image, footer, search, policies
+  updated; invented placeholder claims (founding story, "40+ makers", ratings) removed.
+- New migration `food_product_info`: `Product.ingredients/shelfLife/storageInfo/countryOfOrigin/isVegetarian` and
+  `StoreSettings.fssaiLicense` (14-digit, validated). Shown on product pages (Product information + veg mark),
+  footer and invoices; editable in Admin → Products and Admin → Settings.
+- Food-appropriate returns policy (no returns once opened; damaged/expired/incorrect items replaced within 48 h) —
+  **needs business confirmation**.
+- Demo catalog replaced: 6 food categories, 23 products with weight variants and food illustrations
+  (placeholder prices/stock/tax codes). Seed no longer invents a business address or phone.
+- `formatINR` now always shows two decimals for fractional rupees (`₹1,617.30`).
+- Tests: 178 unit + integration, 29 E2E — all passing.
+- **Awaiting from the business:** contact email/phone/WhatsApp, address + state + PIN, legal name, GSTIN (if
+  registered), FSSAI licence number, real product list with prices/weights, social links, policy confirmation.

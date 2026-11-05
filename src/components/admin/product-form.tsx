@@ -34,6 +34,11 @@ export type ProductFormValues = {
   isFeatured: boolean;
   taxRateBps: string; // "" = store default
   hsnCode: string;
+  ingredients: string;
+  shelfLife: string;
+  storageInfo: string;
+  countryOfOrigin: string;
+  isVegetarian: boolean;
   seoTitle: string;
   seoDescription: string;
 };
@@ -109,6 +114,11 @@ export function ProductForm({
       isFeatured: v.isFeatured,
       taxRateBps: v.taxRateBps === "" ? null : Number(v.taxRateBps),
       hsnCode: v.hsnCode,
+      ingredients: v.ingredients,
+      shelfLife: v.shelfLife,
+      storageInfo: v.storageInfo,
+      countryOfOrigin: v.countryOfOrigin,
+      isVegetarian: v.isVegetarian,
       seoTitle: v.seoTitle,
       seoDescription: v.seoDescription,
     };
@@ -367,6 +377,65 @@ export function ProductForm({
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Product information (food labelling)</CardTitle>
+          <CardDescription>
+            Shown on the product page. Net quantity comes from each variant (e.g. 250 g).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <div className="grid gap-2">
+            <Label htmlFor="p-ingredients">Ingredients</Label>
+            <Textarea
+              id="p-ingredients"
+              rows={2}
+              value={v.ingredients}
+              onChange={(e) => set("ingredients", e.target.value)}
+              placeholder="e.g. Fox nuts (makhana), rice bran oil, Himalayan pink salt, black pepper"
+            />
+          </div>
+          <div className="grid gap-5 sm:grid-cols-3">
+            <div className="grid gap-2">
+              <Label htmlFor="p-shelf">Shelf life</Label>
+              <Input
+                id="p-shelf"
+                value={v.shelfLife}
+                onChange={(e) => set("shelfLife", e.target.value)}
+                placeholder="e.g. 6 months from packing"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="p-origin">Country of origin</Label>
+              <Input
+                id="p-origin"
+                value={v.countryOfOrigin}
+                onChange={(e) => set("countryOfOrigin", e.target.value)}
+                aria-invalid={!!errors.countryOfOrigin}
+              />
+              <FieldError message={errors.countryOfOrigin} />
+            </div>
+            <div className="flex items-center gap-2 self-end pb-2">
+              <Switch
+                id="p-veg"
+                checked={v.isVegetarian}
+                onCheckedChange={(val) => set("isVegetarian", val)}
+              />
+              <Label htmlFor="p-veg">Vegetarian (green dot)</Label>
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="p-storage">Storage instructions</Label>
+            <Input
+              id="p-storage"
+              value={v.storageInfo}
+              onChange={(e) => set("storageInfo", e.target.value)}
+              placeholder="e.g. Store in a cool, dry place. Keep airtight after opening."
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

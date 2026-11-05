@@ -30,6 +30,7 @@ export default async function SettingsPage() {
           pincode: s.pincode ?? "",
           gstEnabled: s.gstEnabled,
           gstin: s.gstin ?? "",
+          fssaiLicense: s.fssaiLicense ?? "",
           pricesIncludeTax: s.pricesIncludeTax,
           defaultTaxRateBps: s.defaultTaxRateBps,
           shippingFlatPaise: s.shippingFlatPaise,

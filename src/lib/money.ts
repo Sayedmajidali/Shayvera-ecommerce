@@ -13,9 +13,9 @@ const inrExact = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 2,
 });
 
-/** ₹1,299 or ₹1,299.50 — drops ".00" for whole rupees. */
+/** ₹1,299 for whole rupees, ₹1,299.50 otherwise (never "₹1,299.5"). */
 export function formatINR(paise: number): string {
-  return inr.format(paise / 100);
+  return paise % 100 === 0 ? inr.format(paise / 100) : inrExact.format(paise / 100);
 }
 
 /** Always two decimals — for invoices and accounting views. */

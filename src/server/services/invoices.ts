@@ -29,6 +29,7 @@ export type InvoiceSnapshot = {
   orderNumber: string;
   orderDate: string;
   seller: {
+    fssaiLicense?: string | null;
     name: string;
     legalName: string | null;
     gstin: string | null;
@@ -156,6 +157,7 @@ export async function generateInvoice(
         name: settings.storeName,
         legalName: settings.legalName,
         gstin: gst ? settings.gstin : null,
+        fssaiLicense: settings.fssaiLicense,
         address: sellerAddress,
         stateCode: settings.stateCode,
         stateName: stateName(settings.stateCode),

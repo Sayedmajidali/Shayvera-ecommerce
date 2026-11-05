@@ -18,8 +18,8 @@ export default async function TermsPage() {
       <h2>Products and pricing</h2>
       <p>
         All prices are in Indian Rupees (INR) and include applicable taxes unless stated otherwise.
-        We make every effort to display products accurately; handmade items may vary slightly in
-        colour, size and finish.
+        We make every effort to display products accurately; natural products may vary slightly in
+        colour, size and aroma from batch to batch.
       </p>
       <h2>Orders</h2>
       <p>

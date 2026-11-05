@@ -4,69 +4,69 @@ import { addProductToCart, db, fillCheckout, orderFromUrl, register } from "./he
 test.describe("customer shopping journey", () => {
   test("browse, search, filter and view a product", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /Everyday objects/ })).toBeVisible();
-    await page.getByRole("link", { name: "Shop the collection" }).click();
+    await expect(page.getByRole("heading", { name: /Rooted in trust/ })).toBeVisible();
+    await page.getByRole("link", { name: "Shop the pantry" }).click();
     await expect(page.getByRole("heading", { name: "Shop all" })).toBeVisible();
     await expect(page.getByTestId("product-card").first()).toBeVisible();
 
     // Search with live suggestions.
     const search = page.getByRole("combobox").first();
-    await search.fill("mug");
-    await expect(page.getByRole("option", { name: /Stoneware Coffee Mug/ })).toBeVisible();
+    await search.fill("almond");
+    await expect(page.getByRole("option", { name: /California Almonds/ })).toBeVisible();
     await search.press("Enter");
-    await expect(page).toHaveURL(/\/search\?q=mug/);
+    await expect(page).toHaveURL(/\/search\?q=almond/);
     await expect(
-      page.getByTestId("product-card").filter({ hasText: "Stoneware Coffee Mug" }),
+      page.getByTestId("product-card").filter({ hasText: "California Almonds" }),
     ).toBeVisible();
 
     // Category + price filters.
     await page.goto("/shop");
     await page
       .getByRole("complementary", { name: "Filters" })
-      .getByRole("button", { name: "Stationery" })
+      .getByRole("button", { name: "Nuts", exact: true })
       .click();
-    await expect(page).toHaveURL(/category=stationery/);
-    await expect(page.getByText("3 products")).toBeVisible();
-    await page.getByLabel("Minimum price").fill("800");
-    await page.getByLabel("Maximum price").fill("1000");
+    await expect(page).toHaveURL(/category=nuts/);
+    await expect(page.getByText("4 products")).toBeVisible();
+    await page.getByLabel("Minimum price").fill("420");
+    await page.getByLabel("Maximum price").fill("500");
     await page.getByRole("button", { name: "Go", exact: true }).click();
-    await expect(page).toHaveURL(/minPrice=800/);
+    await expect(page).toHaveURL(/minPrice=420/);
     await expect(page.getByTestId("product-card")).toHaveCount(1);
-    await expect(page.getByTestId("product-card")).toContainText("Undated Weekly Planner");
+    await expect(page.getByTestId("product-card")).toContainText("Walnut Kernels");
 
     // Sort.
     await page.goto("/shop?sort=price-asc");
-    await expect(page.getByTestId("product-card").first()).toContainText("Cold-Process Soap");
+    await expect(page.getByTestId("product-card").first()).toContainText("Coriander Powder");
 
     // Product detail.
-    await page.getByRole("link", { name: "Cold-Process Soap — Sandalwood" }).first().click();
+    await page.getByRole("link", { name: "Coriander Powder (Dhaniya)" }).first().click();
     await expect(
-      page.getByRole("heading", { level: 1, name: "Cold-Process Soap — Sandalwood" }),
+      page.getByRole("heading", { level: 1, name: "Coriander Powder (Dhaniya)" }),
     ).toBeVisible();
     await expect(page.getByText("Inclusive of all taxes")).toBeVisible();
   });
 
   test("cart → coupon → COD checkout → order history", async ({ page }) => {
     await register(page, "Riya Kapoor");
-    await addProductToCart(page, "handloom-cushion-cover", { option: "50 × 50 cm" });
-    await addProductToCart(page, "stoneware-coffee-mug");
+    await addProductToCart(page, "california-almonds", { option: "1 kg" });
+    await addProductToCart(page, "cashews-w320");
 
     await page.goto("/cart");
     await expect(page.getByTestId("cart-line")).toHaveCount(2);
-    const mug = page.getByTestId("cart-line").filter({ hasText: "Stoneware Coffee Mug" });
-    await mug.getByRole("button", { name: "Increase quantity" }).click();
-    await expect(mug.getByTestId("quantity-value")).toHaveText("2");
+    const cashews = page.getByTestId("cart-line").filter({ hasText: "Cashews W320" });
+    await cashews.getByRole("button", { name: "Increase quantity" }).click();
+    await expect(cashews.getByTestId("quantity-value")).toHaveText("2");
 
-    // ₹990 + 2×₹590 = ₹2,170 ≥ ₹999 → WELCOME10 applies (10%).
+    // ₹1,099 + 2×₹349 = ₹1,797 ≥ ₹999 → WELCOME10 applies (10% = ₹179.70).
     await page.getByLabel("Coupon code").fill("WELCOME10");
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText("WELCOME10 applied")).toBeVisible();
-    await expect(page.getByTestId("order-total")).toHaveText("₹1,953");
+    await expect(page.getByTestId("order-total")).toHaveText("₹1,617.30");
 
     await page.getByRole("link", { name: /Proceed to checkout/ }).click();
     await fillCheckout(page);
     await page.locator("#pm-cod").click();
-    await expect(page.getByTestId("order-total")).toHaveText("₹2,002"); // + ₹49 COD fee
+    await expect(page.getByTestId("order-total")).toHaveText("₹1,666.30"); // + ₹49 COD fee
     await page.getByTestId("place-order").click();
 
     await expect(page.getByText("Thank you! Your order is confirmed.")).toBeVisible();
@@ -75,7 +75,7 @@ test.describe("customer shopping journey", () => {
     expect(order).toMatchObject({
       paymentMethod: "COD",
       status: "CONFIRMED",
-      totalPaise: 200_200,
+      totalPaise: 166_630,
       couponCode: "WELCOME10",
     });
 
@@ -100,7 +100,7 @@ test.describe("customer shopping journey", () => {
   });
 
   test("guest checkout prevents double submission", async ({ page }) => {
-    await addProductToCart(page, "linen-hardcover-notebook");
+    await addProductToCart(page, "garam-masala");
     await page.goto("/checkout");
     await fillCheckout(page, { email: "double@example.com" });
     await page.locator("#pm-cod").click();

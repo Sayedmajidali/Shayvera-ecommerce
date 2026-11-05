@@ -5,10 +5,18 @@ export function Logo({ className, href = "/" }: { className?: string; href?: str
   return (
     <Link
       href={href}
-      className={cn("heading-display text-2xl font-medium tracking-tight", className)}
-      aria-label="Shayvera home"
+      className={cn(
+        "heading-display inline-flex items-baseline gap-1.5 text-2xl font-medium tracking-tight",
+        className,
+      )}
+      aria-label="Shayvera Foods home"
     >
-      Shayvera<span className="text-brand">.</span>
+      <span>
+        Shayvera<span className="text-brand">.</span>
+      </span>
+      <span className="text-muted-foreground font-sans text-[0.55em] font-medium tracking-[0.2em] uppercase">
+        Foods
+      </span>
     </Link>
   );
 }
