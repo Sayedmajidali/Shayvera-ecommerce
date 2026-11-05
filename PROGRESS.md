@@ -47,3 +47,19 @@
   session persistence/sign-out, disabled accounts, password reset + token reuse, admin provisioning,
   401/403/CSRF, cross-customer address isolation, PIN/state validation).
 - Auth UI pages are built with the storefront in Phase 3.
+
+## Phase 3 — Design system & storefront ✅
+
+- Storage abstraction (`src/server/storage`, local disk driver) + `/media/[...key]` route.
+- Seed (`npm run db:seed`): 6 categories, 25 products with 60+ variants, generated studio-style
+  illustrations (sharp, SVG→WebP; placeholders for real photography), reviews, coupons, demo customer.
+- Storefront (route group `(store)`): header (search with live suggestions, mobile sheet nav, user menu,
+  cart badge), footer + newsletter, homepage (hero, value props, categories, featured, promo, bestsellers,
+  new arrivals, testimonials, newsletter), shop, category, search (filters: category/price/stock; 6 sorts;
+  pagination), product detail (gallery, variant matrix with stock-aware options, qty, JSON-LD, reviews,
+  related), login/register/forgot/reset, account (profile, password, address book), about, contact
+  (persisted + rate limited), privacy, terms, shipping & returns. Loading skeletons, empty and error states.
+- All product data comes from PostgreSQL. Cart, checkout and order pages are delivered with Phases 5–6
+  where their functionality lives.
+- Verified: every page 200 in dev, `/account` → 307 when signed out, no console errors (Playwright
+  screenshots at 1440px and 390px).
