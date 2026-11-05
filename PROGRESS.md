@@ -29,3 +29,21 @@
 - Root layout, `error.tsx`, `global-error.tsx`, `not-found.tsx`, security headers + CSP.
 - `GET /api/health` (DB readiness).
 - Verified: `tsc --noEmit` ✅, `eslint .` ✅, `next build` ✅, `next start` → `/api/health` 200 with DB up ✅.
+
+## Phase 2 — Database & Authentication ✅
+
+- Full relational schema (27 models) + migration `core_schema` with extra SQL CHECK constraints
+  (non-negative stock, positive quantities, rating range, refund ≤ total, one default address per user).
+- Better Auth 1.7 (email/password, scrypt, DB sessions 14d, DB-backed auth rate limiting,
+  `role`/`status`/`phone` as `input:false` fields, disabled-account hook, reset-password with session revocation).
+- Dev email outbox (`OutboundEmail` table) for password-reset mails.
+- Guards: `getCurrentUser`/`requireUserPage`/`requireAdminPage` (pages), `requireUser(req)`/`requireAdmin(req)` (APIs).
+- `proxy.ts` optimistic redirects for `/account` and `/admin`.
+- Same-origin CSRF check + uniform JSON error envelope (`src/lib/api.ts`).
+- Admin provisioning CLI: `npm run admin:create -- --email … --name …` (no public admin sign-up).
+- Account APIs: profile (GET/PATCH), addresses CRUD with ownership enforcement.
+- India validators: mobile, PIN, state codes, GSTIN checksum.
+- Tests: `tests/integration/auth.test.ts` — 15 passing (registration, role escalation attempts, login,
+  session persistence/sign-out, disabled accounts, password reset + token reuse, admin provisioning,
+  401/403/CSRF, cross-customer address isolation, PIN/state validation).
+- Auth UI pages are built with the storefront in Phase 3.
