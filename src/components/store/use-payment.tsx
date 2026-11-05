@@ -176,7 +176,7 @@ export function usePayment() {
         </p>
         <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button variant="ghost" disabled={mockBusy} onClick={() => finishMock("dismissed")}>
-            Close
+            Cancel payment
           </Button>
           <Button variant="outline" disabled={mockBusy} onClick={() => finishMock("failed")}>
             Simulate failure

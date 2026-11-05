@@ -98,6 +98,9 @@ async function recordEvent(p: {
   const payment = p.razorpayOrderId
     ? await db.payment.findUnique({ where: { razorpayOrderId: p.razorpayOrderId } })
     : null;
+  // Fast path for retries/duplicates (avoids relying on the unique-violation error path).
+  const seen = await db.paymentEvent.findUnique({ where: { eventId: p.eventId } });
+  if (seen) return { id: seen.id, fresh: seen.processedAt === null };
   try {
     const ev = await db.paymentEvent.create({
       data: {

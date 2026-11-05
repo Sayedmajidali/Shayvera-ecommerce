@@ -6,3 +6,5 @@ test-results
 storage
 prisma/migrations
 package-lock.json
+playwright-report
+test-results
