@@ -38,7 +38,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-IN" className={`${sans.variable} ${mono.variable} ${display.variable}`}>
+    <html
+      lang="en-IN"
+      data-scroll-behavior="smooth"
+      className={`${sans.variable} ${mono.variable} ${display.variable}`}
+    >
       <body className="flex min-h-dvh flex-col">
         {children}
         <Toaster />

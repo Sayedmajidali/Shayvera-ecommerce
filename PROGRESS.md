@@ -94,3 +94,22 @@
 - Tests: unit 41 (money, India validators, allocation, tax, coupons, pricing); integration cart 16
   (cookie, stock limits, invalid quantities, draft products, cross-guest isolation, stock drop/deactivation,
   live price changes, coupon re-validation and rejection reasons, per-customer limits, merge, auth).
+
+## Phase 6 — Checkout & order management ✅
+
+- `checkout.ts` `placeOrder`: one DB transaction re-prices the server-side cart, validates stock/coupon/
+  min-order/COD rules, generates the order number (`Sequence` table), snapshots items and addresses,
+  reserves stock with conditional decrements, enforces coupon global limits with a conditional increment,
+  records coupon usage, confirms COD orders, empties the cart and optionally saves the address.
+- Idempotency: client UUID per attempt + unique `Order.idempotencyKey`; concurrent duplicates return the original order.
+- Order state machine (`order-status.ts`) with compare-and-set transitions, status history, restock + coupon
+  release on cancellation, sales counters, COD → PAID on delivery.
+- Guest access to orders via HMAC capability token (`/order/:number?t=…`); owners via session.
+- Pages: checkout (contact, saved/new address, billing, payment method, live server re-pricing by state and
+  method), order confirmation/status (progress, shipment, actions), account order history + detail.
+- APIs: `POST /api/checkout`, `GET /api/orders`, `GET /api/orders/:n`, `POST /api/orders/:n/cancel`, `POST /api/orders/:n/pay`.
+- Tests: checkout 15 (snapshot/stock/ledger/email, client amounts ignored, idempotency under concurrency,
+  validation, empty/out-of-stock, COD rules, GST intra/inter split, **8 buyers for 3 units → exactly 3 orders**,
+  coupon limit race, unique order numbers, guest per-email coupon limit, owner/guest-token access, cancel +
+  restock + coupon release, invalid transitions). Unit: state machine + financial year.
+- Verified in a real browser: guest COD purchase → order `CONFIRMED`, stock decremented.
