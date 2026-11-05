@@ -1,0 +1,17 @@
+// Shayvera — PostgreSQL schema. Money is stored as integer paise; percentages as basis points.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Atomic named counters (order numbers, invoice numbers per financial year).
+model Sequence {
+  key       String   @id
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}

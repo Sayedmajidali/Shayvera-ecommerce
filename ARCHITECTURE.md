@@ -8,7 +8,7 @@ Shayvera is a single Next.js (App Router) application that contains:
 - **Admin dashboard** (`src/app/admin`) — role-protected back office.
 - **HTTP API** (`src/app/api`) — Route Handlers used by client components, Razorpay webhooks, health checks.
 
-It is a deliberately *modular monolith*: one deployable, one PostgreSQL database, no
+It is a deliberately _modular monolith_: one deployable, one PostgreSQL database, no
 microservices, no Redis, no queue. Business logic lives in framework-agnostic service
 modules so it can be unit/integration tested without HTTP.
 
@@ -21,18 +21,18 @@ Razorpay ─► /api/webhooks/razorpay (raw body HMAC verification) ──► pa
 
 ## 2. Technology decisions (verified November 2026)
 
-| Concern | Choice | Pinned version | Notes |
-|---|---|---|---|
-| Framework | Next.js App Router | 16.4.3 | 16.4.5 was 2 days old at project start; 16.4.3 is ~2 weeks old. `proxy.ts` replaces `middleware.ts` in v16. |
-| UI runtime | React | 19.3.x | Bundled with create-next-app 16.4.3. |
-| Language | TypeScript strict | 5.x | `strict`, `noUncheckedIndexedAccess`. |
-| Styling | Tailwind CSS v4 + shadcn/ui + lucide-react | 4.x | Design tokens via CSS variables (`globals.css`). |
-| Validation | Zod | 4.x | Same major as Better Auth's dependency. |
-| ORM | Prisma | 6.19.3 | Prisma 8 is still RC (`latest` tag points to an RC); Prisma 7 requires driver adapters and a new generator. 6.19 is the mature stable line and is inside Better Auth's peer range (`^5 \|\| ^6 \|\| ^7`). Upgrade path to 7 documented in PROJECT_PLAN. |
-| Auth | Better Auth + Prisma adapter | 1.7.13 | Peer ranges: next ^14–^16, prisma ^5–^7. |
-| Payments | Razorpay Node SDK + Checkout.js | 2.9.x | Test mode; secrets server-side only. |
-| Images | sharp | bundled with Next | Decode + re-encode every upload. |
-| Tests | Vitest, Playwright | 4.x / 1.6x | Integration tests run against a real PostgreSQL test DB. |
+| Concern    | Choice                                     | Pinned version    | Notes                                                                                                                                                                                                                                                   |
+| ---------- | ------------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework  | Next.js App Router                         | 16.4.3            | 16.4.5 was 2 days old at project start; 16.4.3 is ~2 weeks old. `proxy.ts` replaces `middleware.ts` in v16.                                                                                                                                             |
+| UI runtime | React                                      | 19.3.x            | Bundled with create-next-app 16.4.3.                                                                                                                                                                                                                    |
+| Language   | TypeScript strict                          | 5.x               | `strict`, `noUncheckedIndexedAccess`.                                                                                                                                                                                                                   |
+| Styling    | Tailwind CSS v4 + shadcn/ui + lucide-react | 4.x               | Design tokens via CSS variables (`globals.css`).                                                                                                                                                                                                        |
+| Validation | Zod                                        | 4.x               | Same major as Better Auth's dependency.                                                                                                                                                                                                                 |
+| ORM        | Prisma                                     | 6.19.3            | Prisma 8 is still RC (`latest` tag points to an RC); Prisma 7 requires driver adapters and a new generator. 6.19 is the mature stable line and is inside Better Auth's peer range (`^5 \|\| ^6 \|\| ^7`). Upgrade path to 7 documented in PROJECT_PLAN. |
+| Auth       | Better Auth + Prisma adapter               | 1.7.13            | Peer ranges: next ^14–^16, prisma ^5–^7.                                                                                                                                                                                                                |
+| Payments   | Razorpay Node SDK + Checkout.js            | 2.9.x             | Test mode; secrets server-side only.                                                                                                                                                                                                                    |
+| Images     | sharp                                      | bundled with Next | Decode + re-encode every upload.                                                                                                                                                                                                                        |
+| Tests      | Vitest, Playwright                         | 4.x / 1.6x        | Integration tests run against a real PostgreSQL test DB.                                                                                                                                                                                                |
 
 **Cache Components disabled.** Next 16.4 scaffolds with `cacheComponents: true`. This app is
 dominated by per-session data (cart badge, account, admin), so we use the classic dynamic
@@ -70,7 +70,7 @@ tests/
 
 1. **Route Handlers / Server Components** — parse input (zod), resolve the session, call a service, map
    errors to HTTP. No business rules here.
-2. **Services** (`src/server/services`) — business rules, transactions, authorization *assertions*
+2. **Services** (`src/server/services`) — business rules, transactions, authorization _assertions_
    that depend on data ownership (e.g. "order belongs to user").
 3. **Prisma** — the only persistence API. Raw SQL only through tagged `$queryRaw` (parameterised).
 
@@ -110,7 +110,7 @@ PENDING ──► CONFIRMED ──► PROCESSING ──► SHIPPED ──► DEL
 
 - **COD**: order is created `CONFIRMED`, payment `PENDING`; becomes `PAID` when marked delivered.
 - **Razorpay**: order created `PENDING` (stock reserved, `paymentExpiresAt` = +30 min); a Razorpay
-  order is created server-side. Order moves to `CONFIRMED` only on *verified* evidence: a valid
+  order is created server-side. Order moves to `CONFIRMED` only on _verified_ evidence: a valid
   checkout signature **and** captured status fetched from Razorpay, or a signature-verified
   `payment.captured` / `order.paid` webhook. Failed payments keep the order `PENDING` so the
   customer can retry until expiry; expired orders are cancelled and stock released.

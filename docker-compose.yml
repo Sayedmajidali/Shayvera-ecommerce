@@ -1,0 +1,24 @@
+# Local development database only. Next.js runs directly on the host (Windows) via `npm run dev`.
+# Port is bound to 127.0.0.1 so the database is not exposed to the local network.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: shayvera-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shayvera}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shayvera_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-shayvera}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - shayvera_pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shayvera} -d ${POSTGRES_DB:-shayvera}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  shayvera_pgdata:
