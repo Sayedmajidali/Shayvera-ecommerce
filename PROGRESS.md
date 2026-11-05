@@ -195,3 +195,24 @@
 - Performance: Server Components by default (client components only for interactivity), `next/image`
   (AVIF/WebP, responsive `sizes`, priority on above-the-fold), indexed queries + pagination, denormalised
   price/sales for sorting, no client-side data waterfalls, chart animation disabled.
+
+## Phase 13 — Documentation & handover ✅
+
+- `README.md`: overview, architecture, stack, Windows + Docker setup, environment variables, database
+  (migrations, seed, test DBs), authentication/admin provisioning, Razorpay test setup (mock and real, webhook
+  tunnel), commands, tests, troubleshooting, handover (completed/tested features, limitations, credentials,
+  production tasks).
+- `API_DOCUMENTATION.md`, `QA_REPORT.md`, `SECURITY_REVIEW.md`; `ARCHITECTURE.md`, `DATABASE_DESIGN.md` and
+  `PROJECT_PLAN.md` updated to match the implementation.
+
+## Final status
+
+| Check                       | Result           |
+| --------------------------- | ---------------- |
+| Lint / typecheck            | ✅               |
+| Unit / integration / E2E    | ✅ 77 / 100 / 29 |
+| Production build            | ✅               |
+| Known critical/high defects | none open        |
+
+**Not yet verified outside the sandbox:** real Razorpay test-mode round trip, Docker Compose start-up on Windows.
+**Not production-ready until:** the "Production deployment tasks" in README.md are completed.

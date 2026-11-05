@@ -5,6 +5,8 @@ Built locally first; production deployment is a separate later phase.
 
 ## Phase roadmap
 
+**Status (2026-11-05): Phases 0–13 complete for local development.** See PROGRESS.md and QA_REPORT.md.
+
 | Phase | Scope                                                                                                                                                                            | Exit criteria                                                        |
 | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | 0     | Discovery & architecture                                                                                                                                                         | ARCHITECTURE.md, DATABASE_DESIGN.md, this plan, PROGRESS.md          |
@@ -37,4 +39,5 @@ Built locally first; production deployment is a separate later phase.
 Hosting/VPS, domain + TLS, managed PostgreSQL with backups/PITR, object storage (Cloudinary/S3),
 transactional email provider, Razorpay live keys + webhook registration on public URL, monitoring
 (error tracking, uptime, logs), scheduled reconciliation job, CSP tuning with nonces, legal review
-of GST/invoice settings and policy pages, Prisma 7 upgrade evaluation.
+of GST/invoice settings and policy pages, Prisma 7 upgrade evaluation (clears the CLI `deepmerge-ts` advisory),
+admin MFA, email verification, review submission/moderation, courier API integration, stored PDF invoices.

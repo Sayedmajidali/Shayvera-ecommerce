@@ -166,3 +166,20 @@ limiter (`RateLimitBucket`) so it works across multiple instances without Redis.
 No queue. Time-based work (expiring unpaid orders) runs opportunistically (on checkout and admin
 dashboard requests) and via `npm run jobs:reconcile`, which can be scheduled with cron/Task
 Scheduler in production.
+
+## 14. Implementation notes (as built)
+
+- **Authorization layers:** `proxy.ts` only performs optimistic redirects (session-cookie presence) for
+  `/account` and `/admin`. Every admin **page** calls `requireAdminPage()` (layouts are not re-rendered on
+  client-side navigation), every protected API calls `requireUser(req)` / `requireAdmin(req)`, and services
+  scope data by owner.
+- **Streaming and status codes:** loading skeletons (`loading.tsx`) exist only for listing pages (shop, search).
+  Pages that can `notFound()` (product, category, order) do not stream before the check, so they return real 404s.
+- **Payments:** `PaymentGateway` interface with `RazorpayGateway` and `MockGateway` (offline simulator that signs
+  like Razorpay; refused in production). Webhook events are stored once (`PaymentEvent.eventId` unique) and
+  applied under a `SELECT … FOR UPDATE` row lock on the payment.
+- **Invoices:** issued on demand by admins, numbered per financial year via the `Sequence` table, stored as an
+  immutable JSON snapshot and rendered at `/invoice/:orderNumber` (printable; "Save as PDF").
+- **Emails:** `sendEmail` writes to `OutboundEmail` (Admin → Messages & emails). Order emails are
+  fire-and-forget so they never block checkout or payment processing.
+- **Scripts:** run with `tsx --conditions=react-server` so `server-only` modules can be imported by CLI scripts.
