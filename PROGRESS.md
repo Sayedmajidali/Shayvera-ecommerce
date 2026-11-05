@@ -113,3 +113,25 @@
   coupon limit race, unique order numbers, guest per-email coupon limit, owner/guest-token access, cancel +
   restock + coupon release, invalid transitions). Unit: state machine + financial year.
 - Verified in a real browser: guest COD purchase → order `CONFIRMED`, stock decremented.
+
+## Phase 7 — Razorpay integration ✅ (test mode; see limitation)
+
+- Gateway abstraction (`src/server/payments/gateway.ts`): `RazorpayGateway` (official SDK, server-side keys)
+  and `MockGateway` (offline simulator that signs payloads exactly like Razorpay; refused in production).
+- `payments.ts`: start/resume payment (reuses gateway order), checkout-callback verification (HMAC signature +
+  server-side payment fetch + amount/currency check), webhook processing (raw-body HMAC, `x-razorpay-event-id`
+  idempotency via unique `PaymentEvent.eventId`, retry of failed events), row-locked capture handling,
+  failure handling that never downgrades captured payments, late-capture reinstate-or-refund, duplicate-payment
+  refunds, reconciliation, stale-order expiry (opportunistic + `npm run jobs:reconcile`), refunds with
+  concurrency-safe reservation, refund webhooks.
+- Client: `usePayment` hook loads Checkout.js, verifies on the server, reports failures; mock modal in dev.
+- APIs: `/api/payments/razorpay/verify`, `/api/payments/razorpay/failure`, `/api/webhooks/razorpay`,
+  `/api/orders/:n/pay`, dev-only `/api/payments/mock/complete`.
+- Tests: unit signature tests; integration 22 (success, tampered signature, duplicate/concurrent callbacks,
+  failure + retry, resume, stranger access, webhook signature, duplicates, callback/webhook race, out-of-order
+  failure, amount mismatch, unknown events, expiry, delayed capture reinstated / refunded when sold out,
+  interrupted checkout recovery, partial/full/concurrent refunds, customer cancel auto-refund, refund webhooks).
+- Browser-verified with the mock gateway: online payment → order CONFIRMED/PAID.
+- **Limitation:** `api.razorpay.com` / `checkout.razorpay.com` are blocked in the build sandbox, so the real
+  Razorpay test-mode round trip could not be executed here. Set `PAYMENT_GATEWAY=razorpay` with test keys locally
+  to exercise it (README → Razorpay test setup).

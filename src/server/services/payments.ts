@@ -367,13 +367,13 @@ export async function verifyCheckoutCallback(cb: CheckoutCallback) {
   if (!valid) {
     await finishEvent(ev.id, new Error("Invalid signature"));
     logger.warn("Invalid checkout signature", { orderNumber: payment.order.orderNumber });
-    throw new AppError("PAYMENT_ERROR", "Payment verification failed");
+    throw new AppError("VALIDATION_ERROR", "Payment verification failed");
   }
 
   const gp = await paymentGateway().fetchPayment(cb.razorpay_payment_id);
   if (gp.orderId !== cb.razorpay_order_id) {
     await finishEvent(ev.id, new Error("Payment/order mismatch"));
-    throw new AppError("PAYMENT_ERROR", "Payment verification failed");
+    throw new AppError("VALIDATION_ERROR", "Payment verification failed");
   }
   try {
     let outcome: string;
