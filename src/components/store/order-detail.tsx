@@ -260,6 +260,16 @@ export function OrderDetail({
             <h2 className="mb-3 font-semibold">Shipping to</h2>
             <Address a={order.shippingAddress as AddressSnapshot} />
           </div>
+          {order.invoice && (
+            <a
+              href={`/invoice/${order.orderNumber}${token ? `?t=${encodeURIComponent(token)}` : ""}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-medium underline underline-offset-4"
+            >
+              Download invoice {order.invoice.invoiceNumber}
+            </a>
+          )}
           <OrderActions
             orderNumber={order.orderNumber}
             token={token}

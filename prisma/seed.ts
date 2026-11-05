@@ -8,6 +8,7 @@ import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "@prisma/client";
 import { storage } from "../src/server/storage";
 import { categories, coupons, products, reviewTexts } from "./seed/data";
+import { seedDemoOrders } from "./seed/demo-orders";
 import { renderBanner, renderIllustration } from "./seed/illustrations";
 
 const db = new PrismaClient();
@@ -260,6 +261,8 @@ async function main() {
   const created = await seedProducts(categoryIds);
   await seedCustomerAndReviews();
   await seedCoupons();
+  const demo = process.env.SEED_DEMO_ORDERS === "false" ? 0 : await seedDemoOrders();
+  if (demo) console.log(`Created ${demo} demo orders (set SEED_DEMO_ORDERS=false to skip).`);
   console.log(
     `Seed complete: ${Object.keys(categoryIds).length} categories, ${created} new products.`,
   );

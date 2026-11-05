@@ -135,3 +135,35 @@
 - **Limitation:** `api.razorpay.com` / `checkout.razorpay.com` are blocked in the build sandbox, so the real
   Razorpay test-mode round trip could not be executed here. Set `PAYMENT_GATEWAY=razorpay` with test keys locally
   to exercise it (README → Razorpay test setup).
+
+## Phase 8 — Admin dashboard ✅
+
+- Dashboard (7/30/90-day range): gross sales, net revenue (collected − refunds), orders + AOV, customers, awaiting
+  payment, to fulfil, delivered, active products/low stock, daily sales bar chart with tooltip + table view,
+  bestsellers, recent orders, low-stock list, "needs attention" banner. All figures are SQL over live data.
+- Orders: filters (status/payment/method/attention/search), detail with items, totals, GST split, timeline,
+  payments/refunds/gateway events, customer + addresses; actions: status transitions (state-machine
+  enforced), shipments with carrier/AWB/link (manual tracking), cancel (auto-refund if paid online),
+  partial/full refunds, Razorpay reconciliation, invoice generation, resolve attention.
+- Customers: search/filter, profile with orders/addresses/sessions, disable/enable (revokes sessions).
+- Coupons: fixed/percentage, min order, max discount, global and per-customer limits, schedule/expiry,
+  active toggle; used coupons are deactivated instead of deleted.
+- Inventory: stock table with low/out filters and adjustments, stock movement ledger with reason filter.
+- Settings: store/contact/address, logo upload, shipping, GST, COD rules (fee, min/max, blocked PIN codes),
+  minimum order, order/invoice prefixes, low-stock default.
+- Audit log viewer and development email outbox.
+- Demo history: `npm run db:seed` now creates ~45 orders through the real services (skip with `SEED_DEMO_ORDERS=false`).
+- Tests: admin 11 (403/401 on every admin API, process→ship→deliver COD flow with emails/audit, invalid
+  transitions, manual COD refund + filters, customer disable/enable incl. session revocation, admin cannot be
+  disabled via customer API, coupon CRUD/validation/deactivation, settings validation incl. GSTIN, dashboard math).
+
+## Phase 9 — Indian e-commerce features ✅
+
+- INR formatting (`en-IN` grouping), Indian mobile normalisation/validation, PIN code validation, 36 states/UTs
+  with GST state codes, GSTIN structure + checksum + state match.
+- Configurable GST: enable/disable, inclusive/exclusive pricing, per-product rate + HSN, default rate,
+  intra-state CGST+SGST vs inter-state IGST, charges taxed at highest line rate (documented for accountant review).
+- Invoices: consecutive per financial year, ≤16 chars (`INV2627/00001`), immutable JSON snapshot, "Tax Invoice"
+  vs "Invoice" when unregistered, printable page `/invoice/:orderNumber` for admins, owners and guests (token).
+- Shipping: flat fee, free-shipping threshold, minimum order; COD eligibility (enable, fee, min/max, blocked PINs).
+- Manual shipment tracking via `Shipment` records (extensible for courier APIs).

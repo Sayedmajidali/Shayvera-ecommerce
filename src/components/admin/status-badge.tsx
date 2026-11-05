@@ -19,6 +19,9 @@ const MAP: Record<string, Variant> = {
   FAILED: "destructive",
   PARTIALLY_REFUNDED: "warning",
   PROCESSED: "success",
+  CAPTURED: "success",
+  CREATED: "secondary",
+  IN_TRANSIT: "default",
   CUSTOMER: "secondary",
   ADMIN: "brand",
 };
