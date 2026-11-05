@@ -8,6 +8,10 @@ import { RatingStars } from "@/components/store/rating-stars";
 import { formatINR } from "@/lib/money";
 import { getHomeData } from "@/server/queries/catalog";
 import { getStoreSettings } from "@/server/queries/settings";
+import { siteConfig } from "@/lib/site";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 function SectionHeading({
   eyebrow,
@@ -278,6 +282,33 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "Organization",
+                name: settings.storeName,
+                url: siteConfig.url,
+                email: settings.supportEmail,
+                ...(settings.supportPhone ? { telephone: settings.supportPhone } : {}),
+              },
+              {
+                "@type": "WebSite",
+                name: settings.storeName,
+                url: siteConfig.url,
+                potentialAction: {
+                  "@type": "SearchAction",
+                  target: `${siteConfig.url}/search?q={search_term_string}`,
+                  "query-input": "required name=search_term_string",
+                },
+              },
+            ],
+          }).replace(/</g, "\\u003c"),
+        }}
+      />
     </>
   );
 }

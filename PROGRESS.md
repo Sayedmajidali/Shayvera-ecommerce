@@ -176,3 +176,22 @@
   refund accounting, contact messages visible to staff.
 - New tests: `tests/unit/security.test.ts`, `tests/integration/security.test.ts` (traversal, open redirect,
   password policy, body size limits, malformed JSON, missing Origin, error leakage). Total: 177 passing.
+
+## Phase 11 — Testing & QA ✅
+
+- Playwright suite (`tests/e2e`, 29 tests) against a **production build** with an isolated E2E database,
+  reseeded on each run; mock payment gateway for offline payment flows. See `QA_REPORT.md`.
+- Bug found and fixed: a group-level `loading.tsx` made missing products/categories/orders return HTTP 200
+  (soft 404). Loading skeletons now only wrap listing pages; unknown slugs return real 404s.
+
+## Phase 12 — Performance, SEO & accessibility ✅
+
+- SEO: per-page metadata + canonical URLs, Open Graph (default generated image + product images), dynamic
+  `sitemap.xml` (products, categories, pages, image entries), `robots.txt` (private areas disallowed),
+  JSON-LD for Product, BreadcrumbList, Organization and WebSite SearchAction, semantic headings/landmarks.
+- Accessibility: axe (WCAG 2.1 A/AA) scans of 11 key pages in CI-style E2E; fixed colour contrast of brand,
+  success and destructive tokens, invalid ARIA on loading skeleton, invalid `<dl>` children; skip link,
+  labelled controls, accessible Radix dialogs, visible focus rings, reduced-motion support.
+- Performance: Server Components by default (client components only for interactivity), `next/image`
+  (AVIF/WebP, responsive `sizes`, priority on above-the-fold), indexed queries + pagination, denormalised
+  price/sales for sorting, no client-side data waterfalls, chart animation disabled.

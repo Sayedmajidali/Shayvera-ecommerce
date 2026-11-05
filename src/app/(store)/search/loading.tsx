@@ -2,7 +2,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function Loading() {
   return (
-    <div className="container-page py-10" aria-busy="true" aria-label="Loading">
+    <div
+      className="container-page py-10"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading products"
+    >
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-6 h-12 w-72" />
       <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 xl:grid-cols-4">
