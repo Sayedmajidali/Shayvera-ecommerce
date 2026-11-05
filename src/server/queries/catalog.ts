@@ -276,12 +276,10 @@ export async function getRelatedProducts(productId: string, categoryId: string) 
 export async function searchSuggestions(q: string) {
   if (q.trim().length < 2) return [];
   const { items } = await listProducts({ q, sort: "bestselling", page: 1 });
-  return items
-    .slice(0, 6)
-    .map((p) => ({
-      slug: p.slug,
-      name: p.name,
-      image: p.images[0]?.url,
-      pricePaise: p.pricePaise,
-    }));
+  return items.slice(0, 6).map((p) => ({
+    slug: p.slug,
+    name: p.name,
+    image: p.images[0]?.url,
+    pricePaise: p.pricePaise,
+  }));
 }

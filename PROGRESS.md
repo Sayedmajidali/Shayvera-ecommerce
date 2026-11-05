@@ -63,3 +63,20 @@
   where their functionality lives.
 - Verified: every page 200 in dev, `/account` → 307 when signed out, no console errors (Playwright
   screenshots at 1440px and 390px).
+
+## Phase 4 — Product & catalog management ✅
+
+- Services: `catalog-admin.ts` (category CRUD, product create/update/delete-or-archive, variant
+  add/update/delete-or-deactivate, image add/alt/delete/reorder, denormalised min price) and
+  `inventory.ts` (atomic conditional stock moves + ledger, low-stock query). All admin mutations audit-logged.
+- Upload pipeline (`image-upload.ts`): size cap, extension allow-list, magic-byte sniffing, full sharp decode,
+  dimension and pixel-bomb limits, re-encode to WebP (metadata stripped), random storage keys.
+- Admin APIs under `/api/admin/*` (categories, products, variants, stock, images) guarded by `adminRoute`.
+  Public `/api/products` and `/api/products/[slug]`.
+- Admin UI: shell with sidebar/mobile nav, products table (search/status/category/stock filters, pagination),
+  new-product form with variants, product editor (images upload/reorder/alt/delete, variants, stock adjustments,
+  details, SEO), categories manager. Destructive actions use confirmation dialogs.
+- Tests: `tests/integration/catalog.test.ts` (15) — RBAC 401/403, category CRUD + non-empty delete block,
+  product create + ledger, validation, duplicate SKU, min-price recompute, delete-vs-archive, stock never < 0,
+  valid upload re-encoded, rejected disguised script/SVG/php/tiny/oversized/non-admin uploads, search/filter/
+  sort/pagination. Total integration: 30 passing.

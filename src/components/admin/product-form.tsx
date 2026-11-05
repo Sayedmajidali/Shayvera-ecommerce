@@ -1,0 +1,408 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { FieldError } from "@/components/shared/field-error";
+import { apiFetch, ApiClientError } from "@/lib/fetcher";
+import { percentFromBps, rupeesToPaise } from "@/lib/money";
+
+export const GST_OPTIONS = [0, 500, 1200, 1800, 2800];
+
+export type ProductFormValues = {
+  name: string;
+  slug: string;
+  shortDescription: string;
+  description: string;
+  brand: string;
+  categoryId: string;
+  status: "DRAFT" | "ACTIVE" | "ARCHIVED";
+  isFeatured: boolean;
+  taxRateBps: string; // "" = store default
+  hsnCode: string;
+  seoTitle: string;
+  seoDescription: string;
+};
+
+type VariantRow = {
+  sku: string;
+  name: string;
+  options: string;
+  price: string;
+  compareAt: string;
+  stock: string;
+};
+
+/** "Colour: Blue, Size: L" → { Colour: "Blue", Size: "L" } */
+export function parseOptions(s: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of s.split(",")) {
+    const [k, ...rest] = part.split(":");
+    const key = k?.trim();
+    const value = rest.join(":").trim();
+    if (key && value) out[key] = value;
+  }
+  return out;
+}
+
+export function formatOptions(o: Record<string, string>): string {
+  return Object.entries(o)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(", ");
+}
+
+function toPaise(v: string): number | null {
+  if (!v.trim()) return null;
+  try {
+    return rupeesToPaise(v);
+  } catch {
+    return NaN;
+  }
+}
+
+export function ProductForm({
+  mode,
+  productId,
+  initial,
+  categories,
+}: {
+  mode: "create" | "edit";
+  productId?: string;
+  initial: ProductFormValues;
+  categories: { id: string; name: string }[];
+}) {
+  const router = useRouter();
+  const [v, setV] = useState<ProductFormValues>(initial);
+  const [rows, setRows] = useState<VariantRow[]>([
+    { sku: "", name: "Default", options: "", price: "", compareAt: "", stock: "0" },
+  ]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState(false);
+  const set = <K extends keyof ProductFormValues>(k: K, val: ProductFormValues[K]) =>
+    setV((s) => ({ ...s, [k]: val }));
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    const body: Record<string, unknown> = {
+      name: v.name,
+      slug: v.slug || undefined,
+      shortDescription: v.shortDescription,
+      description: v.description,
+      brand: v.brand,
+      categoryId: v.categoryId,
+      status: v.status,
+      isFeatured: v.isFeatured,
+      taxRateBps: v.taxRateBps === "" ? null : Number(v.taxRateBps),
+      hsnCode: v.hsnCode,
+      seoTitle: v.seoTitle,
+      seoDescription: v.seoDescription,
+    };
+    if (mode === "create") {
+      const variants = rows.map((r) => ({
+        sku: r.sku,
+        name: r.name,
+        options: parseOptions(r.options),
+        pricePaise: toPaise(r.price),
+        compareAtPricePaise: toPaise(r.compareAt),
+        initialStock: Number(r.stock || 0),
+        isActive: true,
+      }));
+      if (
+        variants.some(
+          (x) =>
+            x.pricePaise === null ||
+            Number.isNaN(x.pricePaise) ||
+            Number.isNaN(x.compareAtPricePaise),
+        )
+      ) {
+        setErrors({ variants: "Enter valid prices in rupees for every variant" });
+        return;
+      }
+      body.variants = variants;
+    }
+    setPending(true);
+    try {
+      const result = await apiFetch<{ id: string }>(
+        mode === "create" ? "/api/admin/products" : `/api/admin/products/${productId}`,
+        {
+          method: mode === "create" ? "POST" : "PATCH",
+          body,
+        },
+      );
+      toast.success(mode === "create" ? "Product created — now add images" : "Product saved");
+      if (mode === "create") router.push(`/admin/products/${result.id}`);
+      else router.refresh();
+    } catch (err) {
+      if (err instanceof ApiClientError) setErrors(err.fields);
+      toast.error(err instanceof ApiClientError ? err.message : "Could not save product");
+    } finally {
+      setPending(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} noValidate className="grid gap-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Details</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-2">
+              <Label htmlFor="p-name">Name</Label>
+              <Input
+                id="p-name"
+                value={v.name}
+                onChange={(e) => set("name", e.target.value)}
+                aria-invalid={!!errors.name}
+              />
+              <FieldError message={errors.name} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="p-slug">URL slug</Label>
+              <Input
+                id="p-slug"
+                value={v.slug}
+                placeholder="auto-generated from name"
+                onChange={(e) => set("slug", e.target.value)}
+                aria-invalid={!!errors.slug}
+              />
+              <FieldError message={errors.slug} />
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="p-short">Short description</Label>
+            <Input
+              id="p-short"
+              maxLength={200}
+              value={v.shortDescription}
+              onChange={(e) => set("shortDescription", e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="p-desc">Description</Label>
+            <Textarea
+              id="p-desc"
+              rows={7}
+              value={v.description}
+              onChange={(e) => set("description", e.target.value)}
+              aria-invalid={!!errors.description}
+            />
+            <FieldError message={errors.description} />
+          </div>
+          <div className="grid gap-5 sm:grid-cols-3">
+            <div className="grid gap-2">
+              <Label htmlFor="p-category">Category</Label>
+              <Select value={v.categoryId} onValueChange={(val) => set("categoryId", val)}>
+                <SelectTrigger id="p-category" aria-invalid={!!errors.categoryId}>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError message={errors.categoryId} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="p-brand">Brand</Label>
+              <Input id="p-brand" value={v.brand} onChange={(e) => set("brand", e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="p-status">Status</Label>
+              <Select
+                value={v.status}
+                onValueChange={(val) => set("status", val as ProductFormValues["status"])}
+              >
+                <SelectTrigger id="p-status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DRAFT">Draft (hidden)</SelectItem>
+                  <SelectItem value="ACTIVE">Active (visible)</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid gap-5 sm:grid-cols-3">
+            <div className="grid gap-2">
+              <Label htmlFor="p-gst">GST rate</Label>
+              <Select
+                value={v.taxRateBps === "" ? "default" : v.taxRateBps}
+                onValueChange={(val) => set("taxRateBps", val === "default" ? "" : val)}
+              >
+                <SelectTrigger id="p-gst">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="default">Store default</SelectItem>
+                  {GST_OPTIONS.map((r) => (
+                    <SelectItem key={r} value={String(r)}>
+                      {percentFromBps(r)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="p-hsn">HSN code</Label>
+              <Input
+                id="p-hsn"
+                inputMode="numeric"
+                maxLength={8}
+                value={v.hsnCode}
+                onChange={(e) => set("hsnCode", e.target.value)}
+                aria-invalid={!!errors.hsnCode}
+              />
+              <FieldError message={errors.hsnCode} />
+            </div>
+            <div className="flex items-center gap-2 self-end pb-2">
+              <Switch
+                id="p-featured"
+                checked={v.isFeatured}
+                onCheckedChange={(val) => set("isFeatured", val)}
+              />
+              <Label htmlFor="p-featured">Featured on homepage</Label>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {mode === "create" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Variants</CardTitle>
+            <CardDescription>
+              Every product needs at least one variant. Options use “Name: Value, Name: Value”.
+              Prices in ₹.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {rows.map((r, i) => (
+              <div
+                key={i}
+                className="grid gap-2 rounded-xl border p-3 sm:grid-cols-[1fr_1fr_1.4fr_0.8fr_0.8fr_0.6fr_auto]"
+              >
+                {(["sku", "name", "options", "price", "compareAt", "stock"] as const).map((k) => (
+                  <div key={k} className="grid gap-1">
+                    <Label htmlFor={`v-${i}-${k}`} className="text-muted-foreground text-xs">
+                      {
+                        {
+                          sku: "SKU",
+                          name: "Variant name",
+                          options: "Options",
+                          price: "Price ₹",
+                          compareAt: "MRP ₹ (optional)",
+                          stock: "Stock",
+                        }[k]
+                      }
+                    </Label>
+                    <Input
+                      id={`v-${i}-${k}`}
+                      value={r[k]}
+                      inputMode={
+                        k === "price" || k === "compareAt" || k === "stock" ? "decimal" : undefined
+                      }
+                      placeholder={k === "options" ? "Colour: Blue" : undefined}
+                      onChange={(e) =>
+                        setRows((rs) =>
+                          rs.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)),
+                        )
+                      }
+                      className="h-9"
+                    />
+                  </div>
+                ))}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="self-end"
+                  disabled={rows.length === 1}
+                  onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
+                  aria-label="Remove variant"
+                >
+                  <Trash2 />
+                </Button>
+              </div>
+            ))}
+            {Object.entries(errors)
+              .filter(([k]) => k.startsWith("variants"))
+              .map(([k, m]) => (
+                <FieldError key={k} message={`${k.replace(/^variants\.?/, "Variant ")}: ${m}`} />
+              ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="justify-self-start"
+              onClick={() =>
+                setRows((rs) => [
+                  ...rs,
+                  { sku: "", name: "", options: "", price: "", compareAt: "", stock: "0" },
+                ])
+              }
+            >
+              <Plus /> Add variant
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Search engine listing</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <div className="grid gap-2">
+            <Label htmlFor="p-seo-title">SEO title</Label>
+            <Input
+              id="p-seo-title"
+              maxLength={70}
+              value={v.seoTitle}
+              onChange={(e) => set("seoTitle", e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="p-seo-desc">SEO description</Label>
+            <Textarea
+              id="p-seo-desc"
+              maxLength={160}
+              rows={2}
+              value={v.seoDescription}
+              onChange={(e) => set("seoDescription", e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={() => router.push("/admin/products")}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Saving…" : mode === "create" ? "Create product" : "Save changes"}
+        </Button>
+      </div>
+    </form>
+  );
+}

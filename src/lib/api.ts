@@ -107,3 +107,6 @@ export function route<C = unknown>(handler: Handler<C>, opts: { csrf?: boolean }
     }
   };
 }
+
+/** Shape of the dynamic route context: `{ params: Promise<{...}> }`. */
+export type RouteCtx<P extends Record<string, string>> = { params: Promise<P> };
