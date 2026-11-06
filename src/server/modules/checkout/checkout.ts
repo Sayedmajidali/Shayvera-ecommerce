@@ -106,8 +106,13 @@ export async function placeOrder(
           shippingStateCode: shipping.stateCode,
           paymentMethod: input.paymentMethod,
           email: input.email,
+          ...(input.buyNow ? { buyNow: input.buyNow, couponOverride: input.couponCode } : {}),
         });
-        if (view.lines.length === 0) throw new AppError("BUSINESS_RULE", "Your cart is empty");
+        if (view.lines.length === 0)
+          throw new AppError(
+            "BUSINESS_RULE",
+            input.buyNow ? "This product is no longer available" : "Your cart is empty",
+          );
         if (view.issues.length > 0) {
           throw new AppError("OUT_OF_STOCK", view.issues[0]!.message, { issues: view.issues });
         }
@@ -255,8 +260,8 @@ export async function placeOrder(
           });
         }
 
-        // Empty the cart.
-        if (view.id) {
+        // Empty the cart (a "Buy now" order never touches it: view.id is null).
+        if (view.id && !input.buyNow) {
           await tx.cartItem.deleteMany({ where: { cartId: view.id } });
           await tx.cart.update({ where: { id: view.id }, data: { couponCode: null } });
         }

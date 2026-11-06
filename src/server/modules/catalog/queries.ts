@@ -11,7 +11,7 @@ export const visibleProductWhere: Prisma.ProductWhereInput = {
   variants: { some: { isActive: true } },
 };
 
-const cardSelect = {
+export const cardSelect = {
   id: true,
   slug: true,
   name: true,
@@ -58,7 +58,7 @@ export type ProductCardData = {
 
 const NEW_DAYS = 21;
 
-function toCard(p: CardRow): ProductCardData {
+export function toCard(p: CardRow): ProductCardData {
   const cheapest = [...p.variants].sort((a, b) => a.pricePaise - b.pricePaise)[0];
   const totalStock = p.variants.reduce((s, v) => s + (v.inventory?.quantityOnHand ?? 0), 0);
   const firstInStock = p.variants.find((v) => (v.inventory?.quantityOnHand ?? 0) > 0);

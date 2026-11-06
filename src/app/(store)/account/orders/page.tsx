@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Package } from "lucide-react";
+import { FileText, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -84,6 +84,16 @@ export default async function OrdersPage({ searchParams }: PageProps<"/account/o
                 {formatINR(o.totalPaise)}
               </p>
             </Link>
+            {o.invoice && (
+              <a
+                href={`/invoice/${o.orderNumber}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground hover:text-foreground mt-2 ml-5 inline-flex items-center gap-1.5 text-xs underline-offset-4 hover:underline"
+              >
+                <FileText className="size-3.5" aria-hidden /> Invoice {o.invoice.invoiceNumber}
+              </a>
+            )}
           </li>
         ))}
       </ul>

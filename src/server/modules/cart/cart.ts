@@ -14,6 +14,9 @@ export const MAX_QTY_PER_LINE = 10;
 export const MAX_LINES = 50;
 const GUEST_CART_DAYS = 30;
 
+/** Line id used for the transient "Buy now" line. */
+export const BUY_NOW_LINE_ID = "buy-now";
+
 export type CartIdentity = { userId: string } | { guestToken: string | null };
 
 export function newGuestToken(): string {
@@ -242,39 +245,58 @@ export async function getCartView(
     couponOverride?: string | null;
     email?: string | null;
     client?: Tx;
+    /** Price a single item for "Buy now" instead of the cart (coupon from `couponOverride` only). */
+    buyNow?: { variantId: string; quantity: number };
   } = {},
 ): Promise<CartView> {
   const client = opts.client ?? db;
   const settings = await loadStoreSettings(client);
   const pricingSettings = settingsToPricing(settings);
-  const where = whereFor(identity);
-  const cart = where
-    ? await client.cart.findUnique({
-        where,
-        include: {
-          items: {
-            orderBy: { createdAt: "asc" },
-            include: {
-              variant: {
-                include: {
-                  inventory: true,
-                  product: {
-                    include: {
-                      category: { select: { isActive: true } },
-                      images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } },
-                    },
-                  },
-                },
-              },
+  const variantInclude = {
+    inventory: true,
+    product: {
+      include: {
+        category: { select: { isActive: true } },
+        images: { orderBy: { sortOrder: "asc" }, take: 1, select: { url: true } },
+      },
+    },
+  } satisfies Prisma.ProductVariantInclude;
+
+  let cart: { id: string; couponCode: string | null } | null = null;
+  let items: {
+    id: string;
+    quantity: number;
+    variant: Prisma.ProductVariantGetPayload<{ include: typeof variantInclude }>;
+  }[] = [];
+  if (opts.buyNow) {
+    // "Buy now": a single transient line priced exactly like a cart line; the cart is not read.
+    const variant = await client.productVariant.findUnique({
+      where: { id: opts.buyNow.variantId },
+      include: variantInclude,
+    });
+    if (variant) items = [{ id: BUY_NOW_LINE_ID, quantity: opts.buyNow.quantity, variant }];
+  } else {
+    const where = whereFor(identity);
+    const row = where
+      ? await client.cart.findUnique({
+          where,
+          include: {
+            items: {
+              orderBy: { createdAt: "asc" },
+              include: { variant: { include: variantInclude } },
             },
           },
-        },
-      })
-    : null;
+        })
+      : null;
+    if (row) {
+      cart = { id: row.id, couponCode: row.couponCode };
+      items = row.items;
+    }
+  }
 
   const lines: CartLineView[] = [];
   const issues: CartIssue[] = [];
-  for (const item of cart?.items ?? []) {
+  for (const item of items) {
     const v = item.variant;
     const p = v.product;
     const available = v.inventory?.quantityOnHand ?? 0;

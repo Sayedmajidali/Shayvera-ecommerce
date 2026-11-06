@@ -17,6 +17,7 @@ import { formatINR } from "@/lib/money";
 import { siteConfig } from "@/lib/site";
 import { getProductBySlug, getRelatedProducts } from "@/server/modules/catalog/queries";
 import { getStoreSettings } from "@/server/modules/settings/queries";
+import { productSpecifications } from "@/server/modules/catalog/specifications";
 
 export async function generateMetadata({
   params,
@@ -38,8 +39,9 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductPage({ params }: PageProps<"/product/[slug]">) {
+export default async function ProductPage({ params, searchParams }: PageProps<"/product/[slug]">) {
   const { slug } = await params;
+  const unavailable = (await searchParams).unavailable === "1";
   const product = await getProductBySlug(slug);
   if (!product) notFound();
   const [related, settings] = await Promise.all([
@@ -47,6 +49,7 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
     getStoreSettings(),
   ]);
 
+  const specs = productSpecifications(product, settings);
   const prices = product.variants.map((v) => v.pricePaise);
   const jsonLd = {
     "@context": "https://schema.org",
@@ -111,8 +114,19 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
           {product.shortDescription && (
             <p className="text-muted-foreground mt-4 text-lg">{product.shortDescription}</p>
           )}
+          {unavailable && (
+            <p
+              role="alert"
+              className="border-warning/40 bg-warning-soft mt-6 rounded-xl border px-4 py-3 text-sm"
+            >
+              That quantity isn’t available right now. Please choose another option or quantity.
+            </p>
+          )}
           <div className="mt-8">
-            <ProductPurchase variants={product.variants} />
+            <ProductPurchase
+              product={{ id: product.id, name: product.name }}
+              variants={product.variants}
+            />
           </div>
           <ul className="bg-card mt-8 grid gap-3 rounded-2xl border p-5 text-sm">
             <li className="flex items-center gap-3">
@@ -140,45 +154,32 @@ export default async function ProductPage({ params }: PageProps<"/product/[slug]
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="info">
-              <AccordionTrigger>Product information</AccordionTrigger>
+              <AccordionTrigger>Specifications</AccordionTrigger>
               <AccordionContent>
-                <dl className="grid gap-x-6 gap-y-2.5 text-sm sm:grid-cols-[150px_1fr]">
-                  {product.ingredients && (
-                    <>
-                      <dt className="text-muted-foreground">Ingredients</dt>
-                      <dd>{product.ingredients}</dd>
-                    </>
-                  )}
-                  <dt className="text-muted-foreground">Net quantity</dt>
-                  <dd>{product.variants.map((v) => v.name).join(" · ")}</dd>
-                  {product.shelfLife && (
-                    <>
-                      <dt className="text-muted-foreground">Best before</dt>
-                      <dd>{product.shelfLife}</dd>
-                    </>
-                  )}
-                  {product.storageInfo && (
-                    <>
-                      <dt className="text-muted-foreground">Storage</dt>
-                      <dd>{product.storageInfo}</dd>
-                    </>
-                  )}
-                  <dt className="text-muted-foreground">Country of origin</dt>
-                  <dd>{product.countryOfOrigin}</dd>
-                  <dt className="text-muted-foreground">Food type</dt>
-                  <dd className="flex items-center gap-2">
-                    <VegMark vegetarian={product.isVegetarian} />
-                    {product.isVegetarian ? "Vegetarian" : "Non-vegetarian"}
-                  </dd>
-                  {settings.fssaiLicense && (
-                    <>
-                      <dt className="text-muted-foreground">FSSAI Lic. No.</dt>
-                      <dd className="font-mono">{settings.fssaiLicense}</dd>
-                    </>
-                  )}
-                  <dt className="text-muted-foreground">Marketed by</dt>
-                  <dd>{settings.legalName ?? settings.storeName}</dd>
-                </dl>
+                <table className="w-full text-sm" data-testid="product-specifications">
+                  <caption className="sr-only">Specifications of {product.name}</caption>
+                  <tbody className="divide-y">
+                    {specs.map((row) => (
+                      <tr key={row.label} className="align-top">
+                        <th
+                          scope="row"
+                          className="text-muted-foreground w-40 py-2.5 pr-4 text-left font-normal"
+                        >
+                          {row.label}
+                        </th>
+                        <td className={row.kind === "mono" ? "py-2.5 font-mono" : "py-2.5"}>
+                          {row.kind === "veg" ? (
+                            <span className="flex items-center gap-2">
+                              <VegMark vegetarian={product.isVegetarian} /> {row.value}
+                            </span>
+                          ) : (
+                            row.value
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="shipping">

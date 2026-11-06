@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CheckCircle2, Clock, Package, Truck, XCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { OrderActions } from "@/components/store/order-actions";
+import { OrderTimeline } from "@/components/store/order-timeline";
 import { stateName } from "@/lib/india";
 import { formatINR } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -255,6 +256,10 @@ export function OrderDetail({
                 </div>
               )}
             </dl>
+          </div>
+          <div className="bg-card rounded-2xl border p-5">
+            <h2 className="mb-4 font-semibold">History</h2>
+            <OrderTimeline history={order.statusHistory} />
           </div>
           <div className="bg-card rounded-2xl border p-5">
             <h2 className="mb-3 font-semibold">Shipping to</h2>

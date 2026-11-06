@@ -5,11 +5,24 @@ import { isOnlinePaymentConfigured } from "@/server/modules/payments/gateway";
 import { getCurrentCartView } from "@/server/modules/cart/cart-page";
 import { getStoreSettings } from "@/server/modules/settings/queries";
 import { listAddresses } from "@/server/modules/customers/account";
+import { firstValues } from "@/lib/search-params";
+import { buyNowSchema } from "@/lib/validation/checkout";
 
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 
-export default async function CheckoutPage() {
-  const [{ view, user }, settings] = await Promise.all([getCurrentCartView(), getStoreSettings()]);
+export default async function CheckoutPage({ searchParams }: PageProps<"/checkout">) {
+  const sp = firstValues(await searchParams);
+  const buy = sp.buy ? buyNowSchema.safeParse({ variantId: sp.buy, quantity: sp.qty ?? 1 }) : null;
+  const buyNow = buy?.success ? buy.data : null;
+  const [{ view, user }, settings] = await Promise.all([
+    getCurrentCartView(buyNow ? { buyNow } : undefined),
+    getStoreSettings(),
+  ]);
+  if (buyNow && (view.lines.length === 0 || view.issues.length > 0)) {
+    // Product unavailable or not enough stock: back to the product page (or shop).
+    const slug = view.lines[0]?.productSlug;
+    redirect(slug ? `/product/${slug}?unavailable=1` : "/shop");
+  }
   if (view.lines.length === 0 || view.issues.length > 0) redirect("/cart");
   const addresses = user ? await listAddresses(user.id) : [];
   return (
@@ -34,6 +47,7 @@ export default async function CheckoutPage() {
           codEnabled={settings.codEnabled}
           onlineEnabled={isOnlinePaymentConfigured()}
           codFeePaise={settings.codFeePaise}
+          buyNow={buyNow}
         />
       </div>
     </div>

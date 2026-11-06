@@ -316,3 +316,31 @@
   concurrent mutual demotion; disable/remove; role protections and validation) and +1 E2E (owner invites a Catalog
   staff member through the UI; the invitee sets a password, sees only catalog sections and is redirected from Orders).
 - Results: unit 88 · integration 129 · E2E 30 — all passing; lint, typecheck, build clean.
+
+## v2 Phase 3 — Storefront additions ✅
+
+- **Wishlist** (`WishlistItem`, migration `wishlist`): signed-in customers save products (idempotent, products on sale
+  only, max 200, rate limited). Heart buttons on product cards and the product page share one client store seeded by
+  the store layout (no extra request); guests are sent to sign in and come back. `/account/wishlist` lists saved
+  products with live prices/stock; products taken off sale stay listed as "No longer available". Links in the account
+  nav and user menu.
+- **Buy now**: product page button → `/checkout?buy=<variant>&qty=<n>`. The same server pricing, stock checks, coupon
+  rules and transactional order creation as a cart checkout, for a single transient line; the cart (items and saved
+  coupon) is never read or emptied. Coupons for a Buy-now order are entered at checkout. Unavailable/over-stock
+  requests return to the product page with a notice.
+- **Specifications**: product page "Specifications" table built by `productSpecifications()` from structured fields
+  (brand, category, net quantity, ingredients, shelf life, storage, food type, origin, FSSAI, marketed by) — Phase 4
+  adds attributes and package details to the same function.
+- **Order tracking**: public `/track` (order number + email or mobile in any format) → read-only tracking page with a
+  status timeline, shipment/courier link and items; it shows no address, contact, payment details or actions (separate
+  HMAC token purpose; the full guest token still comes only from the confirmation email). Footer "Track an order"
+  now points here. Customer order pages show the same **status timeline** (status + time only, never staff notes).
+- **Invoices**: account order history links each issued invoice.
+- **Deferred to Phase 7 (by design)**: the customer cancellation-request and return-request screens depend on the
+  request model and the new order statuses introduced there; building them now would mean UI without a backend.
+- **Tests**: +11 integration (`storefront.test.ts`: wishlist isolation/idempotency/auth/availability; Buy now leaves
+  cart + coupon intact and moves only that stock, coupon at checkout, stock/unknown/limit errors, server preview;
+  tracking by email/phone formats, uniform errors, read-only token exposes no personal data and cannot open the full
+  order), +2 unit (specifications), +5 E2E (wishlist sign-in redirect/save/remove, Buy now with cart unchanged,
+  tracking without address, specifications table, protected wishlist page).
+- Results: unit 89 · integration 141 · E2E 35 — all passing; lint, typecheck clean.

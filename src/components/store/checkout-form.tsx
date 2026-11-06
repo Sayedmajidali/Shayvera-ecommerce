@@ -38,7 +38,10 @@ export function CheckoutForm({
   codEnabled,
   onlineEnabled,
   codFeePaise,
+  buyNow = null,
 }: {
+  /** Set for a "Buy now" checkout of a single item (the cart is not used). */
+  buyNow?: { variantId: string; quantity: number } | null;
   initialView: CartView;
   user: { name: string; email: string; phone: string | null } | null;
   savedAddresses: SavedAddress[];
@@ -67,6 +70,10 @@ export function CheckoutForm({
   const [note, setNote] = useState("");
   const [saveAddress, setSaveAddress] = useState(Boolean(user) && savedAddresses.length === 0);
   const [view, setView] = useState<CartView>(initialView);
+  // "Buy now" coupons live on this page (cart coupons are applied on the cart page).
+  const [couponInput, setCouponInput] = useState("");
+  const [couponCode, setCouponCode] = useState<string | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -79,13 +86,36 @@ export function CheckoutForm({
   // Re-price on the server whenever the shipping state or payment method changes.
   useEffect(() => {
     const ctrl = new AbortController();
-    const qs = new URLSearchParams({ payment: method, ...(stateCode ? { state: stateCode } : {}) });
+    const qs = new URLSearchParams({
+      payment: method,
+      ...(stateCode ? { state: stateCode } : {}),
+      ...(buyNow
+        ? {
+            buy: buyNow.variantId,
+            qty: String(buyNow.quantity),
+            ...(couponCode ? { coupon: couponCode } : {}),
+          }
+        : {}),
+    });
     fetch(`/api/cart?${qs}`, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => j?.data && setView(j.data))
+      .then((j: { data?: CartView } | null) => {
+        if (!j?.data) return;
+        setView(j.data);
+        if (couponCode && !j.data.coupon.applied) {
+          setCouponError(j.data.coupon.message ?? "This coupon code is not valid");
+          setCouponCode(null);
+        }
+      })
       .catch(() => undefined);
     return () => ctrl.abort();
-  }, [stateCode, method]);
+  }, [stateCode, method, buyNow, couponCode]);
+
+  const applyCoupon = () => {
+    const code = couponInput.trim().toUpperCase();
+    setCouponError(null);
+    setCouponCode(code || null);
+  };
 
   const lines = useMemo(() => view.lines.filter((l) => l.purchasable), [view.lines]);
 
@@ -122,6 +152,7 @@ export function CheckoutForm({
           paymentMethod: method,
           customerNote: note,
           saveAddress: selectedSaved === "new" && saveAddress,
+          ...(buyNow ? { buyNow, couponCode } : {}),
         },
       });
       if (result.paymentMethod === "COD") return goToOrder(result, "&placed=1");
@@ -368,6 +399,53 @@ export function CheckoutForm({
             </li>
           ))}
         </ul>
+        {buyNow && (
+          <div className="mt-6 grid gap-2 border-t pt-5">
+            <Label htmlFor="buy-now-coupon">Coupon code</Label>
+            <div className="flex gap-2">
+              <Input
+                id="buy-now-coupon"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    applyCoupon();
+                  }
+                }}
+                placeholder="e.g. WELCOME10"
+                className="uppercase"
+                maxLength={40}
+                aria-invalid={!!couponError}
+                aria-describedby={couponError ? "buy-now-coupon-error" : undefined}
+              />
+              {couponCode && view.coupon.applied ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setCouponCode(null);
+                    setCouponInput("");
+                  }}
+                >
+                  Remove
+                </Button>
+              ) : (
+                <Button type="button" variant="outline" onClick={applyCoupon}>
+                  Apply
+                </Button>
+              )}
+            </div>
+            {couponError && (
+              <p id="buy-now-coupon-error" className="text-destructive text-sm">
+                {couponError}
+              </p>
+            )}
+            <p className="text-muted-foreground text-xs">
+              Buying just this item — your cart is unchanged.
+            </p>
+          </div>
+        )}
         <div className="mt-6 border-t pt-5">
           <OrderSummaryRows pricing={view.pricing} showTaxSplit />
         </div>

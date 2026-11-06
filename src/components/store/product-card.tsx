@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { AddToCartButton } from "@/components/store/add-to-cart-button";
 import { Price } from "@/components/store/price";
 import { RatingStars } from "@/components/store/rating-stars";
+import { WishlistButton } from "@/components/store/wishlist";
 import type { ProductCardData } from "@/server/modules/catalog/queries";
 
 export function ProductCard({
@@ -56,16 +57,19 @@ export function ProductCard({
         </div>
         <span className="sr-only">{product.name}</span>
       </Link>
-      {product.defaultVariantId && product.inStock && (
-        <div className="absolute top-3 right-3 opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
-          <AddToCartButton
-            variantId={product.defaultVariantId}
-            compact
-            label={`Add ${product.name} to cart`}
-            className="shadow-soft"
-          />
-        </div>
-      )}
+      <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+        <WishlistButton productId={product.id} productName={product.name} />
+        {product.defaultVariantId && product.inStock && (
+          <div className="opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+            <AddToCartButton
+              variantId={product.defaultVariantId}
+              compact
+              label={`Add ${product.name} to cart`}
+              className="shadow-soft"
+            />
+          </div>
+        )}
+      </div>
       <div className="mt-3 flex flex-1 flex-col gap-1">
         <p className="text-muted-foreground text-xs">{product.categoryName}</p>
         <h3 className="text-[15px] leading-snug font-medium">

@@ -162,7 +162,10 @@ export async function listCustomerOrders(userId: string, page = 1, pageSize = 10
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
-      include: { items: { select: { productName: true, imageUrl: true, quantity: true } } },
+      include: {
+        items: { select: { productName: true, imageUrl: true, quantity: true } },
+        invoice: { select: { invoiceNumber: true } },
+      },
     }),
   ]);
   return { total, orders, page, pageCount: Math.max(1, Math.ceil(total / pageSize)) };

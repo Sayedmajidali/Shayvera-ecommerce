@@ -11,7 +11,12 @@ export async function currentCartIdentity(): Promise<{
   return { identity: user ? { userId: user.id } : { guestToken: await readGuestToken() }, user };
 }
 
-export async function getCurrentCartView() {
+export async function getCurrentCartView(opts?: {
+  buyNow?: { variantId: string; quantity: number };
+}) {
   const { identity, user } = await currentCartIdentity();
-  return { view: await getCartView(identity, { email: user?.email ?? null }), user };
+  return {
+    view: await getCartView(identity, { email: user?.email ?? null, buyNow: opts?.buyNow }),
+    user,
+  };
 }

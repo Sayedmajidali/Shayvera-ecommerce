@@ -55,7 +55,7 @@ export async function SiteFooter() {
           <h2 className="text-sm font-semibold">Help</h2>
           <ul className="text-muted-foreground mt-4 space-y-2.5 text-sm">
             <li>
-              <Link href="/account/orders" className="hover:text-foreground">
+              <Link href="/track" className="hover:text-foreground">
                 Track an order
               </Link>
             </li>

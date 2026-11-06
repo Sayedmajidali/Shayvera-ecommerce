@@ -59,25 +59,30 @@ There is **no** admin sign-up endpoint. Administrators are created with `npm run
 
 ## Cart
 
-| Method | Path                             | Body                             | Notes                                                                                                                                                                       |
-| ------ | -------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/cart?state=KA&payment=COD` | —                                | Server-priced cart: `lines`, `issues` (unavailable/out-of-stock/insufficient), `pricing` (subtotal, coupon, shipping, COD fee, GST split, total), `coupon`, `codAvailable`. |
-| POST   | `/api/cart/items`                | `{ variantId, quantity (1–10) }` | 201. Sets `shv_cart` for guests. 409 `OUT_OF_STOCK`.                                                                                                                        |
-| PATCH  | `/api/cart/items/:id`            | `{ quantity (0–10) }`            | 0 removes.                                                                                                                                                                  |
-| DELETE | `/api/cart/items/:id`            | —                                |                                                                                                                                                                             |
-| POST   | `/api/cart/coupon`               | `{ code }`                       | 422 `COUPON_INVALID` with reason. Rate limited.                                                                                                                             |
-| DELETE | `/api/cart/coupon`               | —                                |                                                                                                                                                                             |
-| POST   | `/api/cart/merge`                | —                                | Signed in. Merges the guest cart and clears the cookie.                                                                                                                     |
+| Method | Path                                                                    | Body                             | Notes                                                                                                                                                                       |
+| ------ | ----------------------------------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/cart?state=KA&payment=COD`                                        | —                                | Server-priced cart: `lines`, `issues` (unavailable/out-of-stock/insufficient), `pricing` (subtotal, coupon, shipping, COD fee, GST split, total), `coupon`, `codAvailable`. |
+| POST   | `/api/cart/items`                                                       | `{ variantId, quantity (1–10) }` | 201. Sets `shv_cart` for guests. 409 `OUT_OF_STOCK`.                                                                                                                        |
+| PATCH  | `/api/cart/items/:id`                                                   | `{ quantity (0–10) }`            | 0 removes.                                                                                                                                                                  |
+| DELETE | `/api/cart/items/:id`                                                   | —                                |                                                                                                                                                                             |
+| POST   | `/api/cart/coupon`                                                      | `{ code }`                       | 422 `COUPON_INVALID` with reason. Rate limited.                                                                                                                             |
+| DELETE | `/api/cart/coupon`                                                      | —                                |                                                                                                                                                                             |
+| POST   | `/api/cart/merge`                                                       | —                                | Signed in. Merges the guest cart and clears the cookie.                                                                                                                     |
+| GET    | `/api/cart?buy=<variantId>&qty=<1–10>&coupon=CODE&state=KA&payment=COD` | —                                | "Buy now" preview: prices just that item (cart not read; `id` is `null`). Coupon only from `coupon`.                                                                        |
 
 ## Checkout & orders
 
-| Method | Path                              | Body / notes                                                                                                                                                                                                                                                                                                            |
-| ------ | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/api/checkout`                   | `{ idempotencyKey (uuid), email, phone, shippingAddress, billingSameAsShipping, billingAddress?, paymentMethod: "COD"\|"RAZORPAY", customerNote?, saveAddress? }` → `{ orderId, orderNumber, status, paymentMethod, totalPaise, accessToken, payment, idempotentReplay }`. 201 new, 200 replay. **No prices accepted.** |
-| GET    | `/api/orders?page=`               | Signed-in customer's orders.                                                                                                                                                                                                                                                                                            |
-| GET    | `/api/orders/:orderNumber?t=`     | Owner (session) or guest with access token `t`. Others → 404.                                                                                                                                                                                                                                                           |
-| POST   | `/api/orders/:orderNumber/cancel` | `{ reason?, token? }` — only `PENDING`/`CONFIRMED`. Paid online orders are refunded automatically.                                                                                                                                                                                                                      |
-| POST   | `/api/orders/:orderNumber/pay`    | `{ token? }` — start/resume Razorpay payment for a pending order → payment session.                                                                                                                                                                                                                                     |
+| Method | Path                              | Body / notes                                                                                                                                                                                                                                                                                                                                        |
+| ------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/checkout`                   | `{ idempotencyKey (uuid), email, phone, shippingAddress, billingSameAsShipping, billingAddress?, paymentMethod: "COD"\|"RAZORPAY", customerNote?, saveAddress? }` → `{ orderId, orderNumber, status, paymentMethod, totalPaise, accessToken, payment, idempotentReplay }`. 201 new, 200 replay. **No prices accepted.**                             |
+| GET    | `/api/orders?page=`               | Signed-in customer's orders.                                                                                                                                                                                                                                                                                                                        |
+| GET    | `/api/orders/:orderNumber?t=`     | Owner (session) or guest with access token `t`. Others → 404.                                                                                                                                                                                                                                                                                       |
+| POST   | `/api/orders/:orderNumber/cancel` | `{ reason?, token? }` — only `PENDING`/`CONFIRMED`. Paid online orders are refunded automatically.                                                                                                                                                                                                                                                  |
+| POST   | `/api/orders/:orderNumber/pay`    | `{ token? }` — start/resume Razorpay payment for a pending order → payment session.                                                                                                                                                                                                                                                                 |
+| POST   | `/api/orders/track`               | `{ orderNumber, contact }` (email, or 10-digit mobile in any format) → `{ url: "/track/<number>?k=<read-only token>" }`. Every mismatch returns the same 404 message. Rate limited: 10 / 10 min per IP and 10 / h per order number. The token opens only `/track/:orderNumber` (status, items, shipment — no address, contact, payment or actions). |
+
+**Buy now**: `POST /api/checkout` also accepts `buyNow: { variantId, quantity (1–10) }` and `couponCode?`. Only that item is
+ordered and priced server-side; the cart (items and saved coupon) is left unchanged.
 
 Address object: `{ fullName, phone (Indian mobile), line1, line2?, landmark?, city, stateCode (e.g. "KA"), pincode (6 digits) }`.
 
@@ -94,11 +99,13 @@ Payment session (from checkout / pay): `{ keyId, razorpayOrderId, amountPaise, c
 
 ## Account (signed in)
 
-| Method       | Path                         | Body                                        |
-| ------------ | ---------------------------- | ------------------------------------------- |
-| GET / PATCH  | `/api/account/profile`       | `{ name, phone? }`                          |
-| GET / POST   | `/api/account/addresses`     | address + `{ label?, isDefault? }` (max 20) |
-| PUT / DELETE | `/api/account/addresses/:id` | owner only (others → 404)                   |
+| Method       | Path                               | Body                                                                                               |
+| ------------ | ---------------------------------- | -------------------------------------------------------------------------------------------------- |
+| GET / PATCH  | `/api/account/profile`             | `{ name, phone? }`                                                                                 |
+| GET / POST   | `/api/account/addresses`           | address + `{ label?, isDefault? }` (max 20)                                                        |
+| PUT / DELETE | `/api/account/addresses/:id`       | owner only (others → 404)                                                                          |
+| GET / POST   | `/api/account/wishlist`            | GET → `{ productIds }`; POST `{ productId }` (idempotent; products on sale only; max 200; 120/min) |
+| DELETE       | `/api/account/wishlist/:productId` | removes from the caller's own wishlist only                                                        |
 
 ## Misc (public, rate limited)
 

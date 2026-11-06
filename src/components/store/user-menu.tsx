@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LayoutDashboard, LogOut, Package, User } from "lucide-react";
+import { Heart, LayoutDashboard, LogOut, Package, User } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import {
@@ -45,6 +45,11 @@ export function UserMenu({
         <DropdownMenuItem asChild>
           <Link href="/account/orders">
             <Package /> Orders
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/account/wishlist">
+            <Heart /> Wishlist
           </Link>
         </DropdownMenuItem>
         {isAdmin && (

@@ -135,10 +135,24 @@ model User {
   reviews      Review[]
   auditLogs    AdminAuditLog[]
   couponUsages CouponUsage[]
+  wishlist     WishlistItem[]
 
   @@index([role, createdAt])
   @@index([adminRoleId])
   @@map("user")
+}
+
+/// A product saved by a signed-in customer (product-level; the variant is chosen at purchase).
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([userId, createdAt])
 }
 
 /// Fine-grained admin capabilities. Checked server-side on every admin page and API.
@@ -311,10 +325,11 @@ model Product {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  images     ProductImage[]
-  variants   ProductVariant[]
-  reviews    Review[]
-  orderItems OrderItem[]
+  images       ProductImage[]
+  variants     ProductVariant[]
+  reviews      Review[]
+  orderItems   OrderItem[]
+  wishlistedBy WishlistItem[]
 
   @@index([status, categoryId])
   @@index([status, isFeatured])

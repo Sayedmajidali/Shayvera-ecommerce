@@ -19,3 +19,24 @@ export function verifyOrderAccessToken(orderId: string, token: string | null | u
   const given = Buffer.from(token);
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
+
+/**
+ * Read-only tracking token, issued after an order-number + email/phone lookup. It only opens the
+ * tracking view (status, items, shipment) — never addresses, payment or cancellation, which need
+ * the full access token or the signed-in owner.
+ */
+export function orderTrackToken(orderId: string): string {
+  const secret = process.env.BETTER_AUTH_SECRET;
+  if (!secret) throw new Error("BETTER_AUTH_SECRET is not configured");
+  return createHmac("sha256", secret)
+    .update(`order-track:${orderId}`)
+    .digest("base64url")
+    .slice(0, 32);
+}
+
+export function verifyOrderTrackToken(orderId: string, token: string | null | undefined): boolean {
+  if (!token) return false;
+  const expected = Buffer.from(orderTrackToken(orderId));
+  const given = Buffer.from(token);
+  return expected.length === given.length && timingSafeEqual(expected, given);
+}

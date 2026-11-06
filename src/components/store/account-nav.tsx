@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, MapPin, Package, User } from "lucide-react";
+import { Heart, LogOut, MapPin, Package, User } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/account", label: "Profile", icon: User },
   { href: "/account/orders", label: "Orders", icon: Package },
+  { href: "/account/wishlist", label: "Wishlist", icon: Heart },
   { href: "/account/addresses", label: "Addresses", icon: MapPin },
 ];
 
