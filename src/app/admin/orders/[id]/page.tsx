@@ -45,6 +45,35 @@ function Addr({ a, title }: { a: AddressSnapshot; title: string }) {
   );
 }
 
+const STOCK_LABEL = {
+  ACTIVE: "Stock reserved",
+  CONSUMED: "Stock deducted (shipped)",
+  RELEASED: "Stock released",
+} as const;
+
+/** Where this order's units are: held, shipped out, or returned to available stock. */
+function StockState({
+  reservations,
+}: {
+  reservations: { quantity: number; status: keyof typeof STOCK_LABEL; expiresAt: Date | null }[];
+}) {
+  if (reservations.length === 0) return null;
+  const counts = reservations.reduce<Record<string, number>>(
+    (a, r) => ((a[r.status] = (a[r.status] ?? 0) + r.quantity), a),
+    {},
+  );
+  const expires = reservations.find((r) => r.status === "ACTIVE" && r.expiresAt)?.expiresAt;
+  return (
+    <p className="text-muted-foreground text-xs" data-testid="stock-state">
+      {Object.entries(counts)
+        .map(([s, q]) => `${STOCK_LABEL[s as keyof typeof STOCK_LABEL]}: ${q}`)
+        .join(" · ")}
+      {expires &&
+        ` · hold lapses ${expires.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", day: "numeric", month: "short" })} unless paid`}
+    </p>
+  );
+}
+
 export default async function AdminOrderPage({ params }: PageProps<"/admin/orders/[id]">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
   const admin = await requireAdminPage("ORDERS_VIEW");
@@ -76,6 +105,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
           <Card className="gap-0 py-0">
             <CardHeader className="py-4">
               <CardTitle>Items</CardTitle>
+              <StockState reservations={order.reservations} />
             </CardHeader>
             <ul className="divide-y border-t">
               {order.items.map((i) => (

@@ -30,3 +30,11 @@ export async function drainJobs() {
   registerAllJobs();
   return runDueJobs();
 }
+
+/** Units available to sell (on hand − reserved) for a variant, or the only inventory row. */
+export async function availableStock(variantId?: string) {
+  const inv = variantId
+    ? await db.inventory.findUniqueOrThrow({ where: { variantId } })
+    : await db.inventory.findFirstOrThrow();
+  return inv.quantityOnHand - inv.quantityReserved;
+}

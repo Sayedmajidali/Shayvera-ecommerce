@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/server/platform/db";
-import { drainJobs } from "../helpers/db";
+import { drainJobs, availableStock } from "../helpers/db";
 import * as verifyRoute from "@/app/api/payments/razorpay/verify/route";
 import * as mockRoute from "@/app/api/payments/mock/complete/route";
 import * as webhookRoute from "@/app/api/webhooks/razorpay/route";
@@ -103,9 +103,7 @@ const order = (orderNumber: string) =>
 describe("Razorpay checkout callback", () => {
   it("confirms the order only after verifying the signature and fetching the payment", async () => {
     const o = await onlineOrder();
-    expect(
-      (await db.inventory.findUniqueOrThrow({ where: { variantId: o.variantId } })).quantityOnHand,
-    ).toBe(4); // reserved
+    expect(await availableStock(o.variantId)).toBe(4); // reserved
     const cb = await simulate(o.payment.razorpayOrderId, "captured");
     const res = await verify(cb);
     expect(res.status).toBe(200);
@@ -160,9 +158,7 @@ describe("Razorpay checkout callback", () => {
     let saved = await order(o.orderNumber);
     expect(saved).toMatchObject({ status: "PENDING", paymentStatus: "FAILED" });
     expect(saved.payments[0]!.status).toBe("FAILED");
-    expect(
-      (await db.inventory.findUniqueOrThrow({ where: { variantId: o.variantId } })).quantityOnHand,
-    ).toBe(4);
+    expect(await availableStock(o.variantId)).toBe(4);
 
     // Retry (interrupted / failed checkout) creates a fresh gateway order.
     const retry = await payRoute.POST(
@@ -301,14 +297,13 @@ describe("expiry, delayed webhooks and reconciliation", () => {
     expect(r.cancelled).toBe(1);
     const saved = await order(o.orderNumber);
     expect(saved.status).toBe("CANCELLED");
+    expect(await availableStock(o.variantId)).toBe(5);
     expect(
-      (await db.inventory.findUniqueOrThrow({ where: { variantId: o.variantId } })).quantityOnHand,
-    ).toBe(5);
-    expect(
-      await db.inventoryTransaction.count({
-        where: { orderId: o.orderId, reason: "PAYMENT_EXPIRED" },
-      }),
+      await db.inventoryReservation.count({ where: { orderId: o.orderId, status: "RELEASED" } }),
     ).toBe(1);
+    expect(
+      await db.inventoryReservation.count({ where: { orderId: o.orderId, status: "ACTIVE" } }),
+    ).toBe(0);
   });
 
   it("reinstates an expired order when a delayed capture arrives and stock is still available", async () => {
@@ -325,9 +320,7 @@ describe("expiry, delayed webhooks and reconciliation", () => {
     const saved = await order(o.orderNumber);
     expect(saved).toMatchObject({ status: "CONFIRMED", paymentStatus: "PAID" });
     expect(saved.statusHistory.at(-1)?.note).toContain("Reinstated");
-    expect(
-      (await db.inventory.findUniqueOrThrow({ where: { variantId: o.variantId } })).quantityOnHand,
-    ).toBe(4);
+    expect(await availableStock(o.variantId)).toBe(4);
   });
 
   it("refunds a delayed capture when the stock has been sold in the meantime", async () => {
@@ -353,9 +346,7 @@ describe("expiry, delayed webhooks and reconciliation", () => {
       amountPaise: o.totalPaise,
       method: "RAZORPAY",
     });
-    expect(
-      (await db.inventory.findUniqueOrThrow({ where: { variantId: o.variantId } })).quantityOnHand,
-    ).toBe(0);
+    expect(await availableStock(o.variantId)).toBe(0);
   });
 
   it("recovers an interrupted checkout by reconciling with the gateway", async () => {
@@ -451,9 +442,7 @@ describe("refunds", () => {
     const saved = await order(o.orderNumber);
     expect(saved.status).toBe("REFUNDED");
     expect(saved.refunds[0]!.status).toBe("PROCESSED");
-    expect(
-      (await db.inventory.findUniqueOrThrow({ where: { variantId: o.variantId } })).quantityOnHand,
-    ).toBe(5);
+    expect(await availableStock(o.variantId)).toBe(5);
   });
 
   it("settles pending refunds from refund webhooks", async () => {

@@ -3,6 +3,7 @@ import { cache } from "react";
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/server/platform/db";
+import { availableUnits } from "@/server/modules/inventory/available";
 
 /** Products visible on the storefront: active, in an active category. */
 export const visibleProductWhere: Prisma.ProductWhereInput = {
@@ -31,7 +32,7 @@ export const cardSelect = {
       id: true,
       pricePaise: true,
       compareAtPricePaise: true,
-      inventory: { select: { quantityOnHand: true } },
+      inventory: { select: { quantityOnHand: true, quantityReserved: true } },
     },
   },
 } satisfies Prisma.ProductSelect;
@@ -60,8 +61,8 @@ const NEW_DAYS = 21;
 
 export function toCard(p: CardRow): ProductCardData {
   const cheapest = [...p.variants].sort((a, b) => a.pricePaise - b.pricePaise)[0];
-  const totalStock = p.variants.reduce((s, v) => s + (v.inventory?.quantityOnHand ?? 0), 0);
-  const firstInStock = p.variants.find((v) => (v.inventory?.quantityOnHand ?? 0) > 0);
+  const totalStock = p.variants.reduce((s, v) => s + availableUnits(v.inventory), 0);
+  const firstInStock = p.variants.find((v) => availableUnits(v.inventory) > 0);
   return {
     id: p.id,
     slug: p.slug,
@@ -143,7 +144,15 @@ export function buildProductWhere(params: ProductListParams): Prisma.ProductWher
   if (params.minPrice !== undefined) and.push({ minPricePaise: { gte: params.minPrice * 100 } });
   if (params.maxPrice !== undefined) and.push({ minPricePaise: { lte: params.maxPrice * 100 } });
   if (params.inStock) {
-    and.push({ variants: { some: { isActive: true, inventory: { quantityOnHand: { gt: 0 } } } } });
+    // Available stock: on hand strictly greater than reserved.
+    and.push({
+      variants: {
+        some: {
+          isActive: true,
+          inventory: { quantityOnHand: { gt: db.inventory.fields.quantityReserved } },
+        },
+      },
+    });
   }
   return { AND: and };
 }
@@ -236,7 +245,7 @@ export const getProductBySlug = cache(async (slug: string) => {
       variants: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
-        include: { inventory: { select: { quantityOnHand: true } } },
+        include: { inventory: { select: { quantityOnHand: true, quantityReserved: true } } },
       },
       reviews: {
         where: { status: "APPROVED" },
@@ -264,7 +273,7 @@ export const getProductBySlug = cache(async (slug: string) => {
       options: (v.options ?? {}) as Record<string, string>,
       pricePaise: v.pricePaise,
       compareAtPricePaise: v.compareAtPricePaise,
-      stock: v.inventory?.quantityOnHand ?? 0,
+      stock: availableUnits(v.inventory),
     })),
   };
 });

@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { db, type Tx } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { loadStoreSettings } from "@/server/modules/settings/queries";
+import { availableUnits } from "@/server/modules/inventory/available";
 import {
   evaluateCoupon,
   priceCart,
@@ -73,7 +74,7 @@ export async function addItem(identity: CartIdentity, variantId: string, quantit
   const { cart, createdToken } = await getOrCreateCart(identity);
   await db.$transaction(async (tx) => {
     const variant = await loadPurchasableVariant(tx, variantId);
-    const stock = variant.inventory?.quantityOnHand ?? 0;
+    const stock = availableUnits(variant.inventory);
     const existing = await tx.cartItem.findUnique({
       where: { cartId_variantId: { cartId: cart.id, variantId } },
     });
@@ -118,7 +119,7 @@ export async function updateItemQuantity(identity: CartIdentity, itemId: string,
     return;
   }
   const variant = await loadPurchasableVariant(db, item.variantId);
-  const stock = variant.inventory?.quantityOnHand ?? 0;
+  const stock = availableUnits(variant.inventory);
   if (quantity > stock) {
     throw new AppError(
       "OUT_OF_STOCK",
@@ -178,7 +179,7 @@ export async function mergeGuestCart(userId: string, guestToken: string | null) 
         include: { inventory: true },
       });
       if (!variant) continue;
-      const stock = variant.inventory?.quantityOnHand ?? 0;
+      const stock = availableUnits(variant.inventory);
       const existing = await tx.cartItem.findUnique({
         where: { cartId_variantId: { cartId: userCart.id, variantId: item.variantId } },
       });
@@ -299,7 +300,7 @@ export async function getCartView(
   for (const item of items) {
     const v = item.variant;
     const p = v.product;
-    const available = v.inventory?.quantityOnHand ?? 0;
+    const available = availableUnits(v.inventory);
     const purchasable = v.isActive && p.status === "ACTIVE" && p.category.isActive;
     if (!purchasable)
       issues.push({

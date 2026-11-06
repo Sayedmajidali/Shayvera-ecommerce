@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/server/platform/db";
-import { drainJobs } from "../helpers/db";
+import { drainJobs, availableStock } from "../helpers/db";
 import * as orderRoute from "@/app/api/orders/[orderNumber]/route";
 import * as cancelRoute from "@/app/api/orders/[orderNumber]/cancel/route";
 import * as ordersRoute from "@/app/api/orders/route";
@@ -39,14 +39,17 @@ describe("COD checkout", () => {
       status: "CREATED",
       amountPaise: order.totalPaise,
     });
+    expect(await availableStock(v.id)).toBe(8);
+    // Units are held as a reservation; nothing leaves the warehouse until the order ships.
+    expect(
+      await db.inventoryReservation.findMany({
+        where: { orderId: order.id },
+        select: { variantId: true, quantity: true, status: true, expiresAt: true },
+      }),
+    ).toEqual([{ variantId: v.id, quantity: 2, status: "ACTIVE", expiresAt: null }]);
     expect(
       (await db.inventory.findUniqueOrThrow({ where: { variantId: v.id } })).quantityOnHand,
-    ).toBe(8);
-    expect(
-      await db.inventoryTransaction.count({
-        where: { orderId: order.id, reason: "ORDER_PLACED", delta: -2 },
-      }),
-    ).toBe(1);
+    ).toBe(10);
     expect(await db.cartItem.count()).toBe(0);
     expect((await db.product.findUniqueOrThrow({ where: { id: p.id } })).salesCount).toBe(2);
     await drainJobs();
@@ -84,7 +87,7 @@ describe("COD checkout", () => {
     expect(statuses).toEqual([200, 201]);
     expect(a.json.data.orderNumber).toBe(b.json.data.orderNumber);
     expect(await db.order.count()).toBe(1);
-    expect((await db.inventory.findFirstOrThrow()).quantityOnHand).toBe(4);
+    expect(await availableStock()).toBe(4);
     const again = await checkout(cookie, body);
     expect(again.json.data.idempotentReplay).toBe(true);
   });
@@ -176,7 +179,7 @@ describe("concurrency", () => {
     const failed = results.filter((r) => r.res.status !== 201);
     expect(ok).toHaveLength(3);
     expect(failed.every((r) => r.json.error.code === "OUT_OF_STOCK")).toBe(true);
-    expect((await db.inventory.findFirstOrThrow()).quantityOnHand).toBe(0);
+    expect(await availableStock()).toBe(0);
     expect(await db.order.count()).toBe(3);
   });
 
@@ -309,7 +312,7 @@ describe("order access and cancellation", () => {
       params({ orderNumber: n }),
     );
     expect(res.status).toBe(200);
-    expect((await db.inventory.findFirstOrThrow()).quantityOnHand).toBe(5);
+    expect(await availableStock()).toBe(5);
     expect((await db.coupon.findUniqueOrThrow({ where: { code: "BACK" } })).usedCount).toBe(0);
     const order = await db.order.findUniqueOrThrow({
       where: { orderNumber: n },

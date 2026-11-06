@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { availableUnits } from "@/server/modules/inventory/available";
 import Image from "next/image";
 import Link from "next/link";
 import { Package, Plus } from "lucide-react";
@@ -106,11 +107,11 @@ export default async function AdminProductsPage({ searchParams }: PageProps<"/ad
               {result.items.map((p) => {
                 const stock = p.variants
                   .filter((v) => v.isActive)
-                  .reduce((s, v) => s + (v.inventory?.quantityOnHand ?? 0), 0);
+                  .reduce((s, v) => s + availableUnits(v.inventory), 0);
                 const low = p.variants.some(
                   (v) =>
                     v.isActive &&
-                    (v.inventory?.quantityOnHand ?? 0) <= (v.inventory?.lowStockThreshold ?? 5),
+                    availableUnits(v.inventory) <= (v.inventory?.lowStockThreshold ?? 5),
                 );
                 return (
                   <TableRow key={p.id}>

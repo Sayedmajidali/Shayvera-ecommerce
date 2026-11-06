@@ -246,9 +246,9 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
                       </p>
                     </Link>
                     <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${v.quantityOnHand === 0 ? "bg-destructive-soft text-destructive" : "bg-warning-soft"}`}
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${v.available <= 0 ? "bg-destructive-soft text-destructive" : "bg-warning-soft"}`}
                     >
-                      {v.quantityOnHand} left
+                      {v.available} available
                     </span>
                   </li>
                 ))}

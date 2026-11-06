@@ -96,7 +96,11 @@ test.describe("customer shopping journey", () => {
     const after = await db.inventory.findFirstOrThrow({
       where: { variant: { sku: order.items[0]!.sku } },
     });
-    expect(after.quantityOnHand).toBe(before.quantityOnHand + order.items[0]!.quantity);
+    // The hold is released: available goes up, physical stock is unchanged.
+    expect(after.quantityOnHand - after.quantityReserved).toBe(
+      before.quantityOnHand - before.quantityReserved + order.items[0]!.quantity,
+    );
+    expect(after.quantityOnHand).toBe(before.quantityOnHand);
   });
 
   test("guest checkout prevents double submission", async ({ page }) => {

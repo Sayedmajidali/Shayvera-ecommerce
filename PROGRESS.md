@@ -376,3 +376,33 @@
   keep, validation, package clear, DB CHECK constraints, default package settings), +1 E2E (admin adds a specification
   and variant package; storefront shows the row).
 - Results: unit 100 · integration 155 · E2E 36 — all passing; lint, typecheck, build clean.
+
+## v2 Phase 5 — Inventory reservations ✅
+
+- **Model** (migration `inventory_reservations`): `Inventory.quantityReserved`, `InventoryReservation`
+  (`ACTIVE → CONSUMED | RELEASED`, `expiresAt` for unpaid online orders), ledger reason `ORDER_FULFILLED`.
+  Database CHECKs: `0 ≤ reserved ≤ onHand`, reservation quantity > 0. **Available = on hand − reserved.**
+- **Lifecycle**: checkout **reserves** (conditional single-row update on available stock — concurrent orders cannot
+  oversell; the hold expires with the payment window for online orders); payment confirmation removes the expiry;
+  entering `SHIPPED` **deducts** (on hand and reserved both drop, ledger `ORDER_FULFILLED`) — Phase 7 moves this to
+  `READY_TO_SHIP`; cancellation or payment expiry **releases** (reserved drops; on hand and ledger untouched).
+  Settling claims each reservation with a conditional status update, so repeats/concurrency never double-count; a
+  released hold can never be consumed. Late-payment reinstatement re-reserves (non-expiring).
+- **Existing data**: the migration converted open orders (pending/confirmed/processing) into ACTIVE reservations and
+  put their units back on hand with a `CORRECTION` ledger entry each, so available stock is unchanged (verified on the
+  dev data: 2,445 available before and after; 6 units now held by 4 reservations). Cancelling an order that somehow has
+  no reservations falls back to the old restock, so nothing is lost.
+- **Everywhere stock is read** (cart limits, storefront in-stock/sold-out and the in-stock filter, product page,
+  admin product list, low-stock dashboard card, admin "out of stock" filter) now uses available stock. Admin stock
+  removals cannot go below reserved units. Admin inventory shows **On hand / Reserved / Available**; the order page
+  shows whether the order's stock is reserved, deducted or released.
+- **Reconciliation** (`inventory.reconcile`, hourly): compares `quantityReserved` with ACTIVE reservations and counts
+  holds whose payment window lapsed >30 min ago; stores the result in `SystemState` and logs a warning. **Report-only —
+  stock is never changed automatically.** Drift is also shown as a banner on Admin → Inventory.
+- **Tests**: +10 integration (`inventory.test.ts`: reserve→deduct→deliver with ledger; cancel releases without
+  touching on-hand/ledger; idempotent settling; online hold expiry cleared on payment; concurrent cancel vs ship — one
+  wins, stock consistent; legacy order restock; admins cannot remove reserved units; fully reserved products sold out
+  and not addable to cart; DB CHECK; reconciliation reports without changing stock). Existing tests that asserted
+  "on hand drops at placement" now assert available stock / reservation rows (the behaviour changed by design); the
+  concurrent-oversell test passes unchanged in intent.
+- Results: unit 100 · integration 165 · E2E 36 — all passing; lint, typecheck clean.

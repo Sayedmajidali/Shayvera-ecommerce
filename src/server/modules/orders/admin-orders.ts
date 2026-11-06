@@ -73,6 +73,7 @@ export async function getOrderAdmin(id: string) {
     include: {
       ...orderDetailInclude,
       user: { select: { id: true, name: true, email: true, phone: true } },
+      reservations: { select: { variantId: true, quantity: true, status: true, expiresAt: true } },
       paymentEvents: {
         orderBy: { receivedAt: "desc" },
         take: 30,

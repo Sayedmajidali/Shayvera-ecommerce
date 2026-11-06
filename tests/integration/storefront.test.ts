@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/server/platform/db";
+import { availableStock } from "../helpers/db";
 import * as wishlistRoute from "@/app/api/account/wishlist/route";
 import * as wishlistItemRoute from "@/app/api/account/wishlist/[productId]/route";
 import * as cartRoute from "@/app/api/cart/route";
@@ -96,8 +97,7 @@ describe("buy now", () => {
     const cart = await db.cart.findFirstOrThrow({ include: { items: true } });
     expect(cart.couponCode).toBe("CART5");
     expect(cart.items.map((i) => [i.variantId, i.quantity])).toEqual([[inCart.variants[0]!.id, 2]]);
-    const stock = async (variantId: string) =>
-      (await db.inventory.findUniqueOrThrow({ where: { variantId } })).quantityOnHand;
+    const stock = async (variantId: string) => await availableStock(variantId);
     expect(await stock(buy.variants[0]!.id)).toBe(3);
     expect(await stock(inCart.variants[0]!.id)).toBe(5);
   });

@@ -5,6 +5,7 @@ import { logger } from "@/server/platform/logger";
 import { db } from "@/server/platform/db";
 import { deliverNotification } from "@/server/modules/notifications/notifications";
 import { expireStalePendingOrders } from "@/server/modules/payments/payments";
+import { findInventoryDrift } from "@/server/modules/inventory/inventory";
 
 /**
  * Composition root for background work: every job type and periodic schedule is listed here, so
@@ -14,6 +15,7 @@ declare module "@/server/platform/jobs/queue" {
   interface JobPayloads {
     "payments.expire-unpaid": Record<string, never>;
     "maintenance.cleanup": Record<string, never>;
+    "inventory.reconcile": Record<string, never>;
   }
 }
 
@@ -28,6 +30,31 @@ export function registerAllJobs() {
   registerJob("payments.expire-unpaid", async () => {
     const r = await expireStalePendingOrders(200);
     if (r.checked) logger.info("Expired unpaid orders", r);
+  });
+
+  // Report-only: drift between Inventory.quantityReserved and ACTIVE reservations, and holds whose
+  // payment window lapsed long ago (the expiry job should have released them). Never edits stock.
+  registerJob("inventory.reconcile", async () => {
+    const drift = await findInventoryDrift();
+    const staleHolds = await db.inventoryReservation.count({
+      where: { status: "ACTIVE", expiresAt: { lt: new Date(Date.now() - 30 * 60_000) } },
+    });
+    const value = {
+      at: new Date().toISOString(),
+      driftCount: drift.length,
+      staleHolds,
+      sample: drift.slice(0, 20),
+    };
+    await db.systemState.upsert({
+      where: { key: "inventory:reconciliation" },
+      create: { key: "inventory:reconciliation", value },
+      update: { value },
+    });
+    if (drift.length > 0 || staleHolds > 0)
+      logger.warn("Inventory reconciliation found discrepancies", {
+        driftCount: drift.length,
+        staleHolds,
+      });
   });
 
   registerJob("maintenance.cleanup", async () => {
@@ -55,4 +82,5 @@ export function registerAllJobs() {
 export const SCHEDULES: Schedule[] = [
   { type: "payments.expire-unpaid", everyMs: 2 * 60_000, payload: {} },
   { type: "maintenance.cleanup", everyMs: 60 * 60_000, payload: {} },
+  { type: "inventory.reconcile", everyMs: 60 * 60_000, payload: {} },
 ];

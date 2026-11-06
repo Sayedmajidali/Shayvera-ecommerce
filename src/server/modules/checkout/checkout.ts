@@ -7,7 +7,7 @@ import type { CheckoutInput } from "@/lib/validation/checkout";
 import { isOnlinePaymentConfigured } from "@/server/modules/payments/gateway";
 import { loadStoreSettings } from "@/server/modules/settings/queries";
 import { getCartView, type CartIdentity } from "@/server/modules/cart/cart";
-import { moveStock } from "@/server/modules/inventory/inventory";
+import { reserveStock } from "@/server/modules/inventory/inventory";
 import { orderAccessToken } from "@/server/modules/orders/order-access";
 import { transitionOrder } from "@/server/modules/orders/orders";
 import { startOnlinePayment, type OnlinePaymentSession } from "@/server/modules/payments/payments";
@@ -213,14 +213,14 @@ export async function placeOrder(
           },
         });
 
-        // Reserve stock (atomic conditional decrement — aborts the whole transaction if any line is short).
+        // Reserve stock (atomic conditional update on available stock — aborts the whole transaction
+        // if any line is short). Unpaid online orders hold it only until the payment window lapses.
         for (const pl of p.lines) {
-          await moveStock(tx, {
-            variantId: pl.key,
-            delta: -pl.quantity,
-            reason: "ORDER_PLACED",
+          await reserveStock(tx, {
             orderId: order.id,
-            note: orderNumber,
+            variantId: pl.key,
+            quantity: pl.quantity,
+            expiresAt: order.paymentExpiresAt,
           });
         }
 

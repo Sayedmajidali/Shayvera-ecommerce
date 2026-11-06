@@ -2,8 +2,17 @@ import type { ActorType, InventoryReason, OrderStatus, Prisma } from "@prisma/cl
 import { db, type Tx } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/server/platform/logger";
-import { moveStock } from "@/server/modules/inventory/inventory";
-import { canTransition, STOCK_HOLDING_STATUSES } from "@/server/modules/orders/order-status";
+import {
+  clearReservationExpiry,
+  consumeReservations,
+  moveStock,
+  releaseReservations,
+} from "@/server/modules/inventory/inventory";
+import {
+  canTransition,
+  STOCK_DEDUCT_STATUSES,
+  STOCK_HOLDING_STATUSES,
+} from "@/server/modules/orders/order-status";
 import { queueOrderEmail } from "@/server/modules/notifications/notifications";
 import type { OrderEmailKind } from "@/server/modules/notifications/order-emails";
 
@@ -72,6 +81,15 @@ export async function transitionOrder(
   const emailKind = STATUS_EMAIL[p.to];
   if (emailKind) await queueOrderEmail(tx, { orderId: order.id, kind: emailKind });
 
+  if (p.to === "CONFIRMED") await clearReservationExpiry(tx, order.id);
+
+  if (STOCK_DEDUCT_STATUSES.includes(p.to) && !STOCK_DEDUCT_STATUSES.includes(from)) {
+    await consumeReservations(tx, order.id, {
+      actorId: p.actor.id ?? null,
+      note: `Shipped ${order.orderNumber}`,
+    });
+  }
+
   if (p.to === "CONFIRMED") {
     for (const item of order.items) {
       if (item.productId) {
@@ -84,21 +102,28 @@ export async function transitionOrder(
   }
 
   if (p.to === "CANCELLED" && STOCK_HOLDING_STATUSES.includes(from)) {
-    for (const item of order.items) {
-      if (!item.variantId) continue;
-      const exists = await tx.productVariant.findUnique({
-        where: { id: item.variantId },
-        select: { id: true },
-      });
-      if (!exists) continue;
-      await moveStock(tx, {
-        variantId: item.variantId,
-        delta: item.quantity,
-        reason: p.restockReason ?? "ORDER_CANCELLED",
-        orderId: order.id,
-        actorId: p.actor.id ?? null,
-        note: `Released from ${order.orderNumber}`,
-      });
+    const released = await releaseReservations(tx, order.id, {
+      actorId: p.actor.id ?? null,
+      note: `Released from ${order.orderNumber}`,
+    });
+    if (released.reservations === 0) {
+      // Orders placed before reservations existed took units off-hand at placement; put them back.
+      for (const item of order.items) {
+        if (!item.variantId) continue;
+        const exists = await tx.productVariant.findUnique({
+          where: { id: item.variantId },
+          select: { id: true },
+        });
+        if (!exists) continue;
+        await moveStock(tx, {
+          variantId: item.variantId,
+          delta: item.quantity,
+          reason: p.restockReason ?? "ORDER_CANCELLED",
+          orderId: order.id,
+          actorId: p.actor.id ?? null,
+          note: `Released from ${order.orderNumber} (pre-reservation order)`,
+        });
+      }
     }
     if (from !== "PENDING") {
       for (const item of order.items) {

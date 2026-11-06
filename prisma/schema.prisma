@@ -34,11 +34,22 @@ enum InventoryReason {
   ADJUSTMENT
   RESTOCK
   DAMAGE
+  /// Legacy (before reservations): stock removed at order placement.
   ORDER_PLACED
+  /// Legacy: stock returned on cancellation.
   ORDER_CANCELLED
+  /// Legacy: stock returned when an unpaid order expired.
   PAYMENT_EXPIRED
   RETURN
   CORRECTION
+  /// Reserved units left the warehouse (order handed to the courier).
+  ORDER_FULFILLED
+}
+
+enum ReservationStatus {
+  ACTIVE
+  CONSUMED
+  RELEASED
 }
 
 enum OrderStatus {
@@ -396,6 +407,7 @@ model ProductVariant {
   cartItems    CartItem[]
   orderItems   OrderItem[]
   inventoryTxs InventoryTransaction[]
+  reservations InventoryReservation[]
 
   @@index([productId, sortOrder])
 }
@@ -403,9 +415,31 @@ model ProductVariant {
 model Inventory {
   variantId         String         @id
   variant           ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  /// Physical units in the warehouse.
   quantityOnHand    Int            @default(0)
+  /// Units held for open orders (sum of ACTIVE reservations). Available = onHand − reserved.
+  quantityReserved  Int            @default(0)
   lowStockThreshold Int            @default(5)
   updatedAt         DateTime       @updatedAt
+}
+
+/// Units of a variant held for an order line until it ships (CONSUMED) or is cancelled/expired (RELEASED).
+model InventoryReservation {
+  id         String            @id @default(cuid())
+  orderId    String
+  order      Order             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId  String
+  variant    ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity   Int
+  status     ReservationStatus @default(ACTIVE)
+  /// Unpaid online orders: when the hold lapses. Null for COD/paid orders.
+  expiresAt  DateTime?
+  createdAt  DateTime          @default(now())
+  resolvedAt DateTime?
+
+  @@index([orderId])
+  @@index([variantId, status])
+  @@index([status, expiresAt])
 }
 
 model InventoryTransaction {
@@ -527,6 +561,7 @@ model Order {
   invoice       Invoice?
   couponUsage   CouponUsage?
   inventoryTxs  InventoryTransaction[]
+  reservations  InventoryReservation[]
   paymentEvents PaymentEvent[]
 
   @@index([userId, createdAt])

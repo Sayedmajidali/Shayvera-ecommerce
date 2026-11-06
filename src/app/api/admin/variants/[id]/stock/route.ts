@@ -50,5 +50,10 @@ export const POST = adminRoute<Ctx>("INVENTORY_MANAGE", async (req, { params }, 
     );
     return after;
   });
-  return ok({ quantityOnHand: balance });
+  const inv = await db.inventory.findUniqueOrThrow({ where: { variantId: id } });
+  return ok({
+    quantityOnHand: balance,
+    quantityReserved: inv.quantityReserved,
+    available: inv.quantityOnHand - inv.quantityReserved,
+  });
 });

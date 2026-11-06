@@ -9,7 +9,7 @@ import {
   verifyCheckoutSignature,
   verifyWebhookSignature,
 } from "@/server/modules/payments/signature";
-import { moveStock } from "@/server/modules/inventory/inventory";
+import { reserveStock } from "@/server/modules/inventory/inventory";
 import { transitionOrder, type Actor } from "@/server/modules/orders/orders";
 
 const SYSTEM: Actor = { type: "SYSTEM" };
@@ -264,13 +264,8 @@ async function tryReinstateCancelledOrder(orderId: string, paymentId: string): P
         throw new AppError("INVALID_STATE", "Order is not cancelled");
       for (const item of order.items) {
         if (!item.variantId) throw new AppError("OUT_OF_STOCK", "Variant no longer exists");
-        await moveStock(tx, {
-          variantId: item.variantId,
-          delta: -item.quantity,
-          reason: "ORDER_PLACED",
-          orderId,
-          note: "Re-reserved after late payment",
-        });
+        // Paid now, so the new hold does not expire.
+        await reserveStock(tx, { orderId, variantId: item.variantId, quantity: item.quantity });
       }
       const res = await tx.order.updateMany({
         where: { id: orderId, status: "CANCELLED" },

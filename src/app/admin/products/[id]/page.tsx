@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { availableUnits } from "@/server/modules/inventory/available";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
@@ -63,7 +64,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/prod
             pricePaise: v.pricePaise,
             compareAtPricePaise: v.compareAtPricePaise,
             isActive: v.isActive,
-            stock: v.inventory?.quantityOnHand ?? 0,
+            stock: availableUnits(v.inventory),
             lowStockThreshold: v.inventory?.lowStockThreshold ?? 5,
             weightGrams: v.weightGrams,
             lengthMm: v.lengthMm,

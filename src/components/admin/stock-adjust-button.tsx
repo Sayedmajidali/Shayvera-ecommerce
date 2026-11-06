@@ -27,10 +27,12 @@ export function StockAdjustButton({
   variantId,
   sku,
   onHand,
+  reserved = 0,
 }: {
   variantId: string;
   sku: string;
   onHand: number;
+  reserved?: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -53,8 +55,11 @@ export function StockAdjustButton({
           <DialogHeader>
             <DialogTitle>Adjust stock · {sku}</DialogTitle>
             <DialogDescription>
-              On hand: {onHand}. Use a negative number to remove stock. Every change is recorded in
-              the ledger.
+              On hand: {onHand}
+              {reserved > 0
+                ? ` (${reserved} reserved for open orders, so at most ${onHand - reserved} can be removed)`
+                : ""}
+              . Use a negative number to remove stock. Every change is recorded in the ledger.
             </DialogDescription>
           </DialogHeader>
           <form

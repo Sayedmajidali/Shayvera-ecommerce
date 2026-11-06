@@ -155,7 +155,16 @@ export async function listProductsAdmin(f: AdminProductFilters) {
         }
       : {}),
     ...(f.stock === "out"
-      ? { variants: { every: { OR: [{ isActive: false }, { inventory: { quantityOnHand: 0 } }] } } }
+      ? {
+          variants: {
+            every: {
+              OR: [
+                { isActive: false },
+                { inventory: { quantityOnHand: { lte: db.inventory.fields.quantityReserved } } },
+              ],
+            },
+          },
+        }
       : {}),
   };
   const [total, items] = await Promise.all([
@@ -174,7 +183,9 @@ export async function listProductsAdmin(f: AdminProductFilters) {
             sku: true,
             isActive: true,
             pricePaise: true,
-            inventory: { select: { quantityOnHand: true, lowStockThreshold: true } },
+            inventory: {
+              select: { quantityOnHand: true, quantityReserved: true, lowStockThreshold: true },
+            },
           },
         },
       },

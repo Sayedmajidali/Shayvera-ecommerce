@@ -16,6 +16,8 @@ import { FilterBar } from "@/components/admin/filter-bar";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { StockAdjustButton } from "@/components/admin/stock-adjust-button";
 import { db } from "@/server/platform/db";
+import { availableUnits } from "@/server/modules/inventory/available";
+import { findInventoryDrift } from "@/server/modules/inventory/inventory";
 import { firstValues } from "@/lib/search-params";
 import { requireAdminPage } from "@/server/modules/auth/session";
 
@@ -31,6 +33,7 @@ const REASONS = [
   "PAYMENT_EXPIRED",
   "RETURN",
   "CORRECTION",
+  "ORDER_FULFILLED",
 ] as const;
 const schema = z.object({
   q: z.string().max(100).optional().catch(undefined),
@@ -60,13 +63,13 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
       ? (
           await db.$queryRaw<
             { variantId: string }[]
-          >`SELECT "variantId" FROM "Inventory" WHERE "quantityOnHand" = 0`
+          >`SELECT "variantId" FROM "Inventory" WHERE "quantityOnHand" - "quantityReserved" <= 0`
         ).map((r) => r.variantId)
       : f.level === "low"
         ? (
             await db.$queryRaw<
               { variantId: string }[]
-            >`SELECT "variantId" FROM "Inventory" WHERE "quantityOnHand" <= "lowStockThreshold"`
+            >`SELECT "variantId" FROM "Inventory" WHERE "quantityOnHand" - "quantityReserved" <= "lowStockThreshold"`
           ).map((r) => r.variantId)
         : null;
   const where: Prisma.ProductVariantWhereInput = {
@@ -75,7 +78,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
     ...(levelIds ? { id: { in: levelIds } } : {}),
   };
 
-  const [total, variants, movements] = await Promise.all([
+  const [total, variants, movements, drift] = await Promise.all([
     db.productVariant.count({ where }),
     db.productVariant.findMany({
       where,
@@ -93,14 +96,35 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
         order: { select: { id: true, orderNumber: true } },
       },
     }),
+    findInventoryDrift(),
   ]);
 
   return (
     <>
       <AdminPageHeader
         title="Inventory"
-        description="Stock on hand per variant, low-stock alerts and the stock movement ledger."
+        description="On hand, reserved for open orders and available to sell, per variant — plus the stock movement ledger."
       />
+      {drift.length > 0 && (
+        <div
+          role="alert"
+          className="border-destructive/40 bg-destructive-soft mb-6 rounded-2xl border p-4 text-sm"
+          data-testid="inventory-drift"
+        >
+          <p className="font-medium">Reserved stock doesn’t match open reservations</p>
+          <p className="text-muted-foreground mt-1">
+            {drift
+              .slice(0, 5)
+              .map(
+                (d) =>
+                  `${d.sku}: reserved ${d.reserved}, active reservations ${d.activeReservations}`,
+              )
+              .join(" · ")}
+            {drift.length > 5 ? ` · and ${drift.length - 5} more` : ""}. Nothing is changed
+            automatically — investigate the orders and correct with a stock adjustment if needed.
+          </p>
+        </div>
+      )}
       <Card className="gap-0 py-0">
         <FilterBar
           placeholder="SKU, product or variant"
@@ -121,13 +145,17 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
               <TableHead>Product</TableHead>
               <TableHead>SKU</TableHead>
               <TableHead className="text-right">On hand</TableHead>
+              <TableHead className="text-right">Reserved</TableHead>
+              <TableHead className="text-right">Available</TableHead>
               <TableHead className="text-right">Alert at</TableHead>
               <TableHead className="text-right">Adjust</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {variants.map((v) => {
-              const qty = v.inventory?.quantityOnHand ?? 0;
+              const onHand = v.inventory?.quantityOnHand ?? 0;
+              const reserved = v.inventory?.quantityReserved ?? 0;
+              const qty = availableUnits(v.inventory);
               const low = qty <= (v.inventory?.lowStockThreshold ?? 5);
               return (
                 <TableRow key={v.id}>
@@ -144,6 +172,10 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
                     </p>
                   </TableCell>
                   <TableCell className="font-mono text-xs">{v.sku}</TableCell>
+                  <TableCell className="text-right tabular-nums">{onHand}</TableCell>
+                  <TableCell className="text-muted-foreground text-right tabular-nums">
+                    {reserved}
+                  </TableCell>
                   <TableCell
                     className={`text-right font-medium tabular-nums ${qty === 0 ? "text-destructive" : low ? "text-brand" : ""}`}
                   >
@@ -154,7 +186,12 @@ export default async function InventoryPage({ searchParams }: PageProps<"/admin/
                     {v.inventory?.lowStockThreshold ?? 5}
                   </TableCell>
                   <TableCell className="text-right">
-                    <StockAdjustButton variantId={v.id} sku={v.sku} onHand={qty} />
+                    <StockAdjustButton
+                      variantId={v.id}
+                      sku={v.sku}
+                      onHand={onHand}
+                      reserved={reserved}
+                    />
                   </TableCell>
                 </TableRow>
               );
