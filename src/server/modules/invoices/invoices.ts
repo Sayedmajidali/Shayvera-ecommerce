@@ -6,6 +6,7 @@ import { loadStoreSettings } from "@/server/modules/settings/queries";
 import { audit } from "@/server/modules/audit/audit";
 import { splitGst } from "@/server/modules/pricing/pricing";
 import { financialYear, nextSequence } from "@/server/platform/sequence";
+import { INVOICEABLE_STATUSES } from "@/server/modules/orders/order-status";
 
 export type InvoiceLine = {
   description: string;
@@ -65,7 +66,7 @@ export type InvoiceSnapshot = {
   notes: string[];
 };
 
-const INVOICEABLE = ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "REFUNDED"] as const;
+const INVOICEABLE = INVOICEABLE_STATUSES;
 
 /**
  * Issues an invoice for an order (idempotent). Numbers are consecutive per Indian financial year,

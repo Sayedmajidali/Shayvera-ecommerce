@@ -1,10 +1,21 @@
-import type { OrderStatus, PaymentMethod, PaymentStatus, Prisma } from "@prisma/client";
+import {
+  OrderStatus as OrderStatusEnum,
+  type OrderStatus,
+  type PaymentMethod,
+  type PaymentStatus,
+  type Prisma,
+} from "@prisma/client";
 import { z } from "zod";
 import { db } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { optionalTrimmed, trimmed } from "@/lib/validation/common";
 import { audit } from "@/server/modules/audit/audit";
-import { canTransition } from "@/server/modules/orders/order-status";
+import {
+  AWAITING_PAYMENT,
+  BEFORE_HANDOVER,
+  canTransition,
+  REQUEST_DRIVEN,
+} from "@/server/modules/orders/order-status";
 import { orderDetailInclude, transitionOrder } from "@/server/modules/orders/orders";
 import { createRefund, reconcileOrderPayments } from "@/server/modules/payments/payments";
 
@@ -12,10 +23,7 @@ type AdminActor = { id: string; ip?: string | null };
 
 export const adminOrderFiltersSchema = z.object({
   q: z.string().trim().max(100).optional().catch(undefined),
-  status: z
-    .enum(["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"])
-    .optional()
-    .catch(undefined),
+  status: z.enum(OrderStatusEnum).optional().catch(undefined),
   payment: z
     .enum(["PENDING", "PAID", "FAILED", "PARTIALLY_REFUNDED", "REFUNDED"])
     .optional()
@@ -40,7 +48,7 @@ export async function listOrdersAdmin(f: AdminOrderFilters, pageSize = 20) {
                 { requiresAttention: true },
                 {
                   deliveryCheck: "UNVERIFIED" as const,
-                  status: { in: ["PENDING", "CONFIRMED", "PROCESSING"] as OrderStatus[] },
+                  status: { in: [...AWAITING_PAYMENT, ...BEFORE_HANDOVER] },
                 },
               ],
             },
@@ -111,7 +119,16 @@ export async function getOrderAdmin(id: string) {
 }
 
 export const statusUpdateSchema = z.object({
-  status: z.enum(["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"]),
+  // Request-, payment- and refund-driven statuses are set by those flows, not from the status menu.
+  status: z.enum([
+    "CONFIRMED",
+    "PROCESSING",
+    "READY_TO_SHIP",
+    "SHIPPED",
+    "OUT_FOR_DELIVERY",
+    "DELIVERED",
+    "CANCELLED",
+  ]),
   note: optionalTrimmed(300),
 });
 
@@ -126,6 +143,14 @@ export async function updateOrderStatusAdmin(
 ) {
   const order = await db.order.findUnique({ where: { id: orderId }, include: { shipments: true } });
   if (!order) throw new AppError("NOT_FOUND", "Order not found");
+  if (REQUEST_DRIVEN.includes(order.status) && order.status !== "PAYMENT_FAILED") {
+    throw new AppError(
+      "INVALID_STATE",
+      order.status === "CANCELLATION_REQUESTED" || order.status === "RETURN_REQUESTED"
+        ? "The customer has an open request — approve or reject it first"
+        : "This order’s status is managed by its refund",
+    );
+  }
   if (!canTransition(order.status, input.status)) {
     throw new AppError(
       "INVALID_STATE",
@@ -208,10 +233,12 @@ export async function addShipment(
 ) {
   const order = await db.order.findUnique({ where: { id: orderId } });
   if (!order) throw new AppError("NOT_FOUND", "Order not found");
-  if (!["CONFIRMED", "PROCESSING", "SHIPPED"].includes(order.status)) {
+  const shippable: OrderStatus[] = [...BEFORE_HANDOVER, "SHIPPED", "OUT_FOR_DELIVERY"];
+  if (!shippable.includes(order.status)) {
     throw new AppError("INVALID_STATE", "Shipments can only be added to confirmed orders");
   }
-  const shouldShip = input.markShipped && order.status !== "SHIPPED";
+  const alreadyShipped = order.status === "SHIPPED" || order.status === "OUT_FOR_DELIVERY";
+  const shouldShip = input.markShipped && !alreadyShipped;
   await db.$transaction(async (tx) => {
     await tx.shipment.create({
       data: {
@@ -220,8 +247,8 @@ export async function addShipment(
         trackingNumber: input.trackingNumber,
         trackingUrl: input.trackingUrl ?? null,
         notes: input.notes,
-        status: shouldShip || order.status === "SHIPPED" ? "SHIPPED" : "PENDING",
-        shippedAt: shouldShip || order.status === "SHIPPED" ? new Date() : null,
+        status: shouldShip || alreadyShipped ? "SHIPPED" : "PENDING",
+        shippedAt: shouldShip || alreadyShipped ? new Date() : null,
       },
     });
     if (shouldShip)

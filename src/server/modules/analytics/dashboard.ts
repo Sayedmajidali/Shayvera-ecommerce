@@ -1,11 +1,16 @@
 import { db } from "@/server/platform/db";
 import { listLowStock } from "@/server/modules/inventory/inventory";
+import {
+  AWAITING_PAYMENT,
+  BEFORE_HANDOVER,
+  SOLD_STATUSES as SOLD,
+} from "@/server/modules/orders/order-status";
 
 export const RANGES = { "7d": 7, "30d": 30, "90d": 90 } as const;
 export type RangeKey = keyof typeof RANGES;
 
 /** Orders that count as sales: placed and not cancelled/awaiting payment. */
-const SOLD_STATUSES = ["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "REFUNDED"] as const;
+const SOLD_STATUSES = [...SOLD];
 
 /**
  * Dashboard figures computed directly from PostgreSQL.
@@ -48,8 +53,8 @@ export async function getDashboardStats(range: RangeKey = "30d") {
     db.user.count({ where: { role: "CUSTOMER" } }),
     db.user.count({ where: { role: "CUSTOMER", createdAt: { gte: since } } }),
     db.product.count({ where: { status: "ACTIVE" } }),
-    db.order.count({ where: { status: "PENDING" } }),
-    db.order.count({ where: { status: { in: ["CONFIRMED", "PROCESSING"] } } }),
+    db.order.count({ where: { status: { in: [...AWAITING_PAYMENT] } } }),
+    db.order.count({ where: { status: { in: [...BEFORE_HANDOVER, "CANCELLATION_REQUESTED"] } } }),
     db.order.count({ where: { status: "DELIVERED", placedAt: { gte: since } } }),
     db.order.count({ where: { requiresAttention: true } }),
     listLowStock(8),

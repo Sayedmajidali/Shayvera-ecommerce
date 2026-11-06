@@ -9,10 +9,15 @@ import { formatINR } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import type { AddressSnapshot } from "@/lib/validation/checkout";
 import {
+  AWAITING_PAYMENT,
+  CANCELLATION_REQUESTABLE,
   CUSTOMER_CANCELLABLE,
   ORDER_PROGRESS,
   ORDER_STATUS_LABEL,
+  ORDER_STATUS_TONE,
+  progressStep,
 } from "@/server/modules/orders/order-status";
+import { returnDeadline } from "@/server/modules/orders/requests";
 import type { orderDetailInclude } from "@/server/modules/orders/orders";
 import type { Prisma } from "@prisma/client";
 
@@ -43,7 +48,7 @@ function Address({ a }: { a: AddressSnapshot }) {
   );
 }
 
-export function OrderDetail({
+export async function OrderDetail({
   order,
   token,
   banner,
@@ -52,14 +57,23 @@ export function OrderDetail({
   token: string | null;
   banner?: React.ReactNode;
 }) {
-  const step = ORDER_PROGRESS.indexOf(order.status);
+  const step = progressStep(order.status);
   const shipment = order.shipments[0];
+  const awaitingPayment = AWAITING_PAYMENT.includes(order.status);
   const canPay =
     order.paymentMethod === "RAZORPAY" &&
-    order.status === "PENDING" &&
+    awaitingPayment &&
     order.paymentStatus !== "PAID" &&
     (!order.paymentExpiresAt || order.paymentExpiresAt > new Date());
   const canCancel = CUSTOMER_CANCELLABLE.includes(order.status);
+  const canRequestCancel = CANCELLATION_REQUESTABLE.includes(order.status);
+  const deadline = order.status === "DELIVERED" ? await returnDeadline(order.deliveredAt) : null;
+  const canReturn = deadline !== null && deadline > new Date();
+  const latestRequest = order.requests[0];
+  const openRequest =
+    latestRequest && (latestRequest.status === "PENDING" || latestRequest.status === "APPROVED")
+      ? latestRequest
+      : null;
 
   return (
     <div className="grid gap-6">
@@ -73,18 +87,7 @@ export function OrderDetail({
           <p className="text-muted-foreground mt-1 text-sm">Placed {fmtDate(order.placedAt)}</p>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <Badge
-            variant={
-              order.status === "CANCELLED"
-                ? "destructive"
-                : order.status === "DELIVERED"
-                  ? "success"
-                  : order.status === "PENDING"
-                    ? "warning"
-                    : "brand"
-            }
-            data-testid="order-status"
-          >
+          <Badge variant={ORDER_STATUS_TONE[order.status]} data-testid="order-status">
             {ORDER_STATUS_LABEL[order.status]}
           </Badge>
           <span className="text-muted-foreground text-xs">
@@ -94,7 +97,7 @@ export function OrderDetail({
         </div>
       </div>
 
-      {order.status === "PENDING" && order.paymentMethod === "RAZORPAY" && (
+      {awaitingPayment && order.paymentMethod === "RAZORPAY" && (
         <div className="border-warning/40 bg-warning-soft flex items-start gap-3 rounded-2xl border p-4 text-sm">
           <Clock className="mt-0.5 size-4 shrink-0" />
           <div>
@@ -113,36 +116,57 @@ export function OrderDetail({
         </div>
       )}
 
-      {order.status !== "CANCELLED" &&
-        order.status !== "REFUNDED" &&
-        order.status !== "PENDING" && (
-          <ol
-            className="bg-card grid grid-cols-4 gap-2 rounded-2xl border p-5"
-            aria-label="Order progress"
-          >
-            {ORDER_PROGRESS.map((s, i) => {
-              const Icon = [CheckCircle2, Package, Truck, CheckCircle2][i]!;
-              const done = i <= step;
-              return (
-                <li key={s} className="flex flex-col items-center gap-2 text-center">
-                  <span
-                    className={cn(
-                      "flex size-9 items-center justify-center rounded-full",
-                      done
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
-                    <Icon className="size-4" />
-                  </span>
-                  <span className={cn("text-xs", done ? "font-medium" : "text-muted-foreground")}>
-                    {ORDER_STATUS_LABEL[s]}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        )}
+      {openRequest && (
+        <div
+          className="border-warning/40 bg-warning-soft rounded-2xl border p-4 text-sm"
+          data-testid="order-request"
+        >
+          <p className="font-medium">
+            {openRequest.type === "CANCELLATION"
+              ? "Cancellation requested — our team is reviewing it."
+              : openRequest.status === "APPROVED"
+                ? "Return approved — please send the items back as described in our email."
+                : "Return requested — our team is reviewing it."}
+          </p>
+          <p className="text-muted-foreground mt-1">Your reason: {openRequest.reason}</p>
+          {openRequest.resolutionNote && (
+            <p className="text-muted-foreground mt-1">Our note: {openRequest.resolutionNote}</p>
+          )}
+        </div>
+      )}
+      {latestRequest?.status === "REJECTED" && !openRequest && (
+        <p className="bg-muted rounded-2xl p-4 text-sm" data-testid="order-request">
+          Your {latestRequest.type === "CANCELLATION" ? "cancellation" : "return"} request wasn’t
+          approved{latestRequest.resolutionNote ? `: ${latestRequest.resolutionNote}` : "."}
+        </p>
+      )}
+
+      {step !== null && (
+        <ol
+          className="bg-card grid grid-cols-4 gap-2 rounded-2xl border p-5"
+          aria-label="Order progress"
+        >
+          {ORDER_PROGRESS.map((s, i) => {
+            const Icon = [CheckCircle2, Package, Truck, CheckCircle2][i]!;
+            const done = i <= step;
+            return (
+              <li key={s} className="flex flex-col items-center gap-2 text-center">
+                <span
+                  className={cn(
+                    "flex size-9 items-center justify-center rounded-full",
+                    done ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  <Icon className="size-4" />
+                </span>
+                <span className={cn("text-xs", done ? "font-medium" : "text-muted-foreground")}>
+                  {s}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      )}
 
       {order.status === "CANCELLED" && (
         <p className="bg-destructive-soft text-destructive flex items-center gap-2 rounded-2xl border p-4 text-sm">
@@ -280,6 +304,27 @@ export function OrderDetail({
             token={token}
             canPay={canPay}
             canCancel={canCancel}
+            canRequestCancel={canRequestCancel && !openRequest}
+            returnable={
+              canReturn && !openRequest
+                ? order.items.map((i) => ({
+                    id: i.id,
+                    name: i.productName,
+                    variant: i.variantName,
+                    quantity: i.quantity,
+                  }))
+                : []
+            }
+            returnDeadline={
+              deadline?.toLocaleString("en-IN", {
+                day: "numeric",
+                month: "short",
+                hour: "numeric",
+                minute: "2-digit",
+                timeZone: "Asia/Kolkata",
+              }) ?? null
+            }
+            pendingRequestId={openRequest?.status === "PENDING" ? openRequest.id : null}
           />
         </aside>
       </div>

@@ -9,6 +9,7 @@ import {
   releaseReservations,
 } from "@/server/modules/inventory/inventory";
 import {
+  AWAITING_PAYMENT,
   canTransition,
   STOCK_DEDUCT_STATUSES,
   STOCK_HOLDING_STATUSES,
@@ -20,7 +21,11 @@ const STATUS_EMAIL: Partial<Record<OrderStatus, OrderEmailKind>> = {
   CONFIRMED: "confirmed",
   CANCELLED: "cancelled",
   SHIPPED: "shipped",
+  OUT_FOR_DELIVERY: "out_for_delivery",
   DELIVERED: "delivered",
+  CANCELLATION_REQUESTED: "cancellation_requested",
+  RETURN_REQUESTED: "return_requested",
+  RETURNED: "returned",
 };
 
 export type Actor = { type: ActorType; id?: string | null };
@@ -50,22 +55,29 @@ export async function transitionOrder(
   }
 
   const now = new Date();
+  // Returning to an earlier status (request rejected/withdrawn, failed delivery attempt) must not
+  // repeat first-time side effects: emails, sales counts, timestamps, COD capture.
+  const restoring =
+    (from === "CANCELLATION_REQUESTED" && p.to !== "CANCELLED") ||
+    (from === "RETURN_REQUESTED" && p.to === "DELIVERED") ||
+    (from === "OUT_FOR_DELIVERY" && p.to === "SHIPPED");
   const data: Prisma.OrderUpdateManyMutationInput = { status: p.to };
-  if (p.to === "CONFIRMED") data.confirmedAt = now;
-  if (p.to === "SHIPPED") data.shippedAt = now;
-  if (p.to === "DELIVERED") data.deliveredAt = now;
+  if (p.to === "CONFIRMED" && !restoring) data.confirmedAt = now;
+  if (p.to === "SHIPPED" && !order.shippedAt) data.shippedAt = now;
+  if (p.to === "DELIVERED" && !restoring) data.deliveredAt = now;
   if (p.to === "CANCELLED") {
     data.cancelledAt = now;
     data.cancelReason = p.note ?? null;
     data.paymentExpiresAt = null;
   }
-  if (p.to === "DELIVERED" && order.paymentMethod === "COD") data.paymentStatus = "PAID";
+  if (p.to === "DELIVERED" && !restoring && order.paymentMethod === "COD")
+    data.paymentStatus = "PAID";
 
   const updated = await tx.order.updateMany({ where: { id: order.id, status: from }, data });
   if (updated.count === 0)
     throw new AppError("CONFLICT", "The order was updated by someone else. Please refresh.");
 
-  await tx.orderStatusHistory.create({
+  const history = await tx.orderStatusHistory.create({
     data: {
       orderId: order.id,
       fromStatus: from,
@@ -78,19 +90,21 @@ export async function transitionOrder(
 
   // ── Side effects ──
   // Customer notification is part of the same transaction (outbox), delivered by the job worker.
-  const emailKind = STATUS_EMAIL[p.to];
-  if (emailKind) await queueOrderEmail(tx, { orderId: order.id, kind: emailKind });
+  const emailKind = restoring ? undefined : STATUS_EMAIL[p.to];
+  if (emailKind)
+    await queueOrderEmail(tx, { orderId: order.id, kind: emailKind, dedupeKey: history.id });
 
   if (p.to === "CONFIRMED") await clearReservationExpiry(tx, order.id);
 
-  if (STOCK_DEDUCT_STATUSES.includes(p.to) && !STOCK_DEDUCT_STATUSES.includes(from)) {
+  if (STOCK_DEDUCT_STATUSES.includes(p.to)) {
+    // Idempotent: only ACTIVE reservations are consumed, so READY_TO_SHIP → SHIPPED deducts nothing more.
     await consumeReservations(tx, order.id, {
       actorId: p.actor.id ?? null,
-      note: `Shipped ${order.orderNumber}`,
+      note: `${p.to === "READY_TO_SHIP" ? "Packed" : "Shipped"} ${order.orderNumber}`,
     });
   }
 
-  if (p.to === "CONFIRMED") {
+  if (p.to === "CONFIRMED" && !restoring) {
     for (const item of order.items) {
       if (item.productId) {
         await tx.product.update({
@@ -102,11 +116,33 @@ export async function transitionOrder(
   }
 
   if (p.to === "CANCELLED" && STOCK_HOLDING_STATUSES.includes(from)) {
-    const released = await releaseReservations(tx, order.id, {
+    await releaseReservations(tx, order.id, {
       actorId: p.actor.id ?? null,
       note: `Released from ${order.orderNumber}`,
     });
-    if (released.reservations === 0) {
+    // Packed (deducted) but never handed to the courier: the units are still in the warehouse.
+    if (!order.shippedAt) {
+      const consumed = await tx.inventoryReservation.findMany({
+        where: { orderId: order.id, status: "CONSUMED" },
+      });
+      for (const r of consumed) {
+        const claimed = await tx.inventoryReservation.updateMany({
+          where: { id: r.id, status: "CONSUMED" },
+          data: { status: "RELEASED", resolvedAt: now },
+        });
+        if (claimed.count === 0) continue;
+        await moveStock(tx, {
+          variantId: r.variantId,
+          delta: r.quantity,
+          reason: "ORDER_CANCELLED",
+          orderId: order.id,
+          actorId: p.actor.id ?? null,
+          note: `Packed order ${order.orderNumber} cancelled before pickup`,
+        });
+      }
+    }
+    const reservationCount = await tx.inventoryReservation.count({ where: { orderId: order.id } });
+    if (reservationCount === 0) {
       // Orders placed before reservations existed took units off-hand at placement; put them back.
       for (const item of order.items) {
         if (!item.variantId) continue;
@@ -125,7 +161,7 @@ export async function transitionOrder(
         });
       }
     }
-    if (from !== "PENDING") {
+    if (!AWAITING_PAYMENT.includes(from)) {
       for (const item of order.items) {
         if (item.productId) {
           await tx.product.updateMany({
@@ -148,7 +184,7 @@ export async function transitionOrder(
     }
   }
 
-  if (p.to === "DELIVERED") {
+  if (p.to === "DELIVERED" && !restoring) {
     if (order.paymentMethod === "COD") {
       await tx.payment.updateMany({
         where: { orderId: order.id, method: "COD" },
@@ -177,6 +213,7 @@ export const orderDetailInclude = {
   shipments: { orderBy: { createdAt: "desc" } },
   refunds: { orderBy: { createdAt: "desc" } },
   invoice: { select: { invoiceNumber: true, issuedAt: true } },
+  requests: { orderBy: { createdAt: "desc" }, take: 5 },
 } satisfies Prisma.OrderInclude;
 
 export async function listCustomerOrders(userId: string, page = 1, pageSize = 10) {

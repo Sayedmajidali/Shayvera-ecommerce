@@ -25,12 +25,13 @@ test.describe("Razorpay payments (test-mode simulator)", () => {
     expect(order.payments[0]).toMatchObject({ status: "CAPTURED" });
   });
 
-  test("failed payment keeps the order pending and can be retried", async ({ page }) => {
+  test("failed payment marks the order payment-failed and can be retried", async ({ page }) => {
     const dialog = await startOnlineCheckout(page);
     await dialog.getByRole("button", { name: "Simulate failure" }).click();
     await expect(page.getByText("Your payment didn’t go through")).toBeVisible();
     let order = await orderFromUrl(page);
-    expect(order).toMatchObject({ status: "PENDING", paymentStatus: "FAILED" });
+    expect(order).toMatchObject({ status: "PAYMENT_FAILED", paymentStatus: "FAILED" });
+    await expect(page.getByTestId("order-status")).toHaveText("Payment failed");
 
     await page.getByRole("button", { name: "Complete payment" }).click();
     await page

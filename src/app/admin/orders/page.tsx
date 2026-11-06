@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ORDER_STATUS_LABEL } from "@/server/modules/orders/order-status";
 import Link from "next/link";
 import { AlertTriangle, ClipboardList } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -47,15 +48,7 @@ export default async function AdminOrdersPage({ searchParams }: PageProps<"/admi
             {
               name: "status",
               label: "Statuses",
-              options: opt([
-                "PENDING",
-                "CONFIRMED",
-                "PROCESSING",
-                "SHIPPED",
-                "DELIVERED",
-                "CANCELLED",
-                "REFUNDED",
-              ]),
+              options: opt([...Object.keys(ORDER_STATUS_LABEL)]),
             },
             {
               name: "payment",

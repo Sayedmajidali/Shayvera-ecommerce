@@ -189,7 +189,7 @@ describe("notifications", () => {
     expect(await db.outboundEmail.count()).toBe(1);
   });
 
-  it("deduplicates the same order event", async () => {
+  it("deduplicates the same order event (same dedupe key)", async () => {
     const p = await makeProduct({ price: 50_000, stock: 5 });
     const cookie = await cartWith(p.variants[0]!.id, 1);
     const { json } = await checkout(cookie, checkoutBody());
@@ -197,11 +197,17 @@ describe("notifications", () => {
       where: { orderNumber: json.data.orderNumber },
     });
     const { queueOrderEmail } = await import("@/server/modules/notifications/notifications");
-    const again = await db.$transaction((tx) =>
-      queueOrderEmail(tx, { orderId: order.id, kind: "confirmed" }),
+    const first = await db.$transaction((tx) =>
+      queueOrderEmail(tx, { orderId: order.id, kind: "refunded", dedupeKey: "refund-1" }),
     );
+    const again = await db.$transaction((tx) =>
+      queueOrderEmail(tx, { orderId: order.id, kind: "refunded", dedupeKey: "refund-1" }),
+    );
+    expect(first).toBeTruthy();
     expect(again).toBeNull();
-    expect(await db.notification.count({ where: { orderId: order.id } })).toBe(1);
+    expect(
+      await db.notification.count({ where: { orderId: order.id, template: "order-refunded" } }),
+    ).toBe(1);
   });
 
   it("marks a notification FAILED with a logged attempt when it cannot be rendered", async () => {

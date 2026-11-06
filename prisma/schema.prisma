@@ -60,14 +60,41 @@ enum ReservationStatus {
   RELEASED
 }
 
+/// Order lifecycle (transitions: src/server/modules/orders/order-status.ts). Payment, shipment and
+/// refund states are tracked separately on their own records.
 enum OrderStatus {
+  /// Pending payment (online orders) — stock is held until the payment window lapses.
   PENDING
+  PAYMENT_FAILED
   CONFIRMED
   PROCESSING
+  READY_TO_SHIP
   SHIPPED
+  OUT_FOR_DELIVERY
   DELIVERED
+  CANCELLATION_REQUESTED
   CANCELLED
+  RETURN_REQUESTED
+  RETURNED
+  REFUND_PENDING
   REFUNDED
+}
+
+enum OrderRequestType {
+  CANCELLATION
+  RETURN
+}
+
+enum OrderRequestStatus {
+  /// Waiting for staff.
+  PENDING
+  /// Return approved; waiting for the goods to come back.
+  APPROVED
+  REJECTED
+  /// Cancellation done, or returned goods received.
+  COMPLETED
+  /// Withdrawn by the customer.
+  WITHDRAWN
 }
 
 enum PaymentMethod {
@@ -159,6 +186,31 @@ model User {
   @@index([role, createdAt])
   @@index([adminRoleId])
   @@map("user")
+}
+
+/// A customer's cancellation or return request, decided by staff. At most one open request per order.
+model OrderRequest {
+  id             String             @id @default(cuid())
+  orderId        String
+  order          Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type           OrderRequestType
+  status         OrderRequestStatus @default(PENDING)
+  reason         String             @db.VarChar(500)
+  /// Return lines: [{ orderItemId, quantity }]. Null for cancellations (whole order).
+  lines          Json?
+  /// Order status before the request, restored if it is rejected or withdrawn.
+  previousStatus OrderStatus
+  requestedById  String?
+  resolutionNote String?            @db.VarChar(500)
+  resolvedById   String?
+  resolvedAt     DateTime?
+  /// Return receipt: [{ orderItemId, receivedQuantity, restockQuantity }].
+  receipt        Json?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([orderId])
+  @@index([status, createdAt])
 }
 
 /// A specification row shown on the product page (e.g. "Grade" → "W320").
@@ -574,6 +626,7 @@ model Order {
   couponUsage   CouponUsage?
   inventoryTxs  InventoryTransaction[]
   reservations  InventoryReservation[]
+  requests      OrderRequest[]
   paymentEvents PaymentEvent[]
 
   @@index([userId, createdAt])
@@ -796,6 +849,8 @@ model StoreSettings {
   defaultPackageLengthMm     Int      @default(200)
   defaultPackageBreadthMm    Int      @default(150)
   defaultPackageHeightMm     Int      @default(100)
+  /// Days after delivery during which customers can request a return.
+  returnWindowDays           Int      @default(2)
   codMinOrderPaise           Int      @default(0)
   codMaxOrderPaise           Int?     @default(1000000)
   codBlockedPincodes         String[] @default([])

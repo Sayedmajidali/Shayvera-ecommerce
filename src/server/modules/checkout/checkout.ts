@@ -13,6 +13,7 @@ import { transitionOrder } from "@/server/modules/orders/orders";
 import { startOnlinePayment, type OnlinePaymentSession } from "@/server/modules/payments/payments";
 import { nextOrderNumber } from "@/server/platform/sequence";
 import { checkDelivery } from "@/server/modules/shipping/serviceability";
+import { AWAITING_PAYMENT } from "@/server/modules/orders/order-status";
 
 export type CheckoutContext = { identity: CartIdentity; userId: string | null };
 
@@ -45,7 +46,7 @@ async function existingForKey(
   let payment: OnlinePaymentSession | null = null;
   if (
     order.paymentMethod === "RAZORPAY" &&
-    order.status === "PENDING" &&
+    AWAITING_PAYMENT.includes(order.status) &&
     order.paymentStatus !== "PAID"
   ) {
     payment = await startOnlinePayment(order.id).catch(() => null);

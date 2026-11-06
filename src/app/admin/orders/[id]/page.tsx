@@ -5,12 +5,13 @@ import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderAdminActions } from "@/components/admin/order-admin-actions";
+import { OrderRequestsPanel } from "@/components/admin/order-requests-panel";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { stateName } from "@/lib/india";
 import { formatINR } from "@/lib/money";
 import type { AddressSnapshot } from "@/lib/validation/checkout";
 import { getOrderAdmin } from "@/server/modules/orders/admin-orders";
-import { ORDER_TRANSITIONS } from "@/server/modules/orders/order-status";
+import { INVOICEABLE_STATUSES, ORDER_TRANSITIONS } from "@/server/modules/orders/order-status";
 import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Order" };
@@ -283,6 +284,33 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
         </div>
 
         <div className="grid h-fit gap-6">
+          {order.requests.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Customer requests</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <OrderRequestsPanel
+                  permissions={admin.permissions}
+                  paidOnline={order.paymentMethod === "RAZORPAY" && order.paymentStatus === "PAID"}
+                  items={order.items.map((i) => ({
+                    id: i.id,
+                    name: i.productName,
+                    variant: i.variantName,
+                  }))}
+                  requests={order.requests.map((r) => ({
+                    id: r.id,
+                    type: r.type,
+                    status: r.status,
+                    reason: r.reason,
+                    lines: r.lines as { orderItemId: string; quantity: number }[] | null,
+                    resolutionNote: r.resolutionNote,
+                    createdAt: r.createdAt.toISOString(),
+                  }))}
+                />
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardHeader>
               <CardTitle>Actions</CardTitle>
@@ -299,6 +327,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                 hasInvoice={Boolean(order.invoice)}
                 requiresAttention={order.requiresAttention}
                 permissions={admin.permissions}
+                invoiceable={INVOICEABLE_STATUSES.includes(order.status)}
               />
             </CardContent>
           </Card>

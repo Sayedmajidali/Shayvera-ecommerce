@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { db } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { audit } from "@/server/modules/audit/audit";
+import { SOLD_STATUSES } from "@/server/modules/orders/order-status";
 
 type AdminActor = { id: string; ip?: string | null };
 
@@ -46,7 +47,7 @@ export async function listCustomers(
   const spend = ids.length
     ? await db.order.groupBy({
         by: ["userId"],
-        where: { userId: { in: ids }, status: { notIn: ["CANCELLED", "PENDING"] } },
+        where: { userId: { in: ids }, status: { in: [...SOLD_STATUSES] } },
         _sum: { totalPaise: true },
       })
     : [];

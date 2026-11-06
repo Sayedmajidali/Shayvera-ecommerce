@@ -4,7 +4,7 @@ import { drainJobs, availableStock } from "../helpers/db";
 import * as orderRoute from "@/app/api/orders/[orderNumber]/route";
 import * as cancelRoute from "@/app/api/orders/[orderNumber]/cancel/route";
 import * as ordersRoute from "@/app/api/orders/route";
-import { apiRequest, params, registerCustomer } from "../helpers/auth";
+import { apiRequest, params, registerCustomer, createAdmin } from "../helpers/auth";
 import { address, cartWith, checkout, checkoutBody } from "../helpers/checkout";
 import { makeProduct } from "../helpers/fixtures";
 
@@ -293,7 +293,7 @@ describe("order access and cancellation", () => {
     ).toBe(404);
   });
 
-  it("cancels a confirmed COD order, restocks items and releases the coupon", async () => {
+  it("cancels a confirmed COD order on approval, releasing stock and the coupon", async () => {
     await db.coupon.create({ data: { code: "BACK", type: "FIXED", value: 1000, usageLimit: 1 } });
     const p = await makeProduct({ stock: 5 });
     const cookie = await cartWith(p.variants[0]!.id, 2);
@@ -312,18 +312,35 @@ describe("order access and cancellation", () => {
       params({ orderNumber: n }),
     );
     expect(res.status).toBe(200);
+    expect((await res.json()).data).toMatchObject({
+      outcome: "requested",
+      status: "CANCELLATION_REQUESTED",
+    });
+    expect(await availableStock()).toBe(3); // still held until staff decide
+    const { approveRequest } = await import("@/server/modules/orders/requests");
+    const { user } = await createAdmin();
+    const request = await db.orderRequest.findFirstOrThrow({
+      where: { order: { orderNumber: n } },
+    });
+    expect(request).toMatchObject({
+      type: "CANCELLATION",
+      reason: "Changed my mind",
+      previousStatus: "CONFIRMED",
+    });
+    await approveRequest(request.id, null, { id: user.id });
     expect(await availableStock()).toBe(5);
     expect((await db.coupon.findUniqueOrThrow({ where: { code: "BACK" } })).usedCount).toBe(0);
     const order = await db.order.findUniqueOrThrow({
       where: { orderNumber: n },
-      include: { statusHistory: true },
+      include: { statusHistory: { orderBy: { createdAt: "asc" } } },
     });
     expect(order.status).toBe("CANCELLED");
-    expect(order.statusHistory.at(-1)).toMatchObject({
-      fromStatus: "CONFIRMED",
-      toStatus: "CANCELLED",
-      actorType: "CUSTOMER",
-    });
+    expect(
+      order.statusHistory.slice(-2).map((h) => [h.fromStatus, h.toStatus, h.actorType]),
+    ).toEqual([
+      ["CONFIRMED", "CANCELLATION_REQUESTED", "CUSTOMER"],
+      ["CANCELLATION_REQUESTED", "CANCELLED", "ADMIN"],
+    ]);
     // Cancelling twice is rejected.
     const again = await cancelRoute.POST(
       apiRequest(`/api/orders/${n}/cancel`, { method: "POST", body: { token: accessToken } }),

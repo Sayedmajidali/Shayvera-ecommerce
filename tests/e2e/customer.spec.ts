@@ -86,21 +86,22 @@ test.describe("customer shopping journey", () => {
     await page.getByTestId("order-row").filter({ hasText: order.orderNumber }).click();
     await expect(page.getByTestId("order-number")).toHaveText(order.orderNumber);
 
-    // Customer can cancel before packing; stock is released.
+    // Confirmed orders are cancelled on request (staff decide); the stock stays held meanwhile.
     const before = await db.inventory.findFirstOrThrow({
       where: { variant: { sku: order.items[0]!.sku } },
     });
-    await page.getByRole("button", { name: "Cancel order" }).click();
-    await page.getByRole("alertdialog").getByRole("button", { name: "Cancel order" }).click();
-    await expect(page.getByTestId("order-status")).toHaveText("Cancelled");
+    await page.getByRole("button", { name: "Request cancellation" }).click();
+    await page.getByLabel("Reason (optional)").fill("Ordered the wrong size");
+    await page.getByRole("button", { name: "Send request" }).click();
+    await expect(page.getByTestId("order-status")).toHaveText("Cancellation requested");
+    await expect(page.getByTestId("order-request")).toContainText("Ordered the wrong size");
     const after = await db.inventory.findFirstOrThrow({
       where: { variant: { sku: order.items[0]!.sku } },
     });
-    // The hold is released: available goes up, physical stock is unchanged.
-    expect(after.quantityOnHand - after.quantityReserved).toBe(
-      before.quantityOnHand - before.quantityReserved + order.items[0]!.quantity,
-    );
-    expect(after.quantityOnHand).toBe(before.quantityOnHand);
+    expect(after.quantityReserved).toBe(before.quantityReserved);
+    await page.getByRole("button", { name: "Withdraw request" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "Withdraw request" }).click();
+    await expect(page.getByTestId("order-status")).toHaveText("Confirmed");
   });
 
   test("guest checkout prevents double submission", async ({ page }) => {

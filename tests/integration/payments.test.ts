@@ -13,7 +13,7 @@ import {
   expireStalePendingOrders,
   reconcileOrderPayments,
 } from "@/server/modules/payments/payments";
-import { apiRequest, params } from "../helpers/auth";
+import { apiRequest, params, createAdmin } from "../helpers/auth";
 import { cartWith, checkout, checkoutBody } from "../helpers/checkout";
 import { makeProduct } from "../helpers/fixtures";
 
@@ -156,7 +156,8 @@ describe("Razorpay checkout callback", () => {
     const res = await verify(failed);
     expect((await res.json()).data.outcome).toBe("failed");
     let saved = await order(o.orderNumber);
-    expect(saved).toMatchObject({ status: "PENDING", paymentStatus: "FAILED" });
+    // The order is still payable (stock held) until the window lapses.
+    expect(saved).toMatchObject({ status: "PAYMENT_FAILED", paymentStatus: "FAILED" });
     expect(saved.payments[0]!.status).toBe("FAILED");
     expect(await availableStock(o.variantId)).toBe(4);
 
@@ -429,7 +430,7 @@ describe("refunds", () => {
     expect((await order(o.orderNumber)).refundedPaise).toBeLessThanOrEqual(o.totalPaise);
   });
 
-  it("auto-refunds when a customer cancels a paid order", async () => {
+  it("refunds in full once staff approve a customer's cancellation of a paid order", async () => {
     const o = await paidOrder();
     const res = await cancelRoute.POST(
       apiRequest(`/api/orders/${o.orderNumber}/cancel`, {
@@ -439,8 +440,20 @@ describe("refunds", () => {
       params({ orderNumber: o.orderNumber }),
     );
     expect(res.status).toBe(200);
+    expect((await res.json()).data.outcome).toBe("requested");
+    expect((await order(o.orderNumber)).status).toBe("CANCELLATION_REQUESTED");
+    expect(await db.refund.count()).toBe(0); // nothing refunded before a decision
+    const { approveRequest } = await import("@/server/modules/orders/requests");
+    const { user } = await createAdmin();
+    const request = await db.orderRequest.findFirstOrThrow({ where: { orderId: o.orderId } });
+    await approveRequest(request.id, null, { id: user.id });
     const saved = await order(o.orderNumber);
     expect(saved.status).toBe("REFUNDED");
+    expect(saved.statusHistory.map((h) => h.toStatus).slice(-3)).toEqual([
+      "CANCELLED",
+      "REFUND_PENDING",
+      "REFUNDED",
+    ]);
     expect(saved.refunds[0]!.status).toBe("PROCESSED");
     expect(await availableStock(o.variantId)).toBe(5);
   });

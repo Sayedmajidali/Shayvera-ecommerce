@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   TicketPercent,
   Users,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/server/modules/auth/permissions";
@@ -18,6 +19,12 @@ import type { Permission } from "@/server/modules/auth/permissions";
 export const ADMIN_LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, permission: "DASHBOARD_VIEW" },
   { href: "/admin/orders", label: "Orders", icon: ClipboardList, permission: "ORDERS_VIEW" },
+  {
+    href: "/admin/requests",
+    label: "Cancellations & returns",
+    icon: Undo2,
+    permission: "RETURNS_MANAGE",
+  },
   { href: "/admin/products", label: "Products", icon: Package, permission: "CATALOG_MANAGE" },
   {
     href: "/admin/categories",

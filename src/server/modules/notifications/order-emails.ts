@@ -8,8 +8,14 @@ export const ORDER_EMAIL_KINDS = [
   "confirmed",
   "cancelled",
   "shipped",
+  "out_for_delivery",
   "delivered",
   "refunded",
+  "cancellation_requested",
+  "return_requested",
+  "return_approved",
+  "request_rejected",
+  "returned",
 ] as const;
 export type OrderEmailKind = (typeof ORDER_EMAIL_KINDS)[number];
 
@@ -23,8 +29,14 @@ const SUBJECT: Record<OrderEmailKind, (n: string) => string> = {
   confirmed: (n) => `Order ${n} confirmed`,
   cancelled: (n) => `Order ${n} cancelled`,
   shipped: (n) => `Order ${n} is on its way`,
+  out_for_delivery: (n) => `Order ${n} is out for delivery`,
   delivered: (n) => `Order ${n} delivered`,
   refunded: (n) => `Refund issued for order ${n}`,
+  cancellation_requested: (n) => `We received your cancellation request for ${n}`,
+  return_requested: (n) => `We received your return request for ${n}`,
+  return_approved: (n) => `Your return for ${n} is approved`,
+  request_rejected: (n) => `Update on your request for order ${n}`,
+  returned: (n) => `We received your return for ${n}`,
 };
 
 /**
@@ -49,7 +61,16 @@ export async function renderOrderEmail(
     confirmed: `Thank you for your order! ${order.paymentMethod === "COD" ? "Please keep the exact amount ready for Cash on Delivery." : "We’ve received your payment."}`,
     cancelled: `Your order has been cancelled.${order.cancelReason ? ` Reason: ${order.cancelReason}.` : ""}`,
     shipped: `Good news — your order has shipped${shipment ? ` via ${shipment.carrier}${shipment.trackingNumber ? ` (tracking ${shipment.trackingNumber})` : ""}` : ""}.`,
+    out_for_delivery: "Your order is out for delivery today. Please keep your phone handy.",
     delivered: "Your order has been delivered. We hope you enjoy it!",
+    cancellation_requested:
+      "We’ve received your request to cancel this order. Our team will review it shortly and email you the outcome.",
+    return_requested:
+      "We’ve received your return request. Our team will review it and email you the next steps.",
+    return_approved: `Your return has been approved.${extra ? ` ${extra}` : ""} We’ll confirm once we receive the items; any refund follows after inspection.`,
+    request_rejected: `We couldn’t approve your request.${extra ? ` ${extra}` : ""} Reply to this email if you have questions.`,
+    returned:
+      "We’ve received your returned items. Any refund will be processed and confirmed by email.",
     refunded: `A refund has been issued${extra ? ` (${extra})` : ""}. It typically reaches your account in 5–7 business days.`,
   };
   const url = orderUrl(order);

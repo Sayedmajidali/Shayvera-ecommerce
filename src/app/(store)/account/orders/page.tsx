@@ -9,7 +9,7 @@ import { Pagination } from "@/components/store/pagination";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import { requireUserPage } from "@/server/modules/auth/session";
-import { ORDER_STATUS_LABEL } from "@/server/modules/orders/order-status";
+import { ORDER_STATUS_LABEL, ORDER_STATUS_TONE } from "@/server/modules/orders/order-status";
 import { listCustomerOrders } from "@/server/modules/orders/orders";
 
 export const metadata: Metadata = { title: "My orders", robots: { index: false } };
@@ -67,19 +67,7 @@ export default async function OrdersPage({ searchParams }: PageProps<"/account/o
                   · {o.items.reduce((s, i) => s + i.quantity, 0)} item(s)
                 </p>
               </div>
-              <Badge
-                variant={
-                  o.status === "CANCELLED"
-                    ? "destructive"
-                    : o.status === "DELIVERED"
-                      ? "success"
-                      : o.status === "PENDING"
-                        ? "warning"
-                        : "brand"
-                }
-              >
-                {ORDER_STATUS_LABEL[o.status]}
-              </Badge>
+              <Badge variant={ORDER_STATUS_TONE[o.status]}>{ORDER_STATUS_LABEL[o.status]}</Badge>
               <p className="w-24 text-right font-semibold tabular-nums">
                 {formatINR(o.totalPaise)}
               </p>

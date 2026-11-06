@@ -434,3 +434,48 @@
   no-store-PIN skipped, endpoint answers for cart and Buy now without rates, PIN validation), +1 E2E (estimate, COD
   disabled, unserved PIN blocks ordering, order records the check).
 - Results: unit 107 · integration 172 · E2E 37 — all passing; lint, typecheck clean.
+
+## v2 Phase 7 — Order lifecycle, cancellation & return requests ✅
+
+- **14 order statuses** (migration `order_lifecycle_requests`, enum values added in place): `PENDING` (pending payment),
+  `PAYMENT_FAILED`, `CONFIRMED`, `PROCESSING`, `READY_TO_SHIP`, `SHIPPED`, `OUT_FOR_DELIVERY`, `DELIVERED`,
+  `CANCELLATION_REQUESTED`, `CANCELLED`, `RETURN_REQUESTED`, `RETURNED`, `REFUND_PENDING`, `REFUNDED`. One transition table
+  plus shared groups (awaiting payment, before handover, sold, invoiceable, request-driven), labels, badge tones and
+  progress mapping in `order-status.ts`; every caller (dashboard, invoices, customers, filters, badges) uses them.
+  Payment, shipment and refund states remain separate records.
+- **Payments**: a verified failed attempt moves `PENDING → PAYMENT_FAILED`; the order stays payable (stock held) until
+  the window lapses; a later capture confirms it; expiry cancels both states.
+- **Stock**: deduction now happens at `READY_TO_SHIP` (idempotent at `SHIPPED`); cancelling a packed-but-unshipped
+  order puts the units back (ledger `ORDER_CANCELLED`); returns restock only the quantities staff enter on receipt
+  (ledger `RETURN`).
+- **Refunds**: a full refund of a cancelled/returned/delivered order goes `REFUND_PENDING → REFUNDED` on settlement; a
+  failed refund keeps `REFUND_PENDING` and flags the order for attention.
+- **Requests** (`OrderRequest`, one open per order via a partial unique index): customers request cancellation of
+  accepted orders before handover (unpaid orders still cancel instantly) or a return of delivered items within the
+  return window (Settings → "Return window after delivery", default 2 days, matching the existing 48-hour policy) and can
+  withdraw pending requests. Staff approve/reject with notes (customer emailed), and record received returns with
+  per-line restock. Approving a paid online cancellation needs refund permission; restocking needs inventory permission;
+  staff status changes are blocked while a request is open. Every decision is audit-logged and compare-and-set.
+- **Side-effect guard**: returning to an earlier status (request rejected/withdrawn, failed delivery attempt) does not
+  repeat first-time effects (emails, sales counts, timestamps — so a rejected return never resets the return window).
+  Transition emails are deduplicated per transition event.
+- **UI**: customer order page — progress (Confirmed / Packed / Shipped / Delivered), request banners, "Request
+  cancellation", "Request a return" (item + quantity picker), "Withdraw request"; admin — "Cancellations & returns" queue
+  (`/admin/requests`), request panel on the order page (approve / approve & refund / reject / mark received with
+  restock), new statuses in filters, status menu and badges. New emails: out for delivery, cancellation requested, return
+  requested / approved / received, request rejected.
+- **Bugs caught by the new tests and fixed**: the side-effect guard initially also suppressed the emails for approved
+  cancellations and received returns.
+- **Deferred to Phase 9 (by design)**: cancelling a courier shipment automatically when a cancellation is approved (for
+  now staff get a "cancel it with the courier" reminder when a shipment record exists), and RTO detection from courier
+  events.
+- **Tests**: +27 unit (all statuses labelled/toned, 23 new allowed/forbidden transition cases, every status reachable,
+  groups), +11 integration (`order-lifecycle.test.ts`: READY_TO_SHIP deduction and email counts across a failed delivery
+  attempt; immediate vs requested cancellation; packed-order cancellation restock; reject without repeated effects and
+  double-decision refusal; withdraw; concurrent requests → one; no cancellation after handover; staff status change
+  blocked; support cannot approve paid cancellation; full return → partial restock → refund chain with emails; rejected
+  return keeps delivery time; return window and restock permission; PAYMENT_FAILED expiry; approved cancellation email),
+  +2 E2E (staff approve a cancellation from the queue; customer return → approve → receive without restock). Existing
+  tests updated where behaviour changed by design (failed payment status, cancellation now via approval, per-event email
+  dedupe).
+- Results: unit 134 · integration 183 · E2E 39 — all passing; lint, typecheck, build clean.

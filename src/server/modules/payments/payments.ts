@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { Prisma } from "@prisma/client";
+import { Prisma, type OrderStatus } from "@prisma/client";
 import { db, type Tx } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/server/platform/logger";
@@ -11,6 +11,11 @@ import {
 } from "@/server/modules/payments/signature";
 import { reserveStock } from "@/server/modules/inventory/inventory";
 import { transitionOrder, type Actor } from "@/server/modules/orders/orders";
+import { AWAITING_PAYMENT } from "@/server/modules/orders/order-status";
+
+/** Order statuses in which a full refund moves the order to REFUND_PENDING / REFUNDED. */
+const REFUND_STARTABLE: OrderStatus[] = ["CANCELLED", "RETURNED", "DELIVERED"];
+const REFUND_COMPLETABLE: OrderStatus[] = [...REFUND_STARTABLE, "REFUND_PENDING"];
 
 const SYSTEM: Actor = { type: "SYSTEM" };
 const DUPLICATE_PREFIX = "[duplicate payment] ";
@@ -38,7 +43,7 @@ export async function startOnlinePayment(orderId: string): Promise<OnlinePayment
     throw new AppError("INVALID_STATE", "This order is not an online-payment order");
   if (order.paymentStatus === "PAID")
     throw new AppError("INVALID_STATE", "This order is already paid");
-  if (order.status !== "PENDING")
+  if (!AWAITING_PAYMENT.includes(order.status))
     throw new AppError("INVALID_STATE", "This order can no longer be paid");
   if (order.paymentExpiresAt && order.paymentExpiresAt < new Date()) {
     throw new AppError("INVALID_STATE", "The payment window for this order has expired");
@@ -208,7 +213,7 @@ export async function applyCapturedPayment(
       return { outcome: "refund_required", orderId: order.id };
     }
 
-    if (order.status === "PENDING") {
+    if (AWAITING_PAYMENT.includes(order.status)) {
       await tx.order.update({
         where: { id: order.id },
         data: { paymentStatus: "PAID", paymentExpiresAt: null },
@@ -319,8 +324,16 @@ export async function applyFailedPayment(gp: GatewayPayment) {
         instrument: gp.method,
       },
     });
-    if (payment.order.status === "PENDING" && payment.order.paymentStatus !== "PAID") {
+    if (AWAITING_PAYMENT.includes(payment.order.status) && payment.order.paymentStatus !== "PAID") {
       await tx.order.update({ where: { id: payment.orderId }, data: { paymentStatus: "FAILED" } });
+      // The order stays payable (stock held) until the payment window lapses.
+      if (payment.order.status === "PENDING")
+        await transitionOrder(tx, {
+          orderId: payment.orderId,
+          to: "PAYMENT_FAILED",
+          actor: SYSTEM,
+          note: gp.errorDescription?.slice(0, 200) ?? "Payment attempt failed",
+        });
     }
   });
 }
@@ -532,7 +545,7 @@ export async function reconcileOrderPayments(orderId: string): Promise<"paid" | 
 export async function expireStalePendingOrders(limit = 50) {
   const stale = await db.order.findMany({
     where: {
-      status: "PENDING",
+      status: { in: [...AWAITING_PAYMENT] },
       paymentMethod: "RAZORPAY",
       paymentStatus: { not: "PAID" },
       paymentExpiresAt: { lt: new Date() },
@@ -594,6 +607,15 @@ export async function createRefund(p: {
       UPDATE "Order" SET "refundedPaise" = "refundedPaise" + ${p.amountPaise}
       WHERE id = ${order.id} AND "refundedPaise" + ${p.amountPaise} <= "totalPaise"`;
     if (reserved === 0) throw new AppError("BUSINESS_RULE", "Refund exceeds the refundable amount");
+    // A full refund of a cancelled/returned/delivered order puts it in REFUND_PENDING until settled.
+    const after = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
+    if (after.refundedPaise >= after.totalPaise && REFUND_STARTABLE.includes(after.status))
+      await transitionOrder(tx, {
+        orderId: order.id,
+        to: "REFUND_PENDING",
+        actor: p.actor,
+        note: p.reason.slice(0, 200),
+      });
     return tx.refund.create({
       data: {
         orderId: order.id,
@@ -650,10 +672,15 @@ async function settleRefund(refundId: string, success: boolean, failureReason: s
         : { status: "FAILED", failureReason: failureReason?.slice(0, 300) ?? null },
     });
     if (!success) {
-      await tx.order.update({
+      const o = await tx.order.update({
         where: { id: r.orderId },
         data: { refundedPaise: { decrement: r.amountPaise } },
       });
+      if (o.status === "REFUND_PENDING")
+        await tx.order.update({
+          where: { id: o.id },
+          data: { requiresAttention: true, attentionReason: "Refund failed — retry the refund" },
+        });
       return;
     }
     const order = await tx.order.findUniqueOrThrow({ where: { id: r.orderId } });
@@ -668,7 +695,7 @@ async function settleRefund(refundId: string, success: boolean, failureReason: s
         data: { status: full ? "REFUNDED" : "PARTIALLY_REFUNDED" },
       });
     }
-    if (full && (order.status === "CANCELLED" || order.status === "DELIVERED")) {
+    if (full && REFUND_COMPLETABLE.includes(order.status)) {
       await transitionOrder(tx, {
         orderId: order.id,
         to: "REFUNDED",

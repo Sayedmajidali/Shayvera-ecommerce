@@ -54,6 +54,7 @@ export type SettingsValues = {
   defaultPackageLengthMm: number;
   defaultPackageBreadthMm: number;
   defaultPackageHeightMm: number;
+  returnWindowDays: number;
 };
 
 const r = (p: number | null) => (p === null ? "" : paiseToRupeesString(p));
@@ -367,6 +368,11 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
           {field("orderPrefix", "Order number prefix", { maxLength: 6, className: "uppercase" })}
           {field("invoicePrefix", "Invoice prefix", { maxLength: 6, className: "uppercase" })}
           {field("lowStockThreshold", "Default low-stock alert", { type: "number", min: 0 })}
+          {field("returnWindowDays", "Return window after delivery (days)", {
+            type: "number",
+            min: 0,
+            max: 60,
+          })}
         </CardContent>
       </Card>
 

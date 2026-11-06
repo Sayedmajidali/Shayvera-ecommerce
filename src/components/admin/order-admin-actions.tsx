@@ -37,6 +37,8 @@ type Props = {
   refundablePaise: number;
   hasInvoice: boolean;
   requiresAttention: boolean;
+  /** Whether the order's status allows a tax invoice. */
+  invoiceable: boolean;
   /** The viewer's admin permissions; controls are hidden when the server would refuse them. */
   permissions: string[];
 };
@@ -90,15 +92,26 @@ export function OrderAdminActions(p: Props) {
 
   const can = (perm: string) => p.permissions.includes(perm);
   const paidOnline = p.paymentMethod === "RAZORPAY" && p.paymentStatus === "PAID";
-  const transitions = can("ORDERS_MANAGE")
-    ? p.allowed.filter(
-        (s) =>
-          s !== "REFUNDED" &&
-          !(s === "CONFIRMED" && p.paymentMethod === "RAZORPAY") &&
-          !(s === "CANCELLED" && paidOnline && !can("PAYMENTS_REFUND")) &&
-          !(s === "SHIPPED" && !can("SHIPPING_MANAGE")),
-      )
-    : [];
+  const requestDriven: string[] = [
+    "PAYMENT_FAILED",
+    "CANCELLATION_REQUESTED",
+    "RETURN_REQUESTED",
+    "RETURNED",
+    "REFUND_PENDING",
+    "REFUNDED",
+  ];
+  // Orders with an open request, or whose status follows a refund, are handled elsewhere.
+  const locked = requestDriven.includes(p.status) && p.status !== "PAYMENT_FAILED";
+  const transitions =
+    can("ORDERS_MANAGE") && !locked
+      ? p.allowed.filter(
+          (s) =>
+            !requestDriven.includes(s) &&
+            !(s === "CONFIRMED" && p.paymentMethod === "RAZORPAY") &&
+            !(s === "CANCELLED" && paidOnline && !can("PAYMENTS_REFUND")) &&
+            !(s === "SHIPPED" && !can("SHIPPING_MANAGE")),
+        )
+      : [];
 
   return (
     <div className="grid gap-4">
@@ -113,7 +126,7 @@ export function OrderAdminActions(p: Props) {
               <SelectContent>
                 {transitions.map((s) => (
                   <SelectItem key={s} value={s}>
-                    {s.charAt(0) + s.slice(1).toLowerCase()}
+                    {(s.charAt(0) + s.slice(1).toLowerCase()).replace(/_/g, " ")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -173,11 +186,14 @@ export function OrderAdminActions(p: Props) {
       )}
 
       <div className="flex flex-wrap gap-2">
-        {can("SHIPPING_MANAGE") && ["CONFIRMED", "PROCESSING", "SHIPPED"].includes(p.status) && (
-          <Button variant="outline" size="sm" onClick={() => setShipOpen(true)}>
-            <Truck /> Add tracking
-          </Button>
-        )}
+        {can("SHIPPING_MANAGE") &&
+          ["CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "OUT_FOR_DELIVERY"].includes(
+            p.status,
+          ) && (
+            <Button variant="outline" size="sm" onClick={() => setShipOpen(true)}>
+              <Truck /> Add tracking
+            </Button>
+          )}
         {can("PAYMENTS_REFUND") &&
           (p.paymentStatus === "PAID" || p.paymentStatus === "PARTIALLY_REFUNDED") &&
           p.refundablePaise > 0 && (
@@ -185,27 +201,29 @@ export function OrderAdminActions(p: Props) {
               <RotateCcw /> Refund
             </Button>
           )}
-        {can("ORDERS_MANAGE") && p.paymentMethod === "RAZORPAY" && p.status === "PENDING" && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy !== null}
-            onClick={() =>
-              run(
-                "reconcile",
-                () =>
-                  apiFetch(`/api/admin/orders/${p.orderId}/reconcile`, {
-                    method: "POST",
-                    body: {},
-                  }),
-                "Payment status refreshed from Razorpay",
-              )
-            }
-          >
-            <RefreshCw /> Check payment status
-          </Button>
-        )}
-        {["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "REFUNDED"].includes(p.status) &&
+        {can("ORDERS_MANAGE") &&
+          p.paymentMethod === "RAZORPAY" &&
+          (p.status === "PENDING" || p.status === "PAYMENT_FAILED") && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy !== null}
+              onClick={() =>
+                run(
+                  "reconcile",
+                  () =>
+                    apiFetch(`/api/admin/orders/${p.orderId}/reconcile`, {
+                      method: "POST",
+                      body: {},
+                    }),
+                  "Payment status refreshed from Razorpay",
+                )
+              }
+            >
+              <RefreshCw /> Check payment status
+            </Button>
+          )}
+        {p.invoiceable &&
           (p.hasInvoice ? (
             <Button asChild variant="outline" size="sm">
               <a href={`/invoice/${p.orderNumber}`} target="_blank" rel="noreferrer">

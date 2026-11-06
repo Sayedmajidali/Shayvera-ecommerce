@@ -17,6 +17,7 @@ import { stateName } from "@/lib/india";
 import { formatINR } from "@/lib/money";
 import { getCustomer } from "@/server/modules/customers/admin-customers";
 import { requireAdminPage } from "@/server/modules/auth/session";
+import { SOLD_STATUSES } from "@/server/modules/orders/order-status";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -27,7 +28,7 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
   const c = await getCustomer(id).catch(() => null);
   if (!c) notFound();
   const spent = c.orders
-    .filter((o) => o.status !== "CANCELLED" && o.status !== "PENDING")
+    .filter((o) => SOLD_STATUSES.includes(o.status))
     .reduce((s, o) => s + o.totalPaise, 0);
   return (
     <>

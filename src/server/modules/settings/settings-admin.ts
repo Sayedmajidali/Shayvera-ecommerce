@@ -90,6 +90,7 @@ export const settingsSchema = z
       .min(1, "Must be positive")
       .max(2000)
       .optional(),
+    returnWindowDays: z.coerce.number().int().min(0).max(60).optional(),
     defaultPackageHeightMm: z.coerce.number().int().min(1, "Must be positive").max(2000).optional(),
   })
   .superRefine((s, ctx) => {

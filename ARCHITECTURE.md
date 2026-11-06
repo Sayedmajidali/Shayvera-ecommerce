@@ -114,8 +114,9 @@ module's tables for writes except through that module. Provider-specific code li
 1. _Reserve_ at order placement (COD and online): conditional increment of `quantityReserved`; an
    `InventoryReservation` row per line (online orders expire after `PAYMENT_EXPIRY_MINUTES`).
 2. _Deduct_ when the shipment is handed over: `onHand −= q`, `reserved −= q`, reservation `CONSUMED`, ledger
-   `ORDER_FULFILLED`. Trigger = entering a status in `STOCK_DEDUCT_STATUSES` — `SHIPPED` since Phase 5,
-   `READY_TO_SHIP` once Phase 7 adds it.
+   `ORDER_FULFILLED`. Trigger = entering `READY_TO_SHIP` (or `SHIPPED` when that step is skipped); deduction is
+   idempotent. Cancelling a packed order that never reached the courier puts the units back (ledger
+   `ORDER_CANCELLED`).
 3. _Release_ on cancellation before deduction or payment expiry: `reserved −= q`, reservation `RELEASED`.
 4. Returns are **not** restocked automatically; the admin records per-line restock when goods are received and
    inspected (ledger `RETURN`).

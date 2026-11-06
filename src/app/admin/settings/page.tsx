@@ -48,6 +48,7 @@ export default async function SettingsPage() {
           defaultPackageLengthMm: s.defaultPackageLengthMm,
           defaultPackageBreadthMm: s.defaultPackageBreadthMm,
           defaultPackageHeightMm: s.defaultPackageHeightMm,
+          returnWindowDays: s.returnWindowDays,
         }}
       />
     </>
