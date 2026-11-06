@@ -50,6 +50,10 @@ export type SettingsValues = {
   orderPrefix: string;
   invoicePrefix: string;
   lowStockThreshold: number;
+  defaultPackageWeightGrams: number;
+  defaultPackageLengthMm: number;
+  defaultPackageBreadthMm: number;
+  defaultPackageHeightMm: number;
 };
 
 const r = (p: number | null) => (p === null ? "" : paiseToRupeesString(p));
@@ -333,6 +337,24 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
                 Object.entries(errors).find(([k]) => k.startsWith("codBlockedPincodes"))?.[1]
               }
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Default package</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-5">
+          <p className="text-muted-foreground text-sm">
+            Used for courier rates and shipments when a product variant has no packed weight or box
+            size of its own.
+          </p>
+          <div className="grid gap-5 sm:grid-cols-4">
+            {field("defaultPackageWeightGrams", "Packed weight (g)", { type: "number", min: 1 })}
+            {field("defaultPackageLengthMm", "Length (mm)", { type: "number", min: 1 })}
+            {field("defaultPackageBreadthMm", "Breadth (mm)", { type: "number", min: 1 })}
+            {field("defaultPackageHeightMm", "Height (mm)", { type: "number", min: 1 })}
           </div>
         </CardContent>
       </Card>

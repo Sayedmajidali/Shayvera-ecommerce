@@ -19,6 +19,7 @@
     "db:reset": "prisma migrate reset",
     "db:studio": "prisma studio",
     "admin:create": "tsx --conditions=react-server scripts/create-admin.ts",
+    "catalog:import-woo": "tsx --conditions=react-server scripts/import-woocommerce.ts",
     "jobs:reconcile": "tsx --conditions=react-server scripts/reconcile-payments.ts",
     "worker": "tsx --conditions=react-server scripts/worker.ts",
     "test": "vitest run --project unit",

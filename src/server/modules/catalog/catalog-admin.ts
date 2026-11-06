@@ -3,6 +3,7 @@ import { db, type Tx } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { slugify } from "@/lib/validation/common";
 import type {
+  AttributeInput,
   CategoryInput,
   ProductCreateInput,
   ProductUpdateInput,
@@ -16,7 +17,7 @@ type Actor = { id: string; ip?: string | null };
 
 // ───────────────────────────── Helpers ─────────────────────────────
 
-async function uniqueSlug(
+export async function uniqueSlug(
   base: string,
   exists: (slug: string) => Promise<boolean>,
 ): Promise<string> {
@@ -189,6 +190,7 @@ export async function getProductAdmin(id: string) {
       category: true,
       images: { orderBy: { sortOrder: "asc" } },
       variants: { orderBy: { sortOrder: "asc" }, include: { inventory: true } },
+      attributes: { orderBy: { sortOrder: "asc" } },
       _count: { select: { orderItems: true } },
     },
   });
@@ -205,6 +207,15 @@ async function assertSkusAvailable(tx: Tx, variants: VariantInput[], productId?:
     select: { sku: true },
   });
   if (clash) throw new AppError("CONFLICT", `SKU ${clash.sku} is already used by another product`);
+}
+
+/** Replaces a product's specification rows (order = position in the list). */
+async function replaceAttributes(tx: Tx, productId: string, rows: AttributeInput) {
+  await tx.productAttribute.deleteMany({ where: { productId } });
+  if (rows.length)
+    await tx.productAttribute.createMany({
+      data: rows.map((r, i) => ({ productId, name: r.name, value: r.value, sortOrder: i })),
+    });
 }
 
 export async function createProduct(input: ProductCreateInput, actor: Actor) {
@@ -226,10 +237,11 @@ export async function createProduct(input: ProductCreateInput, actor: Actor) {
 
   return db.$transaction(async (tx) => {
     await assertSkusAvailable(tx, input.variants);
-    const { variants, ...data } = input;
+    const { variants, attributes, ...data } = input;
     const product = await tx.product.create({
       data: { ...data, slug },
     });
+    if (attributes?.length) await replaceAttributes(tx, product.id, attributes);
     for (const [i, v] of variants.entries()) {
       await createVariantTx(tx, product.id, v, i, actor);
     }
@@ -265,6 +277,9 @@ async function createVariantTx(
       pricePaise: v.pricePaise,
       compareAtPricePaise: v.compareAtPricePaise ?? null,
       weightGrams: v.weightGrams ?? null,
+      lengthMm: v.lengthMm ?? null,
+      breadthMm: v.breadthMm ?? null,
+      heightMm: v.heightMm ?? null,
       isActive: v.isActive,
       isDefault: sortOrder === 0,
       sortOrder,
@@ -308,7 +323,9 @@ export async function updateProduct(id: string, input: ProductUpdateInput, actor
       throw new AppError("BUSINESS_RULE", "Add an active variant before publishing");
   }
   return db.$transaction(async (tx) => {
-    const product = await tx.product.update({ where: { id }, data: input });
+    const { attributes, ...data } = input;
+    const product = await tx.product.update({ where: { id }, data });
+    if (attributes) await replaceAttributes(tx, id, attributes);
     const changed = Object.keys(input).filter(
       (k) =>
         JSON.stringify((existing as Record<string, unknown>)[k]) !==
@@ -433,6 +450,9 @@ export async function updateVariant(variantId: string, input: VariantInput, acto
         pricePaise: input.pricePaise,
         compareAtPricePaise: input.compareAtPricePaise ?? null,
         weightGrams: input.weightGrams ?? null,
+        lengthMm: input.lengthMm ?? null,
+        breadthMm: input.breadthMm ?? null,
+        heightMm: input.heightMm ?? null,
         isActive: input.isActive,
       },
     });

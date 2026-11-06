@@ -42,7 +42,20 @@ export type AdminVariant = {
   isActive: boolean;
   stock: number;
   lowStockThreshold: number;
+  weightGrams: number | null;
+  lengthMm: number | null;
+  breadthMm: number | null;
+  heightMm: number | null;
 };
+
+const PACKAGE_FIELDS = [
+  ["weightGrams", "Packed weight (g)"],
+  ["lengthMm", "Length (mm)"],
+  ["breadthMm", "Breadth (mm)"],
+  ["heightMm", "Height (mm)"],
+] as const;
+type PackageKey = (typeof PACKAGE_FIELDS)[number][0];
+const optInt = (s: string) => (s.trim() ? Number(s) : null);
 
 type Form = {
   sku: string;
@@ -53,7 +66,7 @@ type Form = {
   isActive: boolean;
   lowStockThreshold: string;
   initialStock: string;
-};
+} & Record<PackageKey, string>;
 
 export function VariantsEditor({
   productId,
@@ -84,6 +97,10 @@ export function VariantsEditor({
             isActive: true,
             lowStockThreshold: "5",
             initialStock: "0",
+            weightGrams: "",
+            lengthMm: "",
+            breadthMm: "",
+            heightMm: "",
           }
         : {
             sku: v.sku,
@@ -94,6 +111,10 @@ export function VariantsEditor({
             isActive: v.isActive,
             lowStockThreshold: String(v.lowStockThreshold),
             initialStock: "0",
+            weightGrams: v.weightGrams?.toString() ?? "",
+            lengthMm: v.lengthMm?.toString() ?? "",
+            breadthMm: v.breadthMm?.toString() ?? "",
+            heightMm: v.heightMm?.toString() ?? "",
           },
     );
   };
@@ -127,6 +148,10 @@ export function VariantsEditor({
             compareAtPricePaise,
             isActive: form.isActive,
             lowStockThreshold: Number(form.lowStockThreshold || 0),
+            weightGrams: optInt(form.weightGrams),
+            lengthMm: optInt(form.lengthMm),
+            breadthMm: optInt(form.breadthMm),
+            heightMm: optInt(form.heightMm),
             ...(isNew ? { initialStock: Number(form.initialStock || 0) } : {}),
           },
         },
@@ -362,6 +387,32 @@ export function VariantsEditor({
                   <Label htmlFor="ve-active">Active</Label>
                 </div>
               </div>
+              <fieldset className="grid gap-2">
+                <legend className="mb-1 text-sm font-medium">Shipping package</legend>
+                <p className="text-muted-foreground text-xs">
+                  Packed weight and box size for courier rates. Leave empty to use the store’s
+                  default package (Settings).
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {PACKAGE_FIELDS.map(([key, label]) => (
+                    <div key={key} className="grid gap-1.5">
+                      <Label htmlFor={`ve-${key}`} className="text-xs">
+                        {label}
+                      </Label>
+                      <Input
+                        id={`ve-${key}`}
+                        type="number"
+                        min={1}
+                        inputMode="numeric"
+                        value={form[key]}
+                        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                        aria-invalid={!!errors[key]}
+                      />
+                      <FieldError message={errors[key]} />
+                    </div>
+                  ))}
+                </div>
+              </fieldset>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="ghost" onClick={() => setEditing(null)}>
                   Cancel

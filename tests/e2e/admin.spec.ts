@@ -152,3 +152,39 @@ test.describe("staff & roles", () => {
     await ctx.close();
   });
 });
+
+test.describe("specifications and packages", () => {
+  test("admin adds a specification and a variant package; the storefront shows the specification", async ({
+    page,
+  }) => {
+    const product = await db.product.findFirstOrThrow({
+      where: { slug: "cashews-w320" },
+      include: { variants: { orderBy: { sortOrder: "asc" }, take: 1 } },
+    });
+    await login(page, ADMIN, `/admin/products/${product.id}`);
+
+    const editor = page.getByTestId("attributes-editor");
+    await editor.getByRole("button", { name: "Add specification" }).click();
+    const n = await editor.getByRole("textbox", { name: /name$/ }).count();
+    await editor.getByLabel(`Specification ${n} name`).fill("Grade");
+    await editor.getByLabel(`Specification ${n} value`).fill("W320 whole");
+    await page.getByRole("button", { name: "Save changes" }).click();
+    await expect(page.getByText("Product saved")).toBeVisible();
+
+    const sku = product.variants[0]!.sku;
+    await page.getByRole("button", { name: `Edit ${sku}` }).click();
+    await page.getByLabel("Packed weight (g)").fill("290");
+    await page.getByLabel("Length (mm)").fill("200");
+    await page.getByLabel("Breadth (mm)").fill("140");
+    await page.getByLabel("Height (mm)").fill("50");
+    await page.getByRole("button", { name: "Save variant" }).click();
+    await expect(page.getByText("Variant saved")).toBeVisible();
+    await expect
+      .poll(async () => (await db.productVariant.findUniqueOrThrow({ where: { sku } })).weightGrams)
+      .toBe(290);
+
+    await page.goto("/product/cashews-w320");
+    const specs = page.getByTestId("product-specifications");
+    await expect(specs.getByRole("row", { name: /Grade\s+W320 whole/ })).toBeVisible();
+  });
+});

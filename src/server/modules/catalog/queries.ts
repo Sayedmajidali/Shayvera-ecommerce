@@ -232,6 +232,7 @@ export const getProductBySlug = cache(async (slug: string) => {
     include: {
       category: { select: { id: true, name: true, slug: true } },
       images: { orderBy: { sortOrder: "asc" } },
+      attributes: { orderBy: { sortOrder: "asc" }, select: { name: true, value: true } },
       variants: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },

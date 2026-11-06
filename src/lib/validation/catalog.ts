@@ -8,6 +8,30 @@ const paise = (label: string) =>
     .min(0, `${label} cannot be negative`)
     .max(100_000_000, `${label} is too large`);
 
+const mm = (label: string) =>
+  z.coerce
+    .number()
+    .int(`${label} must be whole millimetres`)
+    .min(1, `${label} must be positive`)
+    .max(2000, `${label} is too large`)
+    .nullable()
+    .optional();
+
+/** Specification rows shown on the product page, in order. */
+export const attributesSchema = z
+  .array(
+    z.object({
+      name: trimmed(1, 60, "Attribute name"),
+      value: trimmed(1, 300, "Attribute value"),
+    }),
+  )
+  .max(30, "At most 30 specifications")
+  .refine(
+    (rows) => new Set(rows.map((r) => r.name.toLowerCase())).size === rows.length,
+    "Each specification name can be used once",
+  );
+export type AttributeInput = z.infer<typeof attributesSchema>;
+
 const GST_RATES_BPS = [0, 25, 300, 500, 1200, 1800, 2800, 4000] as const;
 
 export const categoryInputSchema = z.object({
@@ -43,7 +67,11 @@ export const variantInputSchema = z
     options: optionsSchema,
     pricePaise: paise("Price").refine((v) => v >= 100, "Price must be at least ₹1"),
     compareAtPricePaise: paise("Compare-at price").nullable().optional(),
-    weightGrams: z.coerce.number().int().min(0).max(100_000).nullable().optional(),
+    // Packed shipping weight (g) and box (mm). Empty = use the store default package.
+    weightGrams: z.coerce.number().int().min(1).max(100_000).nullable().optional(),
+    lengthMm: mm("Length"),
+    breadthMm: mm("Breadth"),
+    heightMm: mm("Height"),
     isActive: z.boolean().default(true),
     initialStock: z.coerce.number().int().min(0).max(1_000_000).optional(),
     lowStockThreshold: z.coerce.number().int().min(0).max(10_000).optional(),
@@ -51,7 +79,14 @@ export const variantInputSchema = z
   .refine((v) => !v.compareAtPricePaise || v.compareAtPricePaise > v.pricePaise, {
     message: "Compare-at price must be higher than the price",
     path: ["compareAtPricePaise"],
-  });
+  })
+  .refine(
+    (v) => {
+      const set = [v.lengthMm, v.breadthMm, v.heightMm].filter((x) => x != null).length;
+      return set === 0 || set === 3;
+    },
+    { message: "Enter all three box dimensions or none", path: ["lengthMm"] },
+  );
 export type VariantInput = z.infer<typeof variantInputSchema>;
 
 const productBase = z.object({
@@ -84,6 +119,7 @@ const productBase = z.object({
   isVegetarian: z.boolean().optional(),
   seoTitle: optionalTrimmed(70),
   seoDescription: optionalTrimmed(160),
+  attributes: attributesSchema.optional(),
 });
 
 export const productCreateSchema = productBase.extend({

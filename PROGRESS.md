@@ -344,3 +344,35 @@
   order), +2 unit (specifications), +5 E2E (wishlist sign-in redirect/save/remove, Buy now with cart unchanged,
   tracking without address, specifications table, protected wishlist page).
 - Results: unit 89 · integration 141 · E2E 35 — all passing; lint, typecheck clean.
+
+## v2 Phase 4 — Catalog: specifications, packages, WooCommerce import ✅
+
+- **Schema** (migration `catalog_attributes_packages`, additive): `ProductAttribute` (ordered name/value rows),
+  `ProductVariant.lengthMm/breadthMm/heightMm` (with existing `weightGrams`), store default package
+  (`defaultPackageWeightGrams/LengthMm/BreadthMm/HeightMm`), `Product.sourceRef` (unique). Database CHECK constraints
+  reject non-positive package values. (Generated with `prisma migrate diff` and applied with `migrate deploy`, because
+  `migrate dev` refused to run non-interactively; no data was reset.)
+- **Admin**: product form "Specifications" editor (add/reorder/remove, server-validated: ≤30 rows, unique names);
+  variant dialog "Shipping package" (packed weight + box, all-or-none); Settings → "Default package". Settings API keeps
+  these optional so older clients are unaffected.
+- **Storefront**: the specifications table now includes the product's own rows after brand/category/net quantity; a
+  custom row named like a built-in one replaces it.
+- **Shipping groundwork**: `computeShipmentPackage()` parcel estimate, courier unit conversion and volumetric weight
+  (used by Shiprocket in Phase 9).
+- **WooCommerce importer** (`npm run catalog:import-woo`): Store API (no credentials), pagination, variable products
+  (variation details fetched), HTML → plain text (entities decoded, scripts/markup dropped), prices from minor units,
+  attributes, categories (map option, match by slug/name, otherwise created **hidden**), images downloaded **only over
+  HTTPS from the source host** (no redirects, 10 MB cap) and passed through the admin upload validation/re-encode.
+  Products land as **DRAFT with zero stock**; idempotent via `sourceRef`; published products are never overwritten;
+  drafts refresh only with `--update-drafts`; slug/SKU clashes get suffixes; uniform prices are flagged as likely
+  placeholders; every import is audit-logged. Dry run by default.
+- **Verified against the live site** (sandbox database only): dry run mapped all 10 shayvera.in products; `--apply`
+  created 10 drafts with 17 real images re-encoded to WebP, the "Dry Fruits & Nuts" category hidden, stock 0, and
+  flagged the ₹64.98 placeholder price; a second run skipped all 10. Nothing was imported into any business database.
+- **Tests**: +11 unit (parcel estimate/units, HTML-to-text/entities/truncation, attribute rows in specifications),
+  +14 integration (importer: mapping, minor units, non-INR skip, dry run writes nothing, drafts/zero stock/variants/
+  attributes/hidden category/audit, image host and HTTPS enforcement, idempotency, draft refresh, published never
+  overwritten, slug/SKU clash, category map, placeholder flag, https-only source; admin API: attributes create/replace/
+  keep, validation, package clear, DB CHECK constraints, default package settings), +1 E2E (admin adds a specification
+  and variant package; storefront shows the row).
+- Results: unit 100 · integration 155 · E2E 36 — all passing; lint, typecheck, build clean.

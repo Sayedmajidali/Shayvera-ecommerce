@@ -48,3 +48,29 @@ describe("productSpecifications", () => {
     expect(rows.at(-1)?.value).toBe("Shayvera Foods Pvt Ltd");
   });
 });
+
+describe("productSpecifications with attributes", () => {
+  it("places custom rows after the identity rows and lets them replace a built-in row", () => {
+    const rows = productSpecifications(
+      {
+        ...base,
+        attributes: [
+          { name: "Grade", value: "W320" },
+          { name: "country of origin", value: "India (Kerala)" },
+          { name: "Empty", value: " " },
+        ],
+      },
+      { fssaiLicense: null, legalName: null, storeName: "Shayvera Foods" },
+    );
+    const labels = rows.map((r) => r.label);
+    expect(labels.slice(0, 5)).toEqual([
+      "Brand",
+      "Category",
+      "Net quantity",
+      "Grade",
+      "country of origin",
+    ]);
+    expect(labels).not.toContain("Country of origin");
+    expect(labels).not.toContain("Empty");
+  });
+});

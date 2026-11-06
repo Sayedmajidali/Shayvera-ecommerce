@@ -44,6 +44,10 @@ export default async function SettingsPage() {
           orderPrefix: s.orderPrefix,
           invoicePrefix: s.invoicePrefix,
           lowStockThreshold: s.lowStockThreshold,
+          defaultPackageWeightGrams: s.defaultPackageWeightGrams,
+          defaultPackageLengthMm: s.defaultPackageLengthMm,
+          defaultPackageBreadthMm: s.defaultPackageBreadthMm,
+          defaultPackageHeightMm: s.defaultPackageHeightMm,
         }}
       />
     </>

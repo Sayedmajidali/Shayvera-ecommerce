@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,6 +41,8 @@ export type ProductFormValues = {
   isVegetarian: boolean;
   seoTitle: string;
   seoDescription: string;
+  /** Specification rows shown on the product page, in order. */
+  attributes: { name: string; value: string }[];
 };
 
 type VariantRow = {
@@ -121,6 +123,10 @@ export function ProductForm({
       isVegetarian: v.isVegetarian,
       seoTitle: v.seoTitle,
       seoDescription: v.seoDescription,
+      // Blank rows are dropped; the server validates names/values and duplicates.
+      attributes: v.attributes
+        .map((a) => ({ name: a.name.trim(), value: a.value.trim() }))
+        .filter((a) => a.name || a.value),
     };
     if (mode === "create") {
       const variants = rows.map((r) => ({
@@ -433,6 +439,96 @@ export function ProductForm({
               onChange={(e) => set("storageInfo", e.target.value)}
               placeholder="e.g. Store in a cool, dry place. Keep airtight after opening."
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Specifications</CardTitle>
+          <CardDescription>
+            Extra rows for the product page table, e.g. “Grade: W320” or “Pack type: Zip pouch”.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3" data-testid="attributes-editor">
+          {v.attributes.map((a, i) => {
+            const update = (patch: Partial<{ name: string; value: string }>) =>
+              set(
+                "attributes",
+                v.attributes.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+              );
+            const move = (to: number) => {
+              const next = [...v.attributes];
+              const [row] = next.splice(i, 1);
+              next.splice(to, 0, row!);
+              set("attributes", next);
+            };
+            return (
+              <div key={i} className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
+                <Input
+                  aria-label={`Specification ${i + 1} name`}
+                  placeholder="Name"
+                  maxLength={60}
+                  value={a.name}
+                  onChange={(e) => update({ name: e.target.value })}
+                />
+                <Input
+                  aria-label={`Specification ${i + 1} value`}
+                  placeholder="Value"
+                  maxLength={300}
+                  value={a.value}
+                  onChange={(e) => update({ value: e.target.value })}
+                />
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={i === 0}
+                    onClick={() => move(i - 1)}
+                    aria-label={`Move specification ${i + 1} up`}
+                  >
+                    <ArrowUp />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={i === v.attributes.length - 1}
+                    onClick={() => move(i + 1)}
+                    aria-label={`Move specification ${i + 1} down`}
+                  >
+                    <ArrowDown />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() =>
+                      set(
+                        "attributes",
+                        v.attributes.filter((_, j) => j !== i),
+                      )
+                    }
+                    aria-label={`Remove specification ${i + 1}`}
+                  >
+                    <Trash2 />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          <FieldError message={errors.attributes} />
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={v.attributes.length >= 30}
+              onClick={() => set("attributes", [...v.attributes, { name: "", value: "" }])}
+            >
+              <Plus /> Add specification
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -142,6 +142,18 @@ model User {
   @@map("user")
 }
 
+/// A specification row shown on the product page (e.g. "Grade" → "W320").
+model ProductAttribute {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String  @db.VarChar(60)
+  value     String  @db.VarChar(300)
+  sortOrder Int     @default(0)
+
+  @@index([productId, sortOrder])
+}
+
 /// A product saved by a signed-in customer (product-level; the variant is chosen at purchase).
 model WishlistItem {
   id        String   @id @default(cuid())
@@ -298,6 +310,8 @@ model Product {
   id               String        @id @default(cuid())
   name             String
   slug             String        @unique
+  /// Origin of an imported product, e.g. "woocommerce:shayvera.in:3404". Makes re-imports idempotent.
+  sourceRef        String?       @unique @db.VarChar(200)
   shortDescription String?
   description      String
   brand            String?
@@ -330,6 +344,7 @@ model Product {
   reviews      Review[]
   orderItems   OrderItem[]
   wishlistedBy WishlistItem[]
+  attributes   ProductAttribute[]
 
   @@index([status, categoryId])
   @@index([status, isFeatured])
@@ -366,7 +381,11 @@ model ProductVariant {
   options             Json     @default("{}")
   pricePaise          Int
   compareAtPricePaise Int?
+  /// Packed (shipping) weight and box dimensions; null = use the store's default package.
   weightGrams         Int?
+  lengthMm            Int?
+  breadthMm           Int?
+  heightMm            Int?
   isDefault           Boolean  @default(false)
   isActive            Boolean  @default(true)
   sortOrder           Int      @default(0)
@@ -725,6 +744,11 @@ model StoreSettings {
   // COD
   codEnabled                 Boolean  @default(true)
   codFeePaise                Int      @default(4900)
+  /// Default packed weight/box used for shipping quotes when a variant has none.
+  defaultPackageWeightGrams  Int      @default(500)
+  defaultPackageLengthMm     Int      @default(200)
+  defaultPackageBreadthMm    Int      @default(150)
+  defaultPackageHeightMm     Int      @default(100)
   codMinOrderPaise           Int      @default(0)
   codMaxOrderPaise           Int?     @default(1000000)
   codBlockedPincodes         String[] @default([])

@@ -76,6 +76,21 @@ export const settingsSchema = z
       .toUpperCase()
       .regex(/^[A-Z]{2,6}$/, "2–6 letters"),
     lowStockThreshold: z.coerce.number().int().min(0).max(10_000),
+    // Default packed weight/box for shipping quotes when a variant has none (omit to keep).
+    defaultPackageWeightGrams: z.coerce
+      .number()
+      .int()
+      .min(1, "Must be positive")
+      .max(100_000)
+      .optional(),
+    defaultPackageLengthMm: z.coerce.number().int().min(1, "Must be positive").max(2000).optional(),
+    defaultPackageBreadthMm: z.coerce
+      .number()
+      .int()
+      .min(1, "Must be positive")
+      .max(2000)
+      .optional(),
+    defaultPackageHeightMm: z.coerce.number().int().min(1, "Must be positive").max(2000).optional(),
   })
   .superRefine((s, ctx) => {
     if (s.gstEnabled && !s.gstin)

@@ -217,14 +217,23 @@ every 5–10 minutes in production). Card data is never stored.
 
 ## Running the app
 
-| Task                                           | Command                                                 |
-| ---------------------------------------------- | ------------------------------------------------------- |
-| Development server                             | `npm run dev` → <http://localhost:3000>                 |
-| Production build / start                       | `npm run build` then `npm run start`                    |
-| Lint / format / typecheck                      | `npm run lint` · `npm run format` · `npm run typecheck` |
-| Background job worker (production)             | `npm run worker`                                        |
-| Expire stale unpaid orders now (one-off)       | `npm run jobs:reconcile`                                |
-| Health check (DB, job queue, worker heartbeat) | `GET /api/health`                                       |
+| Task                                              | Command                                                   |
+| ------------------------------------------------- | --------------------------------------------------------- |
+| Development server                                | `npm run dev` → <http://localhost:3000>                   |
+| Production build / start                          | `npm run build` then `npm run start`                      |
+| Lint / format / typecheck                         | `npm run lint` · `npm run format` · `npm run typecheck`   |
+| Background job worker (production)                | `npm run worker`                                          |
+| Import products from a WooCommerce site (dry run) | `npm run catalog:import-woo -- --url https://shayvera.in` |
+| Expire stale unpaid orders now (one-off)          | `npm run jobs:reconcile`                                  |
+| Health check (DB, job queue, worker heartbeat)    | `GET /api/health`                                         |
+
+**Importing the existing catalog.** `npm run catalog:import-woo -- --url https://shayvera.in` reads the public
+WooCommerce Store API and prints what it would do; add `--apply` to write. Imported products are **DRAFT with zero
+stock**, keep their source price (the live site shows ₹64.98 for every product, which the importer flags as a likely
+placeholder) and are linked by `sourceRef`, so re-running never duplicates them or overwrites anything already
+published. Options: `--update-drafts`, `--map woo-category=our-category`, `--actor admin@email`. Before publishing,
+set real prices, rename the "Default" variant to its pack size, add packed weight/box and stock. (Inside a sandbox that
+requires an HTTP proxy, Node's `fetch` needs `NODE_USE_ENV_PROXY=1`.)
 
 **Background jobs.** Order emails, unpaid-order expiry and maintenance run from a PostgreSQL job queue.
 In development the Next.js server polls the queue itself (`JOB_RUNNER=inline`, the default when

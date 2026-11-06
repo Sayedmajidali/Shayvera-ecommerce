@@ -40,6 +40,7 @@ export default async function NewProductPage() {
           isVegetarian: true,
           seoTitle: "",
           seoDescription: "",
+          attributes: [],
         }}
       />
     </>

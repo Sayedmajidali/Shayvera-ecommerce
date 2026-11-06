@@ -24,6 +24,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/prod
       include: {
         images: { orderBy: { sortOrder: "asc" } },
         variants: { orderBy: { sortOrder: "asc" }, include: { inventory: true } },
+        attributes: { orderBy: { sortOrder: "asc" } },
         _count: { select: { orderItems: true } },
       },
     }),
@@ -64,6 +65,10 @@ export default async function EditProductPage({ params }: PageProps<"/admin/prod
             isActive: v.isActive,
             stock: v.inventory?.quantityOnHand ?? 0,
             lowStockThreshold: v.inventory?.lowStockThreshold ?? 5,
+            weightGrams: v.weightGrams,
+            lengthMm: v.lengthMm,
+            breadthMm: v.breadthMm,
+            heightMm: v.heightMm,
           }))}
         />
         <ProductForm
@@ -88,6 +93,7 @@ export default async function EditProductPage({ params }: PageProps<"/admin/prod
             isVegetarian: product.isVegetarian,
             seoTitle: product.seoTitle ?? "",
             seoDescription: product.seoDescription ?? "",
+            attributes: product.attributes.map((a) => ({ name: a.name, value: a.value })),
           }}
         />
       </div>

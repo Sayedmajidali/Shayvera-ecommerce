@@ -97,7 +97,8 @@ OutboundEmail, NewsletterSubscriber, ContactMessage, RateLimitBucket
 | `User.adminRoleId`                           | role for staff users (`role = ADMIN`)                                                                                | FK `SET NULL`                                       |
 | `WishlistItem`                               | customer wishlist                                                                                                    | unique (`userId`,`productId`)                       |
 | `ProductAttribute`                           | specifications (name/value, ordered)                                                                                 | idx (`productId`,`sortOrder`)                       |
-| `ProductVariant.lengthMm/breadthMm/heightMm` | package dimensions for shipping (with `weightGrams`)                                                                 | CHECK ≥ 0                                           |
+| `ProductVariant.lengthMm/breadthMm/heightMm` | packed box for shipping (with `weightGrams`); null = store default package                                           | CHECK > 0 when set                                  |
+| `Product.sourceRef`                          | origin of imported products (`woocommerce:<host>:<id>`), makes re-imports idempotent                                 | unique                                              |
 | `Inventory.quantityReserved`                 | units held by active reservations                                                                                    | CHECK `0 ≤ reserved ≤ onHand`                       |
 | `InventoryReservation`                       | per order line hold: `ACTIVE → CONSUMED \| RELEASED \| EXPIRED`, `expiresAt`                                         | idx (`status`,`expiresAt`), (`orderId`)             |
 | `OrderStatus` (+7 values)                    | PAYMENT_FAILED, READY_TO_SHIP, OUT_FOR_DELIVERY, CANCELLATION_REQUESTED, RETURN_REQUESTED, RETURNED, REFUND_PENDING  | enum values added in place (non-destructive)        |
@@ -110,7 +111,7 @@ OutboundEmail, NewsletterSubscriber, ContactMessage, RateLimitBucket
 | `Job`                                        | durable background job / transactional outbox                                                                        | unique `dedupeKey`; idx (`status`,`runAt`)          |
 | `Notification` + `NotificationLog`           | queued customer/admin messages and delivery attempts                                                                 | idx (`status`,`createdAt`)                          |
 | `SystemState`                                | key/value operational state (worker heartbeat, last sync)                                                            | PK `key`                                            |
-| `StoreSettings` (+)                          | return window days, default package dims/weight                                                                      |                                                     |
+| `StoreSettings` (+)                          | default package weight (g) and box (mm) — Phase 4; return window days — Phase 7                                      | CHECK > 0                                           |
 
 All additions are **additive migrations** (new tables/columns with defaults, enum values added) — no data loss,
 compatible with rolling deploys (old code ignores new columns).

@@ -136,3 +136,11 @@ in the Shiprocket account.
 | Adapter request building / response parsing                                                                | unit-tested against payloads copied from the official examples                                                                                                                                                                                  |
 | Workflows (create, duplicate, timeout, invalid response, outage, tracking, webhooks, stale events, cancel) | integration-tested with `MockShippingProvider` and an HTTP-level fake of the Shiprocket API                                                                                                                                                     |
 | Real Shiprocket API                                                                                        | **unverified — awaiting business credentials**. Plan: create API user → set env → run `npm run shipping:verify` (auth + serviceability only, read-only) → one real test shipment created and immediately cancelled with the business's consent. |
+
+## Parcel estimate (implemented in Phase 4)
+
+`modules/shipping/package.ts` → `computeShipmentPackage(lines, defaultPackage)`: total weight = Σ quantity ×
+(variant packed weight or store default); box = largest length and breadth of any unit, heights stacked; reports
+`usedDefaults` when any line lacked its own package. `toCourierUnits()` converts to kg (rounded up to 10 g) and cm
+(rounded up) for Shiprocket; `volumetricWeightGrams()` uses the 5000 cm³/kg divisor. Staff can override the parcel when
+creating a shipment (Phase 9). Unit-tested; the Shiprocket calls that use it are Phase 9.
