@@ -20,6 +20,7 @@
     "db:studio": "prisma studio",
     "admin:create": "tsx --conditions=react-server scripts/create-admin.ts",
     "catalog:import-woo": "tsx --conditions=react-server scripts/import-woocommerce.ts",
+    "shipping:verify": "tsx --conditions=react-server scripts/shipping-verify.ts",
     "jobs:reconcile": "tsx --conditions=react-server scripts/reconcile-payments.ts",
     "worker": "tsx --conditions=react-server scripts/worker.ts",
     "test": "vitest run --project unit",

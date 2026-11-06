@@ -46,6 +46,14 @@ enum InventoryReason {
   ORDER_FULFILLED
 }
 
+/// Courier coverage check at checkout: confirmed, attempted but unavailable (needs review), or not
+/// performed (manual shipping / no origin PIN configured).
+enum DeliveryCheck {
+  SERVICEABLE
+  UNVERIFIED
+  SKIPPED
+}
+
 enum ReservationStatus {
   ACTIVE
   CONSUMED
@@ -544,6 +552,10 @@ model Order {
   /// Set when a captured payment could not be honoured (e.g. late capture with no stock).
   requiresAttention   Boolean       @default(false)
   attentionReason     String?
+  /// Outcome of the courier coverage check at checkout.
+  deliveryCheck       DeliveryCheck @default(SKIPPED)
+  /// Courier estimate at checkout (days), when known.
+  deliveryEtaDays     Int?
   placedAt            DateTime      @default(now())
   confirmedAt         DateTime?
   shippedAt           DateTime?

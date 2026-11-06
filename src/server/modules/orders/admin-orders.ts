@@ -31,16 +31,33 @@ export async function listOrdersAdmin(f: AdminOrderFilters, pageSize = 20) {
     ...(f.status ? { status: f.status as OrderStatus } : {}),
     ...(f.payment ? { paymentStatus: f.payment as PaymentStatus } : {}),
     ...(f.method ? { paymentMethod: f.method as PaymentMethod } : {}),
-    ...(f.attention ? { requiresAttention: true } : {}),
-    ...(f.q
-      ? {
-          OR: [
-            { orderNumber: { contains: f.q, mode: "insensitive" } },
-            { email: { contains: f.q, mode: "insensitive" } },
-            { phone: { contains: f.q } },
-          ],
-        }
-      : {}),
+    AND: [
+      // "Needs attention" also covers open orders whose courier coverage could not be checked.
+      ...(f.attention
+        ? [
+            {
+              OR: [
+                { requiresAttention: true },
+                {
+                  deliveryCheck: "UNVERIFIED" as const,
+                  status: { in: ["PENDING", "CONFIRMED", "PROCESSING"] as OrderStatus[] },
+                },
+              ],
+            },
+          ]
+        : []),
+      ...(f.q
+        ? [
+            {
+              OR: [
+                { orderNumber: { contains: f.q, mode: "insensitive" as const } },
+                { email: { contains: f.q, mode: "insensitive" as const } },
+                { phone: { contains: f.q } },
+              ],
+            },
+          ]
+        : []),
+    ],
   };
   const [total, orders] = await Promise.all([
     db.order.count({ where }),

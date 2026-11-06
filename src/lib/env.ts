@@ -35,8 +35,32 @@ const schema = z
      * "inline" (polled inside the web server, development default) or "off".
      */
     JOB_RUNNER: z.enum(["worker", "inline", "off"]).optional(),
+    /** shiprocket (real API), mock (offline simulator, dev/test) or manual (staff enter AWB). */
+    SHIPPING_PROVIDER: z.enum(["shiprocket", "mock", "manual"]).optional(),
+    SHIPROCKET_API_EMAIL: z.string().default(""),
+    SHIPROCKET_API_PASSWORD: z.string().default(""),
+    SHIPROCKET_BASE_URL: z.url().default("https://apiv2.shiprocket.in/v1/external"),
+    SHIPROCKET_WEBHOOK_TOKEN: z.string().default(""),
+    SHIPPING_HTTP_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(10_000),
   })
   .superRefine((v, ctx) => {
+    if (
+      v.SHIPPING_PROVIDER === "shiprocket" &&
+      (!v.SHIPROCKET_API_EMAIL || !v.SHIPROCKET_API_PASSWORD)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SHIPROCKET_API_EMAIL"],
+        message: "Shiprocket needs SHIPROCKET_API_EMAIL and SHIPROCKET_API_PASSWORD (an API user)",
+      });
+    }
+    if (v.NODE_ENV === "production" && v.SHIPPING_PROVIDER === "mock" && !v.E2E_TEST_MODE) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SHIPPING_PROVIDER"],
+        message: "The mock shipping provider cannot be used in production",
+      });
+    }
     if (v.NODE_ENV === "production" && v.PAYMENT_GATEWAY === "mock" && !v.E2E_TEST_MODE) {
       ctx.addIssue({
         code: "custom",
@@ -68,6 +92,12 @@ export function jobRunnerMode(): "worker" | "inline" | "off" {
     e.JOB_RUNNER ??
     (e.NODE_ENV === "development" ? "inline" : e.NODE_ENV === "test" ? "off" : "worker")
   );
+}
+
+/** Development/test default to the offline simulator; production defaults to manual shipping. */
+export function shippingProviderName(): "shiprocket" | "mock" | "manual" {
+  const e = env();
+  return e.SHIPPING_PROVIDER ?? (e.NODE_ENV === "production" ? "manual" : "mock");
 }
 
 export function isRazorpayConfigured(): boolean {

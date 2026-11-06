@@ -406,3 +406,31 @@
   "on hand drops at placement" now assert available stock / reservation rows (the behaviour changed by design); the
   concurrent-oversell test passes unchanged in intent.
 - Results: unit 100 · integration 165 · E2E 36 — all passing; lint, typecheck clean.
+
+## v2 Phase 6 — Checkout delivery checks (serviceability) ✅
+
+- **Shipping provider layer** (`modules/shipping`): internal `ShippingProvider` contract with `MockShippingProvider`
+  (deterministic, offline), `ManualShippingProvider` (no checks) and `ShiprocketProvider` (auth + serviceability from
+  the official API collection, re-read 2026-11-06: JWT valid 10 days cached and refreshed, shared login, re-login on
+  401; documented query parameters and units). Selected by `SHIPPING_PROVIDER` (`mock` in development, `manual` in
+  production by default; `mock` refused in production; `shiprocket` requires API-user credentials).
+- **Checkout rules** (server-enforced, 3 s budget, 6 h cache of answers only): no courier → 422 on the PIN field and
+  no order/stock hold; COD where couriers are prepaid-only → 422 on payment method (online payment still works);
+  provider slow/down/unexpected → order placed and marked `deliveryCheck = UNVERIFIED` (admin warning + "Needs
+  attention" list); manual shipping or no store PIN → `SKIPPED`. The courier estimate is stored on the order.
+  Integration problems never block checkout: only a successful answer with zero couriers counts as "not serviceable".
+- **Checkout page**: live delivery note as the PIN is typed (estimate / COD unavailable / not deliverable), COD option
+  and Place-order button follow it; courier rates are never sent to the browser.
+- **Admin**: order page shows the courier estimate or an "unverified coverage" warning; "Needs attention" filter now
+  includes open unverified orders (filters combined with AND — fixed a latent case where search would have replaced
+  the attention filter).
+- **Read-only verification script** `npm run shipping:verify` for when real credentials exist (creates nothing).
+- **Verification status**: Shiprocket auth/serviceability **implemented and tested against the official example
+  payload with an HTTP-level fake — not verified against the real API (no credentials; Shiprocket has no sandbox).**
+- **Tests**: +7 unit (official-example parsing, blocked couriers, empty list, unexpected shapes rejected, documented
+  query/units, token reuse, 401 re-login with a single shared login, login failure without leaking the password, mock
+  rules), +7 integration (estimate stored, unserved PIN blocked without order/hold, COD refused but prepaid allowed,
+  provider down → UNVERIFIED + attention list, slow provider times out fast, answers cached and failures not, manual /
+  no-store-PIN skipped, endpoint answers for cart and Buy now without rates, PIN validation), +1 E2E (estimate, COD
+  disabled, unserved PIN blocks ordering, order records the check).
+- Results: unit 107 · integration 172 · E2E 37 — all passing; lint, typecheck clean.

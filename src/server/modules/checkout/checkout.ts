@@ -12,6 +12,7 @@ import { orderAccessToken } from "@/server/modules/orders/order-access";
 import { transitionOrder } from "@/server/modules/orders/orders";
 import { startOnlinePayment, type OnlinePaymentSession } from "@/server/modules/payments/payments";
 import { nextOrderNumber } from "@/server/platform/sequence";
+import { checkDelivery } from "@/server/modules/shipping/serviceability";
 
 export type CheckoutContext = { identity: CartIdentity; userId: string | null };
 
@@ -97,6 +98,36 @@ export async function placeOrder(
   const billing =
     input.billingSameAsShipping || !input.billingAddress ? shipping : input.billingAddress;
 
+  // Courier coverage (outside the transaction: network call with a 3 s budget and a 6 h cache).
+  const preview = await getCartView(ctx.identity, {
+    email: input.email,
+    ...(input.buyNow ? { buyNow: input.buyNow, couponOverride: input.couponCode } : {}),
+  });
+  const delivery = await checkDelivery(
+    shipping.pincode,
+    preview.lines
+      .filter((l) => l.purchasable)
+      .map((l) => ({
+        variantId: l.variantId,
+        quantity: l.quantity,
+        unitPricePaise: l.unitPricePaise,
+      })),
+  );
+  if (delivery.status === "not_serviceable") {
+    throw new AppError("BUSINESS_RULE", "Sorry, we don’t deliver to this PIN code yet", {
+      "shippingAddress.pincode": "We don’t deliver to this PIN code yet",
+    });
+  }
+  if (
+    input.paymentMethod === "COD" &&
+    delivery.status === "serviceable" &&
+    !delivery.codAvailable
+  ) {
+    throw new AppError("BUSINESS_RULE", "Cash on Delivery is not available for this PIN code", {
+      paymentMethod: "COD is not available for this PIN code — please pay online",
+    });
+  }
+
   let created: { id: string; orderNumber: string; status: string; totalPaise: number };
   try {
     created = await db.$transaction(
@@ -176,6 +207,14 @@ export async function placeOrder(
             totalPaise: p.totalPaise,
             customerNote: input.customerNote,
             idempotencyKey: input.idempotencyKey,
+            // UNVERIFIED = courier check unavailable at checkout; staff confirm coverage before shipping.
+            deliveryCheck:
+              delivery.status === "serviceable"
+                ? "SERVICEABLE"
+                : delivery.status === "unverified"
+                  ? "UNVERIFIED"
+                  : "SKIPPED",
+            deliveryEtaDays: delivery.status === "serviceable" ? delivery.etaDays : null,
             paymentExpiresAt: isCod
               ? null
               : new Date(Date.now() + env().PAYMENT_EXPIRY_MINUTES * 60_000),

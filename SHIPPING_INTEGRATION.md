@@ -133,7 +133,7 @@ in the Shiprocket account.
 | Item                                                                                                       | Status                                                                                                                                                                                                                                          |
 | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Endpoint paths, payloads, status codes, webhook format                                                     | implemented from the official collection (2026-11-06)                                                                                                                                                                                           |
-| Adapter request building / response parsing                                                                | unit-tested against payloads copied from the official examples                                                                                                                                                                                  |
+| Adapter request building / response parsing                                                                | auth + serviceability: unit-tested against the official example payload with an HTTP-level fake (Phase 6); remaining operations: Phase 9                                                                                                        |
 | Workflows (create, duplicate, timeout, invalid response, outage, tracking, webhooks, stale events, cancel) | integration-tested with `MockShippingProvider` and an HTTP-level fake of the Shiprocket API                                                                                                                                                     |
 | Real Shiprocket API                                                                                        | **unverified — awaiting business credentials**. Plan: create API user → set env → run `npm run shipping:verify` (auth + serviceability only, read-only) → one real test shipment created and immediately cancelled with the business's consent. |
 
@@ -144,3 +144,30 @@ in the Shiprocket account.
 `usedDefaults` when any line lacked its own package. `toCourierUnits()` converts to kg (rounded up to 10 g) and cm
 (rounded up) for Shiprocket; `volumetricWeightGrams()` uses the 5000 cm³/kg divisor. Staff can override the parcel when
 creating a shipment (Phase 9). Unit-tested; the Shiprocket calls that use it are Phase 9.
+
+## Checkout serviceability (implemented in Phase 6)
+
+- `modules/shipping/types.ts` (provider contract), `providers/mock.ts`, `providers/manual.ts`,
+  `providers/shiprocket/{client,provider}.ts`, `serviceability.ts` (checkout service), `provider.ts` (selection).
+- **Shiprocket adapter**: `POST /auth/login` → JWT (documented validity 10 days) cached in memory, refreshed an hour
+  before `exp`, one shared login for concurrent callers, one forced re-login on 401. `GET /courier/serviceability/`
+  with `pickup_postcode`, `delivery_postcode`, `cod=0` (every courier listed with its own `cod` flag), `weight` (kg),
+  `length/breadth/height` (cm), `declared_value` (rupees). Parsed fields: `courier_company_id`, `courier_name`,
+  `rate`, `cod`, `estimated_delivery_days`, `blocked` (blocked couriers ignored), `recommended_courier_company_id`.
+- **Only a successful response with no couriers means "not serviceable".** The official collection does not document
+  the error shape for unserviceable PINs, so any other response (4xx/5xx, unexpected JSON, timeout) is treated as
+  **unverified** — checkout is never blocked by an integration problem.
+- **Checkout**: the check runs before the order transaction with a 3 s budget; results (not failures) are cached 6 h
+  per provider/origin/destination/500 g weight bucket. Not serviceable → 422 with a field error on the PIN; COD chosen
+  where no courier offers COD → 422 on the payment method; unverified → order placed with
+  `Order.deliveryCheck = UNVERIFIED`, shown as a warning on the admin order page and included in "Needs attention";
+  `SKIPPED` for manual shipping or when the store PIN code (Admin → Settings) is not set. The order stores the courier
+  estimate (`deliveryEtaDays`). Customer shipping charges stay store-configured; courier rates are never sent to the
+  browser.
+- **Checkout page**: `GET /api/shipping/serviceability?pincode=…[&buy=&qty=]` (rate limited) as the PIN is typed —
+  "Delivers to 560034 in about 2 days", "COD isn't available here" (COD option disabled), or "we don't deliver to …"
+  (Place order disabled).
+- **Mock provider rules** (development/tests): PINs starting with 9 (Army/Field post) not serviceable; 79xxxx
+  prepaid-only; 2 / 4 / 6 days for same region / same zone / elsewhere.
+- **Real-account check**: `npm run shipping:verify -- --from <store PIN> --to <PIN>` logs in and requests one quote —
+  read-only, creates nothing.

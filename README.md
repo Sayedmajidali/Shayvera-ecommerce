@@ -227,6 +227,12 @@ every 5–10 minutes in production). Card data is never stored.
 | Expire stale unpaid orders now (one-off)          | `npm run jobs:reconcile`                                  |
 | Health check (DB, job queue, worker heartbeat)    | `GET /api/health`                                         |
 
+**Shipping / delivery checks.** `SHIPPING_PROVIDER` = `mock` (default in development: an offline courier simulator),
+`manual` (default in production until Shiprocket is set up: staff enter courier and AWB, no coverage check) or
+`shiprocket` (needs `SHIPROCKET_API_EMAIL` / `SHIPROCKET_API_PASSWORD` of a Shiprocket **API user**). Set the store
+PIN code in Admin → Settings so checkout can check couriers from your warehouse. After adding real credentials, run the
+read-only `npm run shipping:verify -- --from <store PIN> --to <customer PIN>` first. Shiprocket has no sandbox.
+
 **Importing the existing catalog.** `npm run catalog:import-woo -- --url https://shayvera.in` reads the public
 WooCommerce Store API and prints what it would do; add `--apply` to write. Imported products are **DRAFT with zero
 stock**, keep their source price (the live site shows ₹64.98 for every product, which the importer flags as a likely

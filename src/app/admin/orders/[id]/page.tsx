@@ -100,6 +100,22 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
           <AlertTriangle className="size-4" /> Needs attention: {order.attentionReason}
         </p>
       )}
+      {order.deliveryCheck === "UNVERIFIED" &&
+        !["SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"].includes(order.status) && (
+          <p
+            className="border-warning/50 bg-warning-soft mb-6 flex items-center gap-2 rounded-xl border p-4 text-sm"
+            data-testid="delivery-unverified"
+          >
+            <AlertTriangle className="size-4" /> Courier coverage for PIN{" "}
+            {(order.shippingAddress as { pincode?: string }).pincode} couldn’t be checked at
+            checkout. Confirm a courier serves it before shipping.
+          </p>
+        )}
+      {order.deliveryCheck === "SERVICEABLE" && order.deliveryEtaDays !== null && (
+        <p className="text-muted-foreground -mt-3 mb-6 text-sm" data-testid="delivery-eta">
+          Courier estimate at checkout: about {order.deliveryEtaDays} days after dispatch.
+        </p>
+      )}
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <div className="grid gap-6">
           <Card className="gap-0 py-0">

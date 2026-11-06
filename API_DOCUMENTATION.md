@@ -81,6 +81,12 @@ There is **no** admin sign-up endpoint. Administrators are created with `npm run
 | POST   | `/api/orders/:orderNumber/pay`    | `{ token? }` — start/resume Razorpay payment for a pending order → payment session.                                                                                                                                                                                                                                                                 |
 | POST   | `/api/orders/track`               | `{ orderNumber, contact }` (email, or 10-digit mobile in any format) → `{ url: "/track/<number>?k=<read-only token>" }`. Every mismatch returns the same 404 message. Rate limited: 10 / 10 min per IP and 10 / h per order number. The token opens only `/track/:orderNumber` (status, items, shipment — no address, contact, payment or actions). |
 
+**Delivery check**: `GET /api/shipping/serviceability?pincode=560034[&buy=<variantId>&qty=<n>]` (public, 60/min per IP)
+→ `{ status: "serviceable" | "not_serviceable" | "unverified" | "skipped", codAvailable, etaDays }` for the current
+cart (or a Buy-now item). Courier rates are never returned. `POST /api/checkout` repeats the check server-side: 422
+with `details["shippingAddress.pincode"]` when no courier serves the PIN, 422 with `details.paymentMethod` when COD was
+chosen where couriers only take prepaid parcels.
+
 **Buy now**: `POST /api/checkout` also accepts `buyNow: { variantId, quantity (1–10) }` and `couponCode?`. Only that item is
 ordered and priced server-side; the cart (items and saved coupon) is left unchanged.
 

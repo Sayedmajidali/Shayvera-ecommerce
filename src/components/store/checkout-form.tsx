@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Banknote, CreditCard, Loader2, Lock } from "lucide-react";
+import { Banknote, CreditCard, Loader2, Lock, MapPinOff, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,6 +23,10 @@ import { cn } from "@/lib/utils";
 import type { CartView } from "@/server/modules/cart/cart";
 
 type SavedAddress = AddressValues & { id: string; isDefault: boolean };
+
+type DeliveryState =
+  | { status: "idle" | "checking" | "unverified" | "skipped" | "not_serviceable" }
+  | { status: "serviceable"; codAvailable: boolean | null; etaDays: number | null };
 
 type CheckoutResult = {
   orderNumber: string;
@@ -79,7 +83,45 @@ export function CheckoutForm({
   const [submitting, setSubmitting] = useState(false);
 
   const stateCode = shipping.stateCode;
-  const codAllowed = codEnabled && view.codAvailable;
+  // Courier coverage for the shipping PIN (server-checked again when the order is placed).
+  // Only responses are stored; "idle" and "checking" are derived from the current PIN.
+  const [checked, setChecked] = useState<{ key: string; result: DeliveryState } | null>(null);
+  const pincode = shipping.pincode;
+  const validPin = /^[1-9]\d{5}$/.test(pincode);
+  const deliveryKey = `${pincode}|${buyNow?.variantId ?? ""}|${buyNow?.quantity ?? ""}`;
+  useEffect(() => {
+    if (!validPin) return;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => {
+      const qs = new URLSearchParams({
+        pincode,
+        ...(buyNow ? { buy: buyNow.variantId, qty: String(buyNow.quantity) } : {}),
+      });
+      fetch(`/api/shipping/serviceability?${qs}`, { signal: ctrl.signal })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { data?: DeliveryState } | null) =>
+          setChecked({ key: deliveryKey, result: j?.data ?? { status: "unverified" } }),
+        )
+        .catch((err: unknown) => {
+          if ((err as { name?: string })?.name !== "AbortError")
+            setChecked({ key: deliveryKey, result: { status: "unverified" } });
+        });
+    }, 400);
+    return () => {
+      clearTimeout(t);
+      ctrl.abort();
+    };
+  }, [validPin, pincode, buyNow, deliveryKey]);
+  const delivery: DeliveryState = !validPin
+    ? { status: "idle" }
+    : checked?.key === deliveryKey
+      ? checked.result
+      : { status: "checking" };
+  const undeliverable = delivery.status === "not_serviceable";
+  const codAllowed =
+    codEnabled &&
+    view.codAvailable &&
+    !(delivery.status === "serviceable" && delivery.codAvailable === false);
   // If COD becomes ineligible (e.g. order value), fall back to online payment.
   const method: "COD" | "RAZORPAY" =
     chosenMethod === "COD" && !codAllowed && onlineEnabled ? "RAZORPAY" : chosenMethod;
@@ -298,6 +340,7 @@ export function CheckoutForm({
               Billing address is the same as shipping
             </Label>
           </div>
+          <DeliveryNote delivery={delivery} pincode={pincode} />
           {!billingSame && (
             <div className="mt-5">
               <h3 className="mb-4 text-sm font-semibold">Billing address</h3>
@@ -358,7 +401,9 @@ export function CheckoutForm({
                 <span className="text-muted-foreground">
                   {codAllowed
                     ? `Pay when your order arrives${codFeePaise > 0 ? ` · ${formatINR(codFeePaise)} handling fee` : ""}`
-                    : "Not available for this order"}
+                    : delivery.status === "serviceable" && delivery.codAvailable === false
+                      ? "Not available for this PIN code"
+                      : "Not available for this order"}
                 </span>
               </span>
             </Label>
@@ -461,7 +506,7 @@ export function CheckoutForm({
           type="submit"
           size="lg"
           className="mt-6 w-full"
-          disabled={submitting || lines.length === 0}
+          disabled={submitting || lines.length === 0 || undeliverable}
           data-testid="place-order"
         >
           {submitting && <Loader2 className="animate-spin" />}
@@ -473,5 +518,57 @@ export function CheckoutForm({
         </p>
       </aside>
     </form>
+  );
+}
+
+/** Delivery estimate / coverage message under the shipping address. */
+function DeliveryNote({ delivery, pincode }: { delivery: DeliveryState; pincode: string }) {
+  if (delivery.status === "idle" || delivery.status === "skipped") return null;
+  const base = "mt-5 flex items-start gap-2 rounded-xl px-4 py-3 text-sm";
+  if (delivery.status === "checking")
+    return (
+      <p
+        className={cn(base, "bg-muted text-muted-foreground")}
+        aria-live="polite"
+        data-testid="delivery-note"
+      >
+        <Loader2 className="mt-0.5 size-4 animate-spin" aria-hidden /> Checking delivery to{" "}
+        {pincode}…
+      </p>
+    );
+  if (delivery.status === "not_serviceable")
+    return (
+      <p
+        role="alert"
+        className={cn(base, "bg-destructive-soft text-destructive")}
+        data-testid="delivery-note"
+      >
+        <MapPinOff className="mt-0.5 size-4 shrink-0" aria-hidden />
+        Sorry, we don’t deliver to {pincode} yet. Please use another address.
+      </p>
+    );
+  if (delivery.status === "unverified")
+    return (
+      <p
+        className={cn(base, "bg-muted text-muted-foreground")}
+        aria-live="polite"
+        data-testid="delivery-note"
+      >
+        <Truck className="mt-0.5 size-4 shrink-0" aria-hidden />
+        We’ll confirm the delivery date after you order.
+      </p>
+    );
+  if (delivery.status !== "serviceable") return null;
+  return (
+    <p className={cn(base, "bg-success-soft")} aria-live="polite" data-testid="delivery-note">
+      <Truck className="text-success mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>
+        Delivers to {pincode}
+        {delivery.etaDays
+          ? ` in about ${delivery.etaDays} ${delivery.etaDays === 1 ? "day" : "days"} after dispatch`
+          : ""}
+        {delivery.codAvailable === false ? " · Cash on Delivery isn’t available here" : ""}.
+      </span>
+    </p>
   );
 }
