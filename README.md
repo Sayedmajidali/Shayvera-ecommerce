@@ -212,13 +212,25 @@ every 5–10 minutes in production). Card data is never stored.
 
 ## Running the app
 
-| Task                                                 | Command                                                 |
-| ---------------------------------------------------- | ------------------------------------------------------- |
-| Development server                                   | `npm run dev` → <http://localhost:3000>                 |
-| Production build / start                             | `npm run build` then `npm run start`                    |
-| Lint / format / typecheck                            | `npm run lint` · `npm run format` · `npm run typecheck` |
-| Expire stale unpaid orders (reconcile with Razorpay) | `npm run jobs:reconcile`                                |
-| Health check                                         | `GET /api/health`                                       |
+| Task                                           | Command                                                 |
+| ---------------------------------------------- | ------------------------------------------------------- |
+| Development server                             | `npm run dev` → <http://localhost:3000>                 |
+| Production build / start                       | `npm run build` then `npm run start`                    |
+| Lint / format / typecheck                      | `npm run lint` · `npm run format` · `npm run typecheck` |
+| Background job worker (production)             | `npm run worker`                                        |
+| Expire stale unpaid orders now (one-off)       | `npm run jobs:reconcile`                                |
+| Health check (DB, job queue, worker heartbeat) | `GET /api/health`                                       |
+
+**Background jobs.** Order emails, unpaid-order expiry and maintenance run from a PostgreSQL job queue.
+In development the Next.js server polls the queue itself (`JOB_RUNNER=inline`, the default when
+`NODE_ENV=development`), so `npm run dev` is enough. In production run `npm run worker` as a second process
+(`JOB_RUNNER=worker` is the production default); several workers can run safely. `/api/health` reports
+`degraded` if the worker heartbeat is older than 2 minutes or due jobs wait longer than 15 minutes.
+
+**Docker.** `Dockerfile` builds two targets — `web` (Next.js standalone server) and `worker` — and
+`docker-compose.prod.yml` runs Postgres, a one-shot `migrate`, `web` and `worker` for staging/smoke tests
+(`docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build`). Hosting, TLS and
+backups are not configured yet.
 
 ## Tests
 
@@ -247,12 +259,15 @@ Results and coverage: `QA_REPORT.md`.
 
 ```
 prisma/            schema.prisma · migrations/ · seed.ts · seed/ (catalog data, illustrations, demo orders)
-scripts/           create-admin.ts · reconcile-payments.ts
+scripts/           create-admin.ts · reconcile-payments.ts · worker.ts
 src/app/(store)/   storefront pages        src/app/admin/   admin pages
 src/app/api/       route handlers          src/app/(print)/ printable invoice
 src/components/    ui/ (shadcn) · store/ · admin/ · shared/
-src/lib/           env, db, auth, api helpers, money, india, validation
-src/server/        services/ (business logic) · queries/ · payments/ · storage/ · email/ · auth/ · cart/
+src/lib/           env, auth, api helpers, money, india, validation
+src/server/modules/<domain>/   business modules (catalog, cart, checkout, orders, payments, inventory, …)
+src/server/platform/           db, logger, context, monitoring, http, cache, rate-limit, storage, jobs/
+src/server/jobs/               job registry + schedules (composition root) and the polling loop
+src/instrumentation.ts         starts the in-process job runner in development
 src/proxy.ts       optimistic auth redirects
 tests/             unit/ · integration/ · e2e/ · helpers/
 ```

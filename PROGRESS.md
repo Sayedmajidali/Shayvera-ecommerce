@@ -252,3 +252,40 @@
 - Wrote: `PROJECT_PLAN.md` (gap analysis + 16-phase roadmap), `ARCHITECTURE.md` v2 (modules, platform layer,
   decisions D1–D10, lifecycles, cancellation/return rules), `DATABASE_DESIGN.md` v2 additions,
   `PAYMENT_INTEGRATION.md`, `SHIPPING_INTEGRATION.md`.
+
+## v2 Phase 1 — Foundation: modules + platform layer ✅
+
+- **Restructure**: `src/server/services|queries|payments|…` → `src/server/modules/<domain>/` and
+  `src/server/platform/` (db, logger, rate-limit, sequence, storage). Behaviour unchanged; all tests green after the move.
+- **Request context** (`platform/context.ts`): AsyncLocalStorage correlation id per request/job. `route()` accepts a
+  safe incoming `X-Request-Id` or generates one, returns it as a response header, and 500 responses include
+  `{ reference }` so support can find the log line.
+- **Logger**: adds `requestId`/`jobId` to every entry; redacts secrets (password, token, signature, authorization,
+  cookie, card, cvv, api key) and masks email/phone. **Monitoring hook** (`platform/monitoring.ts`) for a future
+  error-reporting service; integration failures are tagged by provider/operation.
+- **Job queue** (`platform/jobs`): `Job` table, enqueue inside transactions (outbox) with `dedupeKey`,
+  `FOR UPDATE SKIP LOCKED` claiming, exponential backoff with full jitter, DEAD after `maxAttempts`, permanent
+  errors, stuck-lock recovery, operator retry, pruning, queue stats. Periodic jobs are deduplicated per time window
+  so several workers schedule each run once. Worker heartbeat in `SystemState`.
+- **Worker**: `npm run worker` (graceful SIGINT/SIGTERM); in development the Next.js server runs the same loop
+  in-process via `src/instrumentation.ts` (`JOB_RUNNER=inline|worker|off`).
+- **Notifications**: `Notification` + `NotificationLog`. Order emails (confirmed, cancelled, shipped, delivered,
+  refunded) are now queued **inside the transaction that changes the order** (`transitionOrder`, refunds, late-payment
+  reinstatement) instead of fire-and-forget calls, rendered at delivery time, retried, and logged per attempt.
+  Email provider interface with the dev-outbox implementation (no real email provider is configured).
+- **Request-path sweep removed**: unpaid-order expiry is now the scheduled `payments.expire-unpaid` job (every 2 min);
+  `maintenance.cleanup` (hourly) prunes old jobs and expired sessions/verification tokens/rate-limit buckets.
+- **HTTP client** (`platform/http.ts`): timeouts, retries only for idempotent calls (408/429/5xx/network,
+  Retry-After), correlation header, no body/header logging. **Cache** (`platform/cache.ts`): interface + bounded
+  in-process TTL cache for public data only.
+- **Health** `/api/health`: DB latency, queue backlog/oldest due job, dead jobs, worker heartbeat; 503 only when the
+  DB is down, `degraded` otherwise. Boot now fails fast on invalid environment configuration (instrumentation loads
+  the validated env).
+- **Docker**: multi-stage `Dockerfile` (`web` standalone + `worker`), `.dockerignore`, `docker-compose.prod.yml`
+  (db, migrate, web, worker). `NEXT_OUTPUT=standalone` build **verified locally** (standalone server served pages,
+  health and the inline runner). **Image build not verified**: no Docker daemon in the build sandbox.
+- **Tests**: +14 integration (enqueue/dedupe, transactional rollback, runAt, 4-worker concurrent claim with no
+  duplicates, retry/backoff, dead-letter + operator retry, permanent errors, crashed-worker recovery, stale worker
+  cannot complete, schedule dedupe, heartbeat, notification delivery/dedupe/failure logging, health) and +11 unit
+  (backoff, cache TTL/eviction, HTTP retry/timeout/non-JSON/correlation, log redaction, context isolation).
+  Existing email assertions now drain the queue explicitly instead of polling.

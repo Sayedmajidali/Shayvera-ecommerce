@@ -28,7 +28,6 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import { getDashboardStats, RANGES, type RangeKey } from "@/server/modules/analytics/dashboard";
-import { maybeExpireStaleOrders } from "@/server/modules/payments/payments";
 import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -36,7 +35,6 @@ export const metadata: Metadata = { title: "Dashboard" };
 export default async function AdminDashboard({ searchParams }: PageProps<"/admin">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
   await requireAdminPage();
-  maybeExpireStaleOrders();
   const sp = firstValues(await searchParams);
   const range = (sp.range && sp.range in RANGES ? sp.range : "30d") as RangeKey;
   const s = await getDashboardStats(range);

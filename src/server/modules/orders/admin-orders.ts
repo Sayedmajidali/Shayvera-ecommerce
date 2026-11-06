@@ -3,7 +3,6 @@ import { z } from "zod";
 import { db } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { optionalTrimmed, trimmed } from "@/lib/validation/common";
-import { sendOrderEmail } from "@/server/modules/notifications/order-emails";
 import { audit } from "@/server/modules/audit/audit";
 import { canTransition } from "@/server/modules/orders/order-status";
 import { orderDetailInclude, transitionOrder } from "@/server/modules/orders/orders";
@@ -166,10 +165,7 @@ export async function updateOrderStatusAdmin(
         actor: { type: "ADMIN", id: actor.id },
       });
     }
-    void sendOrderEmail(orderId, "cancelled");
   }
-  if (input.status === "SHIPPED") void sendOrderEmail(orderId, "shipped");
-  if (input.status === "DELIVERED") void sendOrderEmail(orderId, "delivered");
   return db.order.findUniqueOrThrow({ where: { id: orderId } });
 }
 
@@ -229,7 +225,6 @@ export async function addShipment(
       tx,
     );
   });
-  if (shouldShip) void sendOrderEmail(orderId, "shipped");
 }
 
 export const refundSchema = z.object({

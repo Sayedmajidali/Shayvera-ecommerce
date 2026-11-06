@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { db, type Tx } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/server/platform/logger";
-import { sendOrderEmail } from "@/server/modules/notifications/order-emails";
+import { queueOrderEmail } from "@/server/modules/notifications/notifications";
 import { paymentGateway, type GatewayPayment } from "@/server/modules/payments/gateway";
 import {
   verifyCheckoutSignature,
@@ -237,10 +237,6 @@ export async function applyCapturedPayment(
     return { outcome: "refund_required", orderId: order.id };
   });
 
-  if (result.orderId && result.outcome === "confirmed") {
-    void sendOrderEmail(result.orderId, "confirmed");
-  }
-
   if (result.outcome === "refund_required" && result.orderId) {
     if (result.needsReinstate && (await tryReinstateCancelledOrder(result.orderId, gp.id)))
       return "reinstated";
@@ -302,8 +298,8 @@ async function tryReinstateCancelledOrder(orderId: string, paymentId: string): P
             data: { salesCount: { increment: item.quantity } },
           });
       }
+      await queueOrderEmail(tx, { orderId, kind: "confirmed", dedupeKey: "reinstated" });
     });
-    void sendOrderEmail(orderId, "confirmed");
     logger.warn("Order reinstated after late payment", { orderId });
     return true;
   } catch (error) {
@@ -570,18 +566,6 @@ export async function expireStalePendingOrders(limit = 50) {
   return { checked: stale.length, cancelled };
 }
 
-let lastSweep = 0;
-/** Opportunistic, throttled sweep (no background worker needed in development). */
-export function maybeExpireStaleOrders() {
-  if (process.env.NODE_ENV === "test") return;
-  const now = Date.now();
-  if (now - lastSweep < 60_000) return;
-  lastSweep = now;
-  void expireStalePendingOrders().catch((error) =>
-    logger.error("Stale order sweep failed", { error }),
-  );
-}
-
 // ───────────────────────────── Refunds ─────────────────────────────
 
 /**
@@ -651,13 +635,8 @@ export async function createRefund(p: {
 
 /** Finalises a refund (idempotent). Failure returns the reserved amount. */
 async function settleRefund(refundId: string, success: boolean, failureReason: string | null) {
-  let refunded = false;
-  let orderId = "";
-  let amount = 0;
   await db.$transaction(async (tx) => {
     const r = await tx.refund.findUniqueOrThrow({ where: { id: refundId } });
-    orderId = r.orderId;
-    amount = r.amountPaise;
     if (r.status !== "PENDING") return;
     if (r.reason.startsWith(DUPLICATE_PREFIX)) {
       // Duplicate-payment refunds never touched the order's refundable total.
@@ -702,9 +681,13 @@ async function settleRefund(refundId: string, success: boolean, failureReason: s
         note: "Fully refunded",
       });
     }
-    refunded = true;
+    await queueOrderEmail(tx, {
+      orderId: order.id,
+      kind: "refunded",
+      extra: `₹${(r.amountPaise / 100).toFixed(2)}`,
+      dedupeKey: refundId,
+    });
   });
-  if (refunded) void sendOrderEmail(orderId, "refunded", `₹${(amount / 100).toFixed(2)}`);
 }
 
 async function applyRefundWebhook(entity: Record<string, unknown>, processed: boolean) {

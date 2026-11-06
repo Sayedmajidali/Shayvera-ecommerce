@@ -1,4 +1,6 @@
 import { db } from "@/server/platform/db";
+import { registerAllJobs } from "@/server/jobs";
+import { runDueJobs } from "@/server/platform/jobs/runner";
 
 /** Truncates every application table (keeps the migrations table). */
 export async function resetDatabase() {
@@ -18,4 +20,10 @@ export async function eventually(fn: () => Promise<boolean>, timeoutMs = 3000) {
     await new Promise((r) => setTimeout(r, 25));
   }
   return false;
+}
+
+/** Runs every due background job to completion (the worker is not running during tests). */
+export async function drainJobs() {
+  registerAllJobs();
+  return runDueJobs();
 }

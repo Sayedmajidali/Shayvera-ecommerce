@@ -744,3 +744,95 @@ model RateLimitBucket {
   count       Int
   windowStart DateTime
 }
+
+// ─────────────────────────── Platform: jobs & notifications ───────────────────────────
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  DEAD
+}
+
+/// Durable background job. Inserted in the same transaction as the business change that requires it
+/// (transactional outbox) and claimed by worker processes with FOR UPDATE SKIP LOCKED.
+model Job {
+  id          String    @id @default(cuid())
+  type        String
+  payload     Json      @default("{}")
+  status      JobStatus @default(QUEUED)
+  priority    Int       @default(0)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(8)
+  runAt       DateTime  @default(now())
+  /// Optional idempotency key: a second enqueue with the same key is ignored.
+  dedupeKey   String?   @unique
+  lockedAt    DateTime?
+  lockedBy    String?
+  lastError   String?
+  finishedAt  DateTime?
+  requestId   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, runAt])
+  @@index([type, status])
+  @@index([createdAt])
+}
+
+/// Operational key/value state (e.g. worker heartbeat, last tracking sync).
+model SystemState {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+/// A message the system intends to deliver (customer or staff). Delivered by the worker.
+model Notification {
+  id        String              @id @default(cuid())
+  channel   NotificationChannel @default(EMAIL)
+  template  String
+  recipient String
+  subject   String?
+  payload   Json                @default("{}")
+  status    NotificationStatus  @default(QUEUED)
+  attempts  Int                 @default(0)
+  lastError String?
+  sentAt    DateTime?
+  orderId   String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  logs      NotificationLog[]
+
+  @@index([status, createdAt])
+  @@index([orderId])
+  @@index([recipient, createdAt])
+}
+
+/// One delivery attempt of a notification.
+model NotificationLog {
+  id                String       @id @default(cuid())
+  notificationId    String
+  notification      Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  attempt           Int
+  provider          String
+  success           Boolean
+  providerMessageId String?
+  error             String?
+  createdAt         DateTime     @default(now())
+
+  @@index([notificationId])
+}

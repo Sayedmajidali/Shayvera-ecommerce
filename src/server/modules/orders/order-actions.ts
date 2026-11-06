@@ -1,6 +1,5 @@
 import { db } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
-import { sendOrderEmail } from "@/server/modules/notifications/order-emails";
 import { verifyOrderAccessToken } from "@/server/modules/orders/order-access";
 import { CUSTOMER_CANCELLABLE } from "@/server/modules/orders/order-status";
 import { orderDetailInclude, transitionOrder } from "@/server/modules/orders/orders";
@@ -48,6 +47,5 @@ export async function cancelOrderAsCustomer(
       actor: { type: "CUSTOMER", id: who.userId },
     });
   }
-  void sendOrderEmail(order.id, "cancelled");
   return db.order.findUniqueOrThrow({ where: { id: order.id } });
 }

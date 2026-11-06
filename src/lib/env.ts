@@ -30,6 +30,11 @@ const schema = z
       .default(5 * 1024 * 1024),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
     E2E_TEST_MODE: boolish.default(false),
+    /**
+     * Where background jobs run: "worker" (separate `npm run worker` process, production default),
+     * "inline" (polled inside the web server, development default) or "off".
+     */
+    JOB_RUNNER: z.enum(["worker", "inline", "off"]).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.NODE_ENV === "production" && v.PAYMENT_GATEWAY === "mock" && !v.E2E_TEST_MODE) {
@@ -55,6 +60,14 @@ export function env(): Env {
   }
   cached = parsed.data;
   return cached;
+}
+
+export function jobRunnerMode(): "worker" | "inline" | "off" {
+  const e = env();
+  return (
+    e.JOB_RUNNER ??
+    (e.NODE_ENV === "development" ? "inline" : e.NODE_ENV === "test" ? "off" : "worker")
+  );
 }
 
 export function isRazorpayConfigured(): boolean {

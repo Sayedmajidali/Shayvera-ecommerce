@@ -9,21 +9,50 @@ export type EmailMessage = {
   html?: string;
 };
 
+export type EmailDelivery = { provider: string; messageId: string | null };
+
 /**
- * Email delivery abstraction. In this local-first build, every message is persisted to the
- * OutboundEmail table (viewable in the admin "Emails" page / Prisma Studio) and a redacted
- * line is logged. A production provider (SES, Resend, Postmark…) implements `deliver`.
+ * Email provider abstraction. The only provider in this build is the development outbox: each
+ * message is stored in the OutboundEmail table (admin → Emails) and nothing leaves the server.
+ * A real provider (SES, Resend, Postmark…) implements `EmailProvider` and is selected here.
+ */
+export interface EmailProvider {
+  readonly name: string;
+  send(message: EmailMessage): Promise<EmailDelivery>;
+}
+
+const devOutbox: EmailProvider = {
+  name: "dev-outbox",
+  async send(message) {
+    const row = await db.outboundEmail.create({ data: { ...message, status: "SENT_DEV" } });
+    return { provider: "dev-outbox", messageId: row.id };
+  },
+};
+
+export function emailProvider(): EmailProvider {
+  return devOutbox;
+}
+
+/** Delivers an email and throws on failure (used by the notification job, which retries). */
+export async function deliverEmail(message: EmailMessage): Promise<EmailDelivery> {
+  const result = await emailProvider().send(message);
+  logger.info("Email delivered", {
+    to: maskEmail(message.to),
+    template: message.template,
+    provider: result.provider,
+  });
+  return result;
+}
+
+/**
+ * Immediate, best-effort send for flows where the user is waiting (password reset, verification).
+ * Never throws into the calling flow.
  */
 export async function sendEmail(message: EmailMessage): Promise<void> {
   try {
-    await db.outboundEmail.create({ data: { ...message, status: "SENT_DEV" } });
-    logger.info("Email queued (dev outbox)", {
-      to: maskEmail(message.to),
-      template: message.template,
-    });
+    await deliverEmail(message);
   } catch (error) {
-    // Email failures must never break the business operation that triggered them.
-    logger.error("Failed to record outbound email", { template: message.template, error });
+    logger.error("Failed to send email", { template: message.template, error });
   }
 }
 

@@ -4,18 +4,13 @@ import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/server/platform/logger";
 import type { CheckoutInput } from "@/lib/validation/checkout";
-import { sendOrderEmail } from "@/server/modules/notifications/order-emails";
 import { isOnlinePaymentConfigured } from "@/server/modules/payments/gateway";
 import { loadStoreSettings } from "@/server/modules/settings/queries";
 import { getCartView, type CartIdentity } from "@/server/modules/cart/cart";
 import { moveStock } from "@/server/modules/inventory/inventory";
 import { orderAccessToken } from "@/server/modules/orders/order-access";
 import { transitionOrder } from "@/server/modules/orders/orders";
-import {
-  maybeExpireStaleOrders,
-  startOnlinePayment,
-  type OnlinePaymentSession,
-} from "@/server/modules/payments/payments";
+import { startOnlinePayment, type OnlinePaymentSession } from "@/server/modules/payments/payments";
 import { nextOrderNumber } from "@/server/platform/sequence";
 
 export type CheckoutContext = { identity: CartIdentity; userId: string | null };
@@ -78,7 +73,6 @@ export async function placeOrder(
   input: CheckoutInput,
   ctx: CheckoutContext,
 ): Promise<CheckoutResult> {
-  maybeExpireStaleOrders();
   const replay = await existingForKey(input.idempotencyKey, ctx, input.email);
   if (replay) return replay;
 
@@ -315,8 +309,6 @@ export async function placeOrder(
       logger.error("Could not start online payment", { orderNumber: created.orderNumber, error });
       return null;
     });
-  } else {
-    void sendOrderEmail(created.id, "confirmed");
   }
 
   return {

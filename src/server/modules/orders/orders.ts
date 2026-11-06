@@ -4,6 +4,15 @@ import { AppError } from "@/lib/errors";
 import { logger } from "@/server/platform/logger";
 import { moveStock } from "@/server/modules/inventory/inventory";
 import { canTransition, STOCK_HOLDING_STATUSES } from "@/server/modules/orders/order-status";
+import { queueOrderEmail } from "@/server/modules/notifications/notifications";
+import type { OrderEmailKind } from "@/server/modules/notifications/order-emails";
+
+const STATUS_EMAIL: Partial<Record<OrderStatus, OrderEmailKind>> = {
+  CONFIRMED: "confirmed",
+  CANCELLED: "cancelled",
+  SHIPPED: "shipped",
+  DELIVERED: "delivered",
+};
 
 export type Actor = { type: ActorType; id?: string | null };
 
@@ -59,6 +68,10 @@ export async function transitionOrder(
   });
 
   // ── Side effects ──
+  // Customer notification is part of the same transaction (outbox), delivered by the job worker.
+  const emailKind = STATUS_EMAIL[p.to];
+  if (emailKind) await queueOrderEmail(tx, { orderId: order.id, kind: emailKind });
+
   if (p.to === "CONFIRMED") {
     for (const item of order.items) {
       if (item.productId) {

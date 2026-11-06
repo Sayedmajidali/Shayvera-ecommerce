@@ -1,0 +1,58 @@
+# Production-like stack for a single host (staging / smoke testing). Not a hosting configuration:
+# TLS termination, backups and secrets management are deployment decisions (PRODUCTION_READINESS.md).
+#
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+#
+# Required in .env.production: POSTGRES_PASSWORD, BETTER_AUTH_SECRET, NEXT_PUBLIC_APP_URL,
+# BETTER_AUTH_URL, payment and shipping credentials. Never commit that file.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-shayvera}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-shayvera}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shayvera} -d ${POSTGRES_DB:-shayvera}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build: { context: ., target: worker }
+    env_file: .env.production
+    environment: &dburl
+      DATABASE_URL: postgresql://${POSTGRES_USER:-shayvera}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-shayvera}?schema=public
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on: { db: { condition: service_healthy } }
+    restart: "no"
+
+  web:
+    build: { context: ., target: web }
+    env_file: .env.production
+    environment: *dburl
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - uploads:/app/storage/uploads
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., target: worker }
+    env_file: .env.production
+    environment: *dburl
+    volumes:
+      - uploads:/app/storage/uploads
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: unless-stopped
+    stop_grace_period: 40s
+
+volumes:
+  pgdata:
+  uploads:

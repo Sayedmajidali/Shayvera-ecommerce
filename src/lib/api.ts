@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { Prisma } from "@prisma/client";
 import { AppError } from "@/lib/errors";
-import { logger } from "@/server/platform/logger";
+import { currentContext, resolveRequestId, runWithContext } from "@/server/platform/context";
+import { captureException } from "@/server/platform/monitoring";
 
 export type ApiSuccess<T> = { data: T };
 export type ApiFailure = { error: { code: string; message: string; details?: unknown } };
@@ -32,8 +33,15 @@ export function toErrorResponse(err: unknown, requestId?: string) {
     if (err.code === "P2003")
       return fail("CONFLICT", "This record is referenced by other data", 409);
   }
-  logger.error("Unhandled API error", { requestId, error: err });
-  return fail("INTERNAL", "Something went wrong. Please try again.", 500);
+  const ref = requestId ?? currentContext()?.requestId;
+  captureException(err, { message: "Unhandled API error", requestId: ref });
+  // The correlation id lets support find the log entry; it reveals nothing internal.
+  return fail(
+    "INTERNAL",
+    "Something went wrong. Please try again.",
+    500,
+    ref ? { reference: ref } : undefined,
+  );
 }
 
 export function formatZodError(err: ZodError): Record<string, string> {
@@ -94,17 +102,26 @@ export function assertSameOrigin(req: Request) {
 
 type Handler<C> = (req: Request, ctx: C) => Promise<Response>;
 
-/** Wraps a route handler with origin checks and uniform error handling. */
+/** Wraps a route handler with a correlation context, origin checks and uniform error handling. */
 export function route<C = unknown>(handler: Handler<C>, opts: { csrf?: boolean } = {}): Handler<C> {
   const csrf = opts.csrf ?? true;
   return async (req, ctx) => {
-    const requestId = crypto.randomUUID();
-    try {
-      if (csrf) assertSameOrigin(req);
-      return await handler(req, ctx);
-    } catch (err) {
-      return toErrorResponse(err, requestId);
-    }
+    const requestId = resolveRequestId(req.headers.get("x-request-id"));
+    return runWithContext({ requestId }, async () => {
+      let res: Response;
+      try {
+        if (csrf) assertSameOrigin(req);
+        res = await handler(req, ctx);
+      } catch (err) {
+        res = toErrorResponse(err, requestId);
+      }
+      try {
+        res.headers.set("x-request-id", requestId);
+      } catch {
+        /* immutable response (e.g. redirect) */
+      }
+      return res;
+    });
   };
 }
 

@@ -1,7 +1,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/server/platform/db";
-import { eventually } from "../helpers/db";
+import { drainJobs } from "../helpers/db";
 import * as verifyRoute from "@/app/api/payments/razorpay/verify/route";
 import * as mockRoute from "@/app/api/payments/mock/complete/route";
 import * as webhookRoute from "@/app/api/webhooks/razorpay/route";
@@ -127,12 +127,10 @@ describe("Razorpay checkout callback", () => {
         where: { eventType: "checkout.callback", signatureValid: true },
       }),
     ).toBe(1);
-    expect(
-      await eventually(
-        async () =>
-          (await db.outboundEmail.count({ where: { template: "order-confirmed" } })) === 1,
-      ),
-    ).toBe(true);
+    await drainJobs();
+    expect((await db.outboundEmail.count({ where: { template: "order-confirmed" } })) === 1).toBe(
+      true,
+    );
   });
 
   it("rejects tampered signatures and does not change the order", async () => {

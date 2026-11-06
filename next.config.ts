@@ -43,6 +43,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Session-heavy app (cart, account, admin): classic dynamic rendering model.
   cacheComponents: false,
+  // The Docker image sets NEXT_OUTPUT=standalone for a minimal runtime; local `next start` is unaffected.
+  ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" as const } : {}),
   poweredByHeader: false,
   reactStrictMode: true,
   serverExternalPackages: ["sharp", "razorpay"],
