@@ -233,3 +233,22 @@
 - Tests: 178 unit + integration, 29 E2E — all passing.
 - **Awaiting from the business:** contact email/phone/WhatsApp, address + state + PIN, legal name, GSTIN (if
   registered), FSSAI licence number, real product list with prices/weights, social links, policy confirmation.
+
+---
+
+# v2 — Scalable platform specification (started 2026-11-06)
+
+## v2 Phase 0 — Discovery & architecture ✅
+
+- Inspected the v1 codebase (32 models, 20 services, 40 route handlers, 207 tests passing) and environment.
+- Network: created the **Shayvera-ecommerce** cloud environment (approved) allowing `apiv2.shiprocket.in`,
+  `apidocs.shiprocket.in`, `api.razorpay.com`, `checkout.razorpay.com`, `razorpay.com`, `shayvera.in`.
+- Read current official docs: Shiprocket Postman collection (endpoints, payloads, status code table, webhook
+  spec: `x-api-key` token, URL keyword restrictions, timestamp format, **no sandbox**); Razorpay webhook docs
+  (raw-body HMAC, `x-razorpay-event-id`, at-least-once, out-of-order, **5 s response**, 24 h retries,
+  old-secret validation after rotation).
+- Found the business's live WooCommerce catalog (10 products, real descriptions/photos; all prices shown as
+  ₹64.98, treated as placeholders).
+- Wrote: `PROJECT_PLAN.md` (gap analysis + 16-phase roadmap), `ARCHITECTURE.md` v2 (modules, platform layer,
+  decisions D1–D10, lifecycles, cancellation/return rules), `DATABASE_DESIGN.md` v2 additions,
+  `PAYMENT_INTEGRATION.md`, `SHIPPING_INTEGRATION.md`.

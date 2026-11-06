@@ -1,185 +1,158 @@
-# Shayvera — Architecture
+# Architecture (v2)
 
-## 1. Overview
+## 1. Shape
 
-Shayvera is a single Next.js (App Router) application that contains:
-
-- **Storefront** (`src/app/(store)`) — public catalog, cart, checkout, customer account.
-- **Admin dashboard** (`src/app/admin`) — role-protected back office.
-- **HTTP API** (`src/app/api`) — Route Handlers used by client components, Razorpay webhooks, health checks.
-
-It is a deliberately _modular monolith_: one deployable, one PostgreSQL database, no
-microservices, no Redis, no queue. Business logic lives in framework-agnostic service
-modules so it can be unit/integration tested without HTTP.
+A **modular monolith**: one Next.js application (storefront, admin, HTTP API) plus one **worker process**
+(background jobs), sharing one PostgreSQL database. No microservices, Redis or queues until a demonstrated
+need — but every module has explicit boundaries so it could be extracted later.
 
 ```
-Browser ──► proxy.ts (optimistic auth redirects, security headers)
-        ──► Server Components (read via services/queries)
-        ──► Route Handlers (/api/**) ──► zod validation ──► services ──► Prisma ──► PostgreSQL
-Razorpay ─► /api/webhooks/razorpay (raw body HMAC verification) ──► payment service
+                    ┌────────────── Next.js (stateless, N instances) ──────────────┐
+Browser ──HTTPS──►  │ proxy.ts → Server Components / Route Handlers                │
+Razorpay  webhooks ►│   └─► modules/* (business logic) ─► platform/db (Prisma) ───┼─► PostgreSQL
+Shiprocket webhooks►│   └─► enqueue jobs (transactional outbox, same DB tx)        │      ▲
+                    └───────────────────────────────────────────────────────────────┘      │
+                    ┌────────────── worker (1..N processes) ───────────────────────┐      │
+                    │ claim jobs (FOR UPDATE SKIP LOCKED) → handlers → adapters ───┼──────┘
+                    │ scheduled jobs: payment expiry, reservation expiry,          │──► Razorpay API
+                    │ shipment tracking sync, reconciliation, cleanup              │──► Shiprocket API
+                    └───────────────────────────────────────────────────────────────┘──► Email provider
 ```
 
-## 2. Technology decisions (verified November 2026)
+Both processes are **stateless**: sessions, carts, rate limits, locks, idempotency records and jobs live in
+PostgreSQL. Uploaded files go through a storage provider (local disk in development, S3-compatible in
+production). The app can therefore scale horizontally behind a load balancer without code changes.
 
-| Concern    | Choice                                     | Pinned version    | Notes                                                                                                                                                                                                                                                   |
-| ---------- | ------------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Framework  | Next.js App Router                         | 16.4.3            | 16.4.5 was 2 days old at project start; 16.4.3 is ~2 weeks old. `proxy.ts` replaces `middleware.ts` in v16.                                                                                                                                             |
-| UI runtime | React                                      | 19.3.x            | Bundled with create-next-app 16.4.3.                                                                                                                                                                                                                    |
-| Language   | TypeScript strict                          | 5.x               | `strict`, `noUncheckedIndexedAccess`.                                                                                                                                                                                                                   |
-| Styling    | Tailwind CSS v4 + shadcn/ui + lucide-react | 4.x               | Design tokens via CSS variables (`globals.css`).                                                                                                                                                                                                        |
-| Validation | Zod                                        | 4.x               | Same major as Better Auth's dependency.                                                                                                                                                                                                                 |
-| ORM        | Prisma                                     | 6.19.3            | Prisma 8 is still RC (`latest` tag points to an RC); Prisma 7 requires driver adapters and a new generator. 6.19 is the mature stable line and is inside Better Auth's peer range (`^5 \|\| ^6 \|\| ^7`). Upgrade path to 7 documented in PROJECT_PLAN. |
-| Auth       | Better Auth + Prisma adapter               | 1.7.13            | Peer ranges: next ^14–^16, prisma ^5–^7.                                                                                                                                                                                                                |
-| Payments   | Razorpay Node SDK + Checkout.js            | 2.9.x             | Test mode; secrets server-side only.                                                                                                                                                                                                                    |
-| Images     | sharp                                      | bundled with Next | Decode + re-encode every upload.                                                                                                                                                                                                                        |
-| Tests      | Vitest, Playwright                         | 4.x / 1.6x        | Integration tests run against a real PostgreSQL test DB.                                                                                                                                                                                                |
+## 2. Technology (pinned)
 
-**Cache Components disabled.** Next 16.4 scaffolds with `cacheComponents: true`. This app is
-dominated by per-session data (cart badge, account, admin), so we use the classic dynamic
-rendering model (`cacheComponents: false`). Catalog pages are dynamic and rely on indexed
-queries + pagination. Adopting Cache Components later is a contained optimisation.
+| Concern    | Choice                                                  | Version                                      | Notes                                                                    |
+| ---------- | ------------------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------ |
+| Framework  | Next.js App Router                                      | 16.4.3                                       | `proxy.ts`; `cacheComponents` off (session-heavy app)                    |
+| UI         | React 19.3, Tailwind 4, shadcn/ui (Radix), lucide-react |                                              |                                                                          |
+| Language   | TypeScript strict + `noUncheckedIndexedAccess`          | 5.x                                          |                                                                          |
+| Validation | Zod                                                     | 4.x                                          |                                                                          |
+| ORM / DB   | Prisma                                                  | 6.19.3                                       | PostgreSQL 16. Prisma 8 is RC; 7 needs driver adapters — upgrade tracked |
+| Auth       | Better Auth                                             | 1.7.13                                       | DB sessions, roles via additional fields + AdminRole                     |
+| Payments   | Razorpay Node SDK                                       | 2.9.x                                        | + Checkout.js                                                            |
+| Shipping   | Shiprocket REST API (`apiv2.shiprocket.in/v1/external`) | official Postman collection, read 2026-11-06 | own fetch-based adapter (no SDK)                                         |
+| Images     | sharp                                                   | bundled                                      |                                                                          |
+| Tests      | Vitest 4, Playwright 1.63, axe-core                     |                                              |                                                                          |
 
 ## 3. Source layout
 
 ```
-prisma/                 schema.prisma, migrations/, seed.ts
-scripts/                create-admin.ts, reconcile-payments.ts
 src/
-  app/
-    (store)/            storefront route group (shared header/footer layout)
-    (auth)/             login, register, forgot/reset password
-    admin/              admin dashboard (layout enforces ADMIN role server-side)
-    api/                route handlers
-    media/[...key]/     serves uploaded files from local storage
-  components/
-    ui/                 shadcn/ui primitives
-    store/ admin/ shared/
-  lib/                  cross-cutting utilities (env, db, money, errors, api helpers, auth)
+  app/                 routes only: (store), admin, (print), api/*, media
+  components/          ui (shadcn), store, admin, shared
+  lib/                 framework-agnostic helpers: money, india, validation schemas, api envelope, env
   server/
-    services/           business logic (catalog, cart, pricing, checkout, orders, payments, …)
-    queries/            read models for server components
-    storage/            StorageProvider abstraction (local disk now, cloud later)
-    payments/           Razorpay gateway abstraction (real + mock for tests)
-    email/              email abstraction (dev outbox table + console)
-  proxy.ts
-tests/
-  unit/ integration/ e2e/
+    platform/          cross-cutting infrastructure — no business rules
+      db.ts            Prisma client (+ read-replica hook)
+      logger.ts, context.ts   structured logs + AsyncLocalStorage request/job context
+      jobs/            queue (enqueue/claim/complete/fail), worker loop, scheduler, handler registry
+      http.ts          fetch with timeout, retry (exponential backoff + full jitter) for idempotent calls
+      cache.ts         Cache interface + in-process TTL implementation
+      storage/         StorageProvider: local, s3
+      rate-limit.ts, sequence.ts, monitoring.ts
+    modules/           business domains — each exposes a small public API (index.ts)
+      auth/            sessions, guards, admin roles & permissions, admin users
+      customers/       profile, addresses, admin customer management
+      catalog/         products, variants, attributes, images, categories, public queries, importer
+      inventory/       reservations, ledger, adjustments, reconciliation
+      pricing/         pricing engine, coupons evaluation, tax
+      cart/            guest/user carts, wishlist
+      checkout/        order placement, serviceability at checkout
+      orders/          order state machine, history, access, admin operations
+      payments/        payment orchestration + gateways/ (razorpay, mock), webhooks, refunds, reconciliation
+      shipping/        fulfilment orchestration + providers/ (shiprocket, mock), status normalisation, webhooks
+      returns/         cancellation & return requests
+      invoices/        GST invoices
+      notifications/   templates, queued delivery, providers/ (dev outbox, …)
+      analytics/       dashboard, reports
+      settings/        store configuration
+      audit/           admin audit log
 ```
 
-## 4. Layering rules
+**Boundary rules.** Routes call module entry points, never Prisma directly (read-only page queries live in
+the module's `queries.ts`). Modules may call other modules' public functions; they never reach into another
+module's tables for writes except through that module. Provider-specific code lives only in
+`payments/gateways/*` and `shipping/providers/*`; the rest of the system sees only the `PaymentGateway` and
+`ShippingProvider` interfaces, so changing courier aggregator does not touch orders.
 
-1. **Route Handlers / Server Components** — parse input (zod), resolve the session, call a service, map
-   errors to HTTP. No business rules here.
-2. **Services** (`src/server/services`) — business rules, transactions, authorization _assertions_
-   that depend on data ownership (e.g. "order belongs to user").
-3. **Prisma** — the only persistence API. Raw SQL only through tagged `$queryRaw` (parameterised).
+## 4. Cross-cutting decisions
 
-Authorization is enforced server-side twice: route/layout guards (`requireUser`, `requireAdmin`) and
-ownership filters in every customer query (`where: { userId }`).
+| #   | Decision                                                                                                                                                                     | Rationale                                                                                             |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| D1  | **PostgreSQL job queue** (`Job` table) claimed with `FOR UPDATE SKIP LOCKED`; separate worker process (`npm run worker`)                                                     | durable, transactional with business writes, no Redis needed at this scale; multiple workers are safe |
+| D2  | **Transactional outbox**: jobs are inserted in the same DB transaction as the state change (e.g. order placed → `notification.send`)                                         | no lost or phantom side effects                                                                       |
+| D3  | Jobs are **idempotent** and carry an optional unique `dedupeKey`; retries use exponential backoff with full jitter, then `DEAD` (visible in admin, manually retryable)       | safe retries, no duplicate shipments/refunds                                                          |
+| D4  | External calls: timeout + retry **only for idempotent requests**; non-idempotent creates use reconcile-before-retry (look the object up by our reference first)              | never double-create at a provider                                                                     |
+| D5  | Webhooks: verify → store raw event (dedupe) → apply DB-only state change → enqueue follow-ups → respond 2xx fast                                                             | Razorpay requires a response within 5 s; providers retry                                              |
+| D6  | Order, payment, shipment and refund have **separate status fields** with their own state machines; shipment events drive order status through an explicit mapping, never 1:1 | correctness, auditability                                                                             |
+| D7  | Inventory **reservation → deduction → release** (see §6) with conditional updates                                                                                            | no overselling, no permanently blocked stock                                                          |
+| D8  | Money as integer paise; percentages as basis points                                                                                                                          | no floating point                                                                                     |
+| D9  | Request **correlation ID** (`x-request-id`) propagated via AsyncLocalStorage into every log line, job and outbound call                                                      | traceability across app, worker and providers                                                         |
+| D10 | Caching only for public, non-personal data (catalog navigation, serviceability lookups) behind a `Cache` interface                                                           | correctness first; Redis can replace the in-process store later                                       |
 
-## 5. API conventions
+## 5. Authorization
 
-- Base path `/api`. JSON in/out. Resource-oriented paths (`/api/cart/items/:id`).
-- Success: `200/201` with `{ "data": … }`.
-- Error: `{ "error": { "code": "VALIDATION_ERROR", "message": "…", "details"?: … } }` with
-  `400` validation, `401` unauthenticated, `403` forbidden, `404` not found, `409` conflict
-  (stock/state), `413` payload too large, `422` business rule, `429` rate limited, `500` internal.
-- Internal errors never leak stack traces; they are logged server-side with a request id.
-- State-changing requests require a same-origin `Origin` header (CSRF defence for cookie auth);
-  webhooks are exempt and authenticated by HMAC instead.
-- Idempotency: checkout requires an `idempotencyKey` (UUID generated client-side per checkout attempt).
+- `proxy.ts`: optimistic redirect only. Every admin page calls `requireAdminPage(permission)`; every admin API
+  uses `adminRoute(permission, handler)`; customer APIs scope all queries by owner.
+- Admins have an **AdminRole** with a set of **AdminPermission** values (e.g. `ORDERS_MANAGE`,
+  `PAYMENTS_REFUND`, `SHIPPING_MANAGE`, `ADMINS_MANAGE`). Built-in roles: Owner, Operations, Catalog, Support,
+  Accounts. The Owner role cannot be removed from the last owner.
 
-## 6. Money, tax, pricing
+## 6. Order, payment, shipment, refund lifecycles
 
-- All money is stored as **integer paise** (`Int`). No floats. Percentages stored as **basis points**.
-- One pure pricing engine (`src/server/services/pricing.ts`) computes subtotal, product discounts,
-  coupon discount, shipping, COD fee, GST (CGST/SGST vs IGST) and total. The same function is used
-  for cart display and for order creation; the server always recomputes — the client never sends
-  amounts.
-- GST is configurable (`gstEnabled`, `pricesIncludeTax`, per-product rate). Intra-state (store state
-  == shipping state) → CGST+SGST split; inter-state → IGST. Rounding: per line, half-up to paise.
+**Order** (internal): `PENDING` (pending payment) · `PAYMENT_FAILED` · `CONFIRMED` · `PROCESSING` ·
+`READY_TO_SHIP` · `SHIPPED` · `OUT_FOR_DELIVERY` · `DELIVERED` · `CANCELLATION_REQUESTED` · `CANCELLED` ·
+`RETURN_REQUESTED` · `RETURNED` · `REFUND_PENDING` · `REFUNDED`. Transitions are defined in one table
+(`modules/orders/order-status.ts`) and enforced with compare-and-set updates.
 
-## 7. Order & payment lifecycle
+**Inventory**: available = `quantityOnHand − quantityReserved`.
 
-```
-            ┌─────────── cancel / payment expired ───────────┐
-PENDING ──► CONFIRMED ──► PROCESSING ──► SHIPPED ──► DELIVERED ──► REFUNDED
-   │            │              │                                     ▲
-   └────────────┴──────────────┴──► CANCELLED ──(if paid)────────────┘
-```
+1. _Reserve_ at order placement (COD and online): conditional increment of `quantityReserved`; an
+   `InventoryReservation` row per line (online orders expire after `PAYMENT_EXPIRY_MINUTES`).
+2. _Deduct_ when the shipment is handed over (order → `READY_TO_SHIP`): `onHand −= q`, `reserved −= q`,
+   reservation `CONSUMED`, ledger `ORDER_FULFILLED`.
+3. _Release_ on cancellation before deduction or payment expiry: `reserved −= q`, reservation `RELEASED`.
+4. Returns are **not** restocked automatically; the admin records per-line restock when goods are received and
+   inspected (ledger `RETURN`).
+   A reconciliation job compares `quantityReserved` with active reservations and reports drift.
 
-- **COD**: order is created `CONFIRMED`, payment `PENDING`; becomes `PAID` when marked delivered.
-- **Razorpay**: order created `PENDING` (stock reserved, `paymentExpiresAt` = +30 min); a Razorpay
-  order is created server-side. Order moves to `CONFIRMED` only on _verified_ evidence: a valid
-  checkout signature **and** captured status fetched from Razorpay, or a signature-verified
-  `payment.captured` / `order.paid` webhook. Failed payments keep the order `PENDING` so the
-  customer can retry until expiry; expired orders are cancelled and stock released.
-- **Late capture** for an already-cancelled order: stock is re-reserved if available and the
-  order is confirmed; otherwise a refund is initiated and flagged for admin.
-- Transitions are validated by a single state machine (`order-status.ts`); invalid transitions → 409.
-- Every transition writes `OrderStatusHistory`.
+**Payment**: `PENDING → PAID | FAILED → PARTIALLY_REFUNDED | REFUNDED` (order level) and per attempt
+`CREATED → AUTHORIZED → CAPTURED | FAILED → REFUNDED`. Paid only on verified evidence (see `PAYMENT_INTEGRATION.md`).
 
-## 8. Inventory concurrency
+**Shipment**: normalised status (`PENDING`, `CREATED`, `AWB_ASSIGNED`, `PICKUP_SCHEDULED`, `PICKED_UP`,
+`IN_TRANSIT`, `OUT_FOR_DELIVERY`, `DELIVERED`, `UNDELIVERED`, `RTO_INITIATED`, `RTO_DELIVERED`, `CANCELLED`,
+`LOST`, `DAMAGED`, `FAILED`) plus the raw provider status and an event history (see `SHIPPING_INTEGRATION.md`).
 
-Stock decrements use a conditional atomic update inside the order transaction:
+**Cancellation & returns** (business rules, explicit):
 
-```sql
-UPDATE "Inventory" SET "quantityOnHand" = "quantityOnHand" - $n
-WHERE "variantId" = $id AND "quantityOnHand" >= $n
-```
+- Unpaid online order (`PENDING`/`PAYMENT_FAILED`): customer may cancel immediately → reservation released.
+- Confirmed order before handover: customer _requests_ cancellation → admin approves → shipment cancelled at
+  the provider (if created) → reservation released → refund initiated for paid orders (`REFUND_PENDING` →
+  `REFUNDED` on gateway confirmation).
+- Delivered order within the return window: customer _requests_ a return (reason) → admin approves → optional
+  return pickup → admin marks received with per-line restock decision → refund.
+- No refund or restock happens without one of these explicit steps.
 
-(Prisma `updateMany` with `quantityOnHand: { gte: n }`.) If the affected row count is 0 the whole
-transaction rolls back with `OUT_OF_STOCK`. This is safe under concurrent checkouts without
-explicit row locks. Every change writes an `InventoryTransaction` ledger row.
+## 7. Reliability & failure handling
 
-## 9. Authentication & authorization
+Provider outages degrade gracefully: checkout falls back to configured shipping fees when serviceability is
+unavailable; payment confirmation falls back to webhook/reconciliation; shipment operations are queued and
+retried; failures appear on the admin Payments/Shipments dashboards with manual retry. All provider
+references and raw responses (minus secrets) are stored so a crash between "provider succeeded" and "DB
+committed" is recoverable by reconciliation.
 
-- Better Auth (email + password, scrypt hashing, DB sessions, httpOnly/SameSite=Lax cookies,
-  `Secure` in production).
-- `role` (`CUSTOMER` | `ADMIN`) is an additional user field with `input: false` — it cannot be set
-  via sign-up. Admins are provisioned only with `npm run admin:create`.
-- Disabled accounts are blocked at session creation (database hook) and on every guarded request.
-- `proxy.ts` does optimistic cookie-presence redirects only; real checks happen in layouts,
-  route handlers and services.
+## 8. Observability
 
-## 10. Storage
+Structured JSON logs (production) with `requestId`, `jobId`, `orderNumber` context; secrets and PII keys
+redacted. `GET /api/health` reports DB status, queue backlog/age and worker heartbeat. A `monitoring.ts` hook
+forwards exceptions to an error tracker when `SENTRY_DSN` (or equivalent) is configured.
 
-`StorageProvider` interface (`put`, `delete`, `getStream`, `publicUrl`). `LocalStorageProvider`
-writes to `./storage/uploads` (outside `public/`, served by `/media/[...key]`). Uploads are
-validated by size, extension, magic bytes and a full decode via sharp, then re-encoded to WebP
-(strips metadata and polyglot payloads). A Cloudinary/S3 provider can be added by implementing
-the interface and switching `STORAGE_DRIVER`.
+## 9. Deployment readiness
 
-## 11. Email
-
-`EmailService` writes every message to the `OutboundEmail` table and logs a redacted line in
-development. A real provider (SES, Resend, …) plugs in later behind the same interface.
-
-## 12. Rate limiting
-
-Better Auth's built-in limiter (database storage) protects auth endpoints. Application endpoints
-(checkout, coupon validation, contact, newsletter, uploads) use a PostgreSQL-backed fixed-window
-limiter (`RateLimitBucket`) so it works across multiple instances without Redis.
-
-## 13. Background work
-
-No queue. Time-based work (expiring unpaid orders) runs opportunistically (on checkout and admin
-dashboard requests) and via `npm run jobs:reconcile`, which can be scheduled with cron/Task
-Scheduler in production.
-
-## 14. Implementation notes (as built)
-
-- **Authorization layers:** `proxy.ts` only performs optimistic redirects (session-cookie presence) for
-  `/account` and `/admin`. Every admin **page** calls `requireAdminPage()` (layouts are not re-rendered on
-  client-side navigation), every protected API calls `requireUser(req)` / `requireAdmin(req)`, and services
-  scope data by owner.
-- **Streaming and status codes:** loading skeletons (`loading.tsx`) exist only for listing pages (shop, search).
-  Pages that can `notFound()` (product, category, order) do not stream before the check, so they return real 404s.
-- **Payments:** `PaymentGateway` interface with `RazorpayGateway` and `MockGateway` (offline simulator that signs
-  like Razorpay; refused in production). Webhook events are stored once (`PaymentEvent.eventId` unique) and
-  applied under a `SELECT … FOR UPDATE` row lock on the payment.
-- **Invoices:** issued on demand by admins, numbered per financial year via the `Sequence` table, stored as an
-  immutable JSON snapshot and rendered at `/invoice/:orderNumber` (printable; "Save as PDF").
-- **Emails:** `sendEmail` writes to `OutboundEmail` (Admin → Messages & emails). Order emails are
-  fire-and-forget so they never block checkout or payment processing.
-- **Scripts:** run with `tsx --conditions=react-server` so `server-only` modules can be imported by CLI scripts.
+`Dockerfile` (Next.js standalone output) runs either the web server or the worker (`npm run worker`).
+`deploy/docker-compose.prod.yml` shows app ×N, worker, PostgreSQL (or managed DB), Caddy reverse proxy with
+automatic HTTPS. Migrations run as a release step (`prisma migrate deploy`). See `PRODUCTION_READINESS.md`.

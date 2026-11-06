@@ -88,3 +88,29 @@ OutboundEmail, NewsletterSubscriber, ContactMessage, RateLimitBucket
 - Order/invoice numbers: `Sequence` row incremented with `INSERT … ON CONFLICT DO UPDATE … RETURNING`.
 - Webhook idempotency: unique `PaymentEvent.eventId`; payment state transitions are guarded by
   conditional updates on the current status.
+
+## v2 additions (planned in v2 Phase 0, implemented phase by phase)
+
+| Entity                                       | Purpose                                                                                                              | Key constraints                                     |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `AdminRole`                                  | named role with `permissions AdminPermission[]` (enum array)                                                         | unique `name`; built-ins seeded                     |
+| `User.adminRoleId`                           | role for staff users (`role = ADMIN`)                                                                                | FK `SET NULL`                                       |
+| `WishlistItem`                               | customer wishlist                                                                                                    | unique (`userId`,`productId`)                       |
+| `ProductAttribute`                           | specifications (name/value, ordered)                                                                                 | idx (`productId`,`sortOrder`)                       |
+| `ProductVariant.lengthMm/breadthMm/heightMm` | package dimensions for shipping (with `weightGrams`)                                                                 | CHECK ≥ 0                                           |
+| `Inventory.quantityReserved`                 | units held by active reservations                                                                                    | CHECK `0 ≤ reserved ≤ onHand`                       |
+| `InventoryReservation`                       | per order line hold: `ACTIVE → CONSUMED \| RELEASED \| EXPIRED`, `expiresAt`                                         | idx (`status`,`expiresAt`), (`orderId`)             |
+| `OrderStatus` (+7 values)                    | PAYMENT_FAILED, READY_TO_SHIP, OUT_FOR_DELIVERY, CANCELLATION_REQUESTED, RETURN_REQUESTED, RETURNED, REFUND_PENDING  | enum values added in place (non-destructive)        |
+| `ReturnRequest`                              | cancellation/return request: type, status, reason, lines JSON, previous order status, resolution                     | idx (`orderId`), (`status`,`createdAt`)             |
+| `PickupLocation`                             | warehouse / Shiprocket pickup nickname, origin PIN                                                                   | unique `providerName`                               |
+| `Shipment` (extended)                        | provider, unique `reference`, provider ids, AWB, normalised + raw status, URLs, dims, `lastEventAt`, attempts, error | unique `reference`, unique `awb`                    |
+| `ShipmentItem`                               | lines in a parcel                                                                                                    | unique (`shipmentId`,`orderItemId`)                 |
+| `ShipmentEvent`                              | normalised tracking history                                                                                          | unique `dedupeKey`; idx (`shipmentId`,`occurredAt`) |
+| `WebhookEvent`                               | inbound provider webhooks (non-payment)                                                                              | unique (`provider`,`dedupeKey`)                     |
+| `Job`                                        | durable background job / transactional outbox                                                                        | unique `dedupeKey`; idx (`status`,`runAt`)          |
+| `Notification` + `NotificationLog`           | queued customer/admin messages and delivery attempts                                                                 | idx (`status`,`createdAt`)                          |
+| `SystemState`                                | key/value operational state (worker heartbeat, last sync)                                                            | PK `key`                                            |
+| `StoreSettings` (+)                          | return window days, default package dims/weight                                                                      |                                                     |
+
+All additions are **additive migrations** (new tables/columns with defaults, enum values added) — no data loss,
+compatible with rolling deploys (old code ignores new columns).
