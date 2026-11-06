@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { ok, parseJson, route } from "@/lib/api";
-import { cartIdentityFromRequest } from "@/server/cart/request";
-import { clientIp } from "@/server/services/audit";
-import { applyCoupon, removeCoupon } from "@/server/services/cart";
-import { enforceRateLimit } from "@/server/services/rate-limit";
+import { cartIdentityFromRequest } from "@/server/modules/cart/request";
+import { clientIp } from "@/server/modules/audit/audit";
+import { applyCoupon, removeCoupon } from "@/server/modules/cart/cart";
+import { enforceRateLimit } from "@/server/platform/rate-limit";
 
 const schema = z.object({
   code: z

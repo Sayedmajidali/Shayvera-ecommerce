@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 
 /** Truncates every application table (keeps the migrations table). */
 export async function resetDatabase() {

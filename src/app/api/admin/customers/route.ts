@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ok, parseSearchParams } from "@/lib/api";
 import { paginationSchema } from "@/lib/validation/common";
-import { adminRoute } from "@/server/auth/admin-route";
-import { listCustomers } from "@/server/services/admin-misc";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { listCustomers } from "@/server/modules/customers/admin-customers";
 
 const schema = paginationSchema.extend({
   q: z.string().trim().max(100).optional(),

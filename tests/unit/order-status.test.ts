@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canTransition, ORDER_TRANSITIONS } from "@/server/services/order-status";
-import { financialYear } from "@/server/services/sequence";
+import { canTransition, ORDER_TRANSITIONS } from "@/server/modules/orders/order-status";
+import { financialYear } from "@/server/platform/sequence";
 
 describe("order state machine", () => {
   it.each([

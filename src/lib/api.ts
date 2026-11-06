@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { ZodError, type ZodType } from "zod";
 import { Prisma } from "@prisma/client";
 import { AppError } from "@/lib/errors";
-import { logger } from "@/lib/logger";
+import { logger } from "@/server/platform/logger";
 
 export type ApiSuccess<T> = { data: T };
 export type ApiFailure = { error: { code: string; message: string; details?: unknown } };

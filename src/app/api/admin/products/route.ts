@@ -2,8 +2,8 @@ import { z } from "zod";
 import { ok, parseJson, parseSearchParams } from "@/lib/api";
 import { productCreateSchema } from "@/lib/validation/catalog";
 import { paginationSchema } from "@/lib/validation/common";
-import { adminRoute } from "@/server/auth/admin-route";
-import { createProduct, listProductsAdmin } from "@/server/services/catalog-admin";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { createProduct, listProductsAdmin } from "@/server/modules/catalog/catalog-admin";
 
 const filtersSchema = paginationSchema.extend({
   q: z.string().trim().max(100).optional(),

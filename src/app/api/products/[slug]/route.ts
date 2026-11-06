@@ -1,6 +1,6 @@
 import { ok, route, type RouteCtx } from "@/lib/api";
 import { AppError } from "@/lib/errors";
-import { getProductBySlug } from "@/server/queries/catalog";
+import { getProductBySlug } from "@/server/modules/catalog/queries";
 
 export const GET = route<RouteCtx<{ slug: string }>>(
   async (_req, { params }) => {

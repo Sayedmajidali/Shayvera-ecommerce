@@ -18,8 +18,8 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
-import { listCustomers } from "@/server/services/admin-misc";
-import { requireAdminPage } from "@/server/auth/session";
+import { listCustomers } from "@/server/modules/customers/admin-customers";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Customers" };
 

@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { OrderDetail } from "@/components/store/order-detail";
-import { requireUserPage } from "@/server/auth/session";
-import { getCustomerOrder } from "@/server/services/orders";
+import { requireUserPage } from "@/server/modules/auth/session";
+import { getCustomerOrder } from "@/server/modules/orders/orders";
 
 export const metadata: Metadata = { title: "Order details", robots: { index: false } };
 

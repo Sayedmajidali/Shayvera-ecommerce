@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { SettingsForm } from "@/components/admin/settings-form";
-import { loadStoreSettings } from "@/server/queries/settings";
-import { requireAdminPage } from "@/server/auth/session";
+import { loadStoreSettings } from "@/server/modules/settings/queries";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Settings" };
 

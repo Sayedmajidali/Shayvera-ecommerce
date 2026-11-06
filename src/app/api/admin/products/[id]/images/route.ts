@@ -2,11 +2,11 @@ import { ok, parseJson, type RouteCtx } from "@/lib/api";
 import { env } from "@/lib/env";
 import { AppError } from "@/lib/errors";
 import { imageReorderSchema } from "@/lib/validation/catalog";
-import { adminRoute } from "@/server/auth/admin-route";
-import { addProductImage, reorderImages } from "@/server/services/catalog-admin";
-import { processImageUpload } from "@/server/services/image-upload";
-import { enforceRateLimit } from "@/server/services/rate-limit";
-import { db } from "@/lib/db";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { addProductImage, reorderImages } from "@/server/modules/catalog/catalog-admin";
+import { processImageUpload } from "@/server/modules/catalog/image-upload";
+import { enforceRateLimit } from "@/server/platform/rate-limit";
+import { db } from "@/server/platform/db";
 
 type Ctx = RouteCtx<{ id: string }>;
 

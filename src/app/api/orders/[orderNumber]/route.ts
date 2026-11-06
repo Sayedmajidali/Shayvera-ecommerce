@@ -1,6 +1,6 @@
 import { ok, route, type RouteCtx } from "@/lib/api";
-import { orderRequester } from "@/server/cart/order-requester";
-import { resolveOrderForRequester } from "@/server/services/order-actions";
+import { orderRequester } from "@/server/modules/orders/order-requester";
+import { resolveOrderForRequester } from "@/server/modules/orders/order-actions";
 
 export const GET = route<RouteCtx<{ orderNumber: string }>>(
   async (req, { params }) => {

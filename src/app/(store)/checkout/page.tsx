@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/store/checkout-form";
-import { isOnlinePaymentConfigured } from "@/server/payments/gateway";
-import { getCurrentCartView } from "@/server/queries/cart-page";
-import { getStoreSettings } from "@/server/queries/settings";
-import { listAddresses } from "@/server/services/account";
+import { isOnlinePaymentConfigured } from "@/server/modules/payments/gateway";
+import { getCurrentCartView } from "@/server/modules/cart/cart-page";
+import { getStoreSettings } from "@/server/modules/settings/queries";
+import { listAddresses } from "@/server/modules/customers/account";
 
 export const metadata: Metadata = { title: "Checkout", robots: { index: false } };
 

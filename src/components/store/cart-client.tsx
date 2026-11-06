@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { QuantityStepper } from "@/components/store/quantity-stepper";
 import { apiFetch, ApiClientError } from "@/lib/fetcher";
 import { formatINR } from "@/lib/money";
-import type { CartIssue, CartLineView } from "@/server/services/cart";
+import type { CartIssue, CartLineView } from "@/server/modules/cart/cart";
 
 export function CartLines({ lines, issues }: { lines: CartLineView[]; issues: CartIssue[] }) {
   const router = useRouter();

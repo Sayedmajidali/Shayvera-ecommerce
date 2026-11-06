@@ -1,5 +1,5 @@
 import { ok, route } from "@/lib/api";
-import { searchSuggestions } from "@/server/queries/catalog";
+import { searchSuggestions } from "@/server/modules/catalog/queries";
 
 export const GET = route(
   async (req) => {

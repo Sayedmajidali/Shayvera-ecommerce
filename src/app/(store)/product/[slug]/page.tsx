@@ -15,8 +15,8 @@ import { RatingStars } from "@/components/store/rating-stars";
 import { VegMark } from "@/components/store/veg-mark";
 import { formatINR } from "@/lib/money";
 import { siteConfig } from "@/lib/site";
-import { getProductBySlug, getRelatedProducts } from "@/server/queries/catalog";
-import { getStoreSettings } from "@/server/queries/settings";
+import { getProductBySlug, getRelatedProducts } from "@/server/modules/catalog/queries";
+import { getStoreSettings } from "@/server/modules/settings/queries";
 
 export async function generateMetadata({
   params,

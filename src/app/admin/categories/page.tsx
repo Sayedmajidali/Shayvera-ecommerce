@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { CategoryManager } from "@/components/admin/category-manager";
 import { AdminPageHeader } from "@/components/admin/page-header";
-import { listCategoriesAdmin } from "@/server/services/catalog-admin";
-import { requireAdminPage } from "@/server/auth/session";
+import { listCategoriesAdmin } from "@/server/modules/catalog/catalog-admin";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Categories" };
 

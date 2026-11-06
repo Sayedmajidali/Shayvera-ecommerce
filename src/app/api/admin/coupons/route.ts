@@ -1,6 +1,6 @@
 import { ok, parseJson } from "@/lib/api";
-import { adminRoute } from "@/server/auth/admin-route";
-import { couponInputSchema, listCoupons, saveCoupon } from "@/server/services/admin-misc";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { couponInputSchema, listCoupons, saveCoupon } from "@/server/modules/coupons/coupon-admin";
 
 export const GET = adminRoute(async () => ok(await listCoupons()), { csrf: false });
 

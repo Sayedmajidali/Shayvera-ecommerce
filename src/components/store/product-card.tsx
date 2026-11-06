@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { AddToCartButton } from "@/components/store/add-to-cart-button";
 import { Price } from "@/components/store/price";
 import { RatingStars } from "@/components/store/rating-stars";
-import type { ProductCardData } from "@/server/queries/catalog";
+import type { ProductCardData } from "@/server/modules/catalog/queries";
 
 export function ProductCard({
   product,

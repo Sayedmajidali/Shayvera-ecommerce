@@ -1,7 +1,7 @@
 import { ok, parseJson, type RouteCtx } from "@/lib/api";
 import { categoryInputSchema } from "@/lib/validation/catalog";
-import { adminRoute } from "@/server/auth/admin-route";
-import { deleteCategory, updateCategory } from "@/server/services/catalog-admin";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { deleteCategory, updateCategory } from "@/server/modules/catalog/catalog-admin";
 
 export const PUT = adminRoute<RouteCtx<{ id: string }>>(async (req, { params }, { actor }) => {
   const { id } = await params;

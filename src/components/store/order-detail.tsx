@@ -11,8 +11,8 @@ import {
   CUSTOMER_CANCELLABLE,
   ORDER_PROGRESS,
   ORDER_STATUS_LABEL,
-} from "@/server/services/order-status";
-import type { orderDetailInclude } from "@/server/services/orders";
+} from "@/server/modules/orders/order-status";
+import type { orderDetailInclude } from "@/server/modules/orders/orders";
 import type { Prisma } from "@prisma/client";
 
 type Order = Prisma.OrderGetPayload<{ include: typeof orderDetailInclude }>;

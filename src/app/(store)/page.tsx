@@ -6,8 +6,8 @@ import { NewsletterForm } from "@/components/store/newsletter-form";
 import { ProductGrid } from "@/components/store/product-card";
 import { RatingStars } from "@/components/store/rating-stars";
 import { formatINR } from "@/lib/money";
-import { getHomeData } from "@/server/queries/catalog";
-import { getStoreSettings } from "@/server/queries/settings";
+import { getHomeData } from "@/server/modules/catalog/queries";
+import { getStoreSettings } from "@/server/modules/settings/queries";
 import { siteConfig } from "@/lib/site";
 import type { Metadata } from "next";
 

@@ -3,7 +3,7 @@ import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { ContactForm } from "@/components/store/contact-form";
 import { PageIntro } from "@/components/store/page-intro";
 import { stateName } from "@/lib/india";
-import { getStoreSettings } from "@/server/queries/settings";
+import { getStoreSettings } from "@/server/modules/settings/queries";
 
 export const metadata: Metadata = { title: "Contact us", alternates: { canonical: "/contact" } };
 

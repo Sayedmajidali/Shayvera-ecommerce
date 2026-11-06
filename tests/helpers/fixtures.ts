@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 
 let seq = 0;
 

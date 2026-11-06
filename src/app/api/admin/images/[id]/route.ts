@@ -1,7 +1,7 @@
 import { ok, parseJson, type RouteCtx } from "@/lib/api";
 import { imageUpdateSchema } from "@/lib/validation/catalog";
-import { adminRoute } from "@/server/auth/admin-route";
-import { deleteImage, updateImageAlt } from "@/server/services/catalog-admin";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { deleteImage, updateImageAlt } from "@/server/modules/catalog/catalog-admin";
 
 type Ctx = RouteCtx<{ id: string }>;
 

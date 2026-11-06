@@ -6,10 +6,10 @@ import { MobileNav } from "@/components/store/mobile-nav";
 import { SearchBox } from "@/components/store/search-box";
 import { UserMenu } from "@/components/store/user-menu";
 import { formatINR } from "@/lib/money";
-import { getCurrentUser } from "@/server/auth/session";
-import { getNavCategories } from "@/server/queries/catalog";
-import { getCartItemCount } from "@/server/queries/cart-count";
-import { getStoreSettings } from "@/server/queries/settings";
+import { getCurrentUser } from "@/server/modules/auth/session";
+import { getNavCategories } from "@/server/modules/catalog/queries";
+import { getCartItemCount } from "@/server/modules/cart/cart-count";
+import { getStoreSettings } from "@/server/modules/settings/queries";
 
 export async function SiteHeader() {
   const [user, categories, cartCount, settings] = await Promise.all([

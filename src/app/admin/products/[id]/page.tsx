@@ -9,8 +9,8 @@ import { AdminPageHeader } from "@/components/admin/page-header";
 import { ProductForm } from "@/components/admin/product-form";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { VariantsEditor } from "@/components/admin/variants-editor";
-import { db } from "@/lib/db";
-import { requireAdminPage } from "@/server/auth/session";
+import { db } from "@/server/platform/db";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Edit product" };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { eventually } from "../helpers/db";
 import * as ordersRoute from "@/app/api/admin/orders/route";
 import * as statusRoute from "@/app/api/admin/orders/[id]/status/route";
@@ -12,8 +12,8 @@ import * as couponsRoute from "@/app/api/admin/coupons/route";
 import * as couponRoute from "@/app/api/admin/coupons/[id]/route";
 import * as settingsRoute from "@/app/api/admin/settings/route";
 import * as dashboardRoute from "@/app/api/admin/dashboard/route";
-import { getUserFromHeaders } from "@/server/auth/session";
-import type { InvoiceSnapshot } from "@/server/services/invoices";
+import { getUserFromHeaders } from "@/server/modules/auth/session";
+import type { InvoiceSnapshot } from "@/server/modules/invoices/invoices";
 import { apiRequest, createAdmin, params, registerCustomer, signIn } from "../helpers/auth";
 import { address, cartWith, checkout, checkoutBody } from "../helpers/checkout";
 import { makeProduct } from "../helpers/fixtures";

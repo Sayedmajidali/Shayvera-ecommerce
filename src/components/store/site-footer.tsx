@@ -3,8 +3,8 @@ import { Mail, MapPin, Phone } from "lucide-react";
 import { Logo } from "@/components/store/logo";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { stateName } from "@/lib/india";
-import { getNavCategories } from "@/server/queries/catalog";
-import { getStoreSettings } from "@/server/queries/settings";
+import { getNavCategories } from "@/server/modules/catalog/queries";
+import { getStoreSettings } from "@/server/modules/settings/queries";
 
 export async function SiteFooter() {
   const [categories, settings] = await Promise.all([getNavCategories(), getStoreSettings()]);

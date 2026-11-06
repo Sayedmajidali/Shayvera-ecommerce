@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 import { AdminPageHeader } from "@/components/admin/page-header";
-import { db } from "@/lib/db";
-import { requireAdminPage } from "@/server/auth/session";
+import { db } from "@/server/platform/db";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Email outbox" };
 

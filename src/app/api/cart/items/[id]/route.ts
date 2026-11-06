@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ok, parseJson, route, type RouteCtx } from "@/lib/api";
-import { cartIdentityFromRequest } from "@/server/cart/request";
-import { MAX_QTY_PER_LINE, removeItem, updateItemQuantity } from "@/server/services/cart";
+import { cartIdentityFromRequest } from "@/server/modules/cart/request";
+import { MAX_QTY_PER_LINE, removeItem, updateItemQuantity } from "@/server/modules/cart/cart";
 
 type Ctx = RouteCtx<{ id: string }>;
 const schema = z.object({ quantity: z.coerce.number().int().min(0).max(MAX_QTY_PER_LINE) });

@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/shared/print-button";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { stateName } from "@/lib/india";
 import { formatINRExact, percentFromBps } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import type { AddressSnapshot } from "@/lib/validation/checkout";
-import { getCurrentUser } from "@/server/auth/session";
-import type { InvoiceSnapshot } from "@/server/services/invoices";
-import { verifyOrderAccessToken } from "@/server/services/order-access";
+import { getCurrentUser } from "@/server/modules/auth/session";
+import type { InvoiceSnapshot } from "@/server/modules/invoices/invoices";
+import { verifyOrderAccessToken } from "@/server/modules/orders/order-access";
 
 export const metadata: Metadata = { title: "Invoice", robots: { index: false, follow: false } };
 

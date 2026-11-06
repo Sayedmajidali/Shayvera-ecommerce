@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ok, parseJson, route } from "@/lib/api";
-import { cartIdentityFromRequest, withGuestCookie } from "@/server/cart/request";
-import { addItem, MAX_QTY_PER_LINE } from "@/server/services/cart";
+import { cartIdentityFromRequest, withGuestCookie } from "@/server/modules/cart/request";
+import { addItem, MAX_QTY_PER_LINE } from "@/server/modules/cart/cart";
 
 const schema = z.object({
   variantId: z.string().trim().min(1).max(64),

@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { provisionAdmin } from "@/server/services/admin-provisioning";
+import { db } from "@/server/platform/db";
+import { provisionAdmin } from "@/server/modules/auth/admin-provisioning";
 
 const BASE = "http://localhost:3000";
 

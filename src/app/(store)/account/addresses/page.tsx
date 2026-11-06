@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AddressBook } from "@/components/store/address-book";
-import { requireUserPage } from "@/server/auth/session";
-import { listAddresses } from "@/server/services/account";
+import { requireUserPage } from "@/server/modules/auth/session";
+import { listAddresses } from "@/server/modules/customers/account";
 
 export const metadata: Metadata = { title: "Addresses", robots: { index: false } };
 

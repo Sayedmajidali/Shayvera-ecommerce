@@ -17,8 +17,8 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
-import { adminOrderFiltersSchema, listOrdersAdmin } from "@/server/services/admin-orders";
-import { requireAdminPage } from "@/server/auth/session";
+import { adminOrderFiltersSchema, listOrdersAdmin } from "@/server/modules/orders/admin-orders";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Orders" };
 

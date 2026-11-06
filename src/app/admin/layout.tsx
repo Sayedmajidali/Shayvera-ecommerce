@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { AdminSidebar, AdminMobileNav } from "@/components/admin/admin-nav";
-import { requireAdminPage } from "@/server/auth/session";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = {
   title: { default: "Admin", template: "%s · Shayvera Admin" },

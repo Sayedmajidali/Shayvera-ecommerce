@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { safeRedirectPath } from "@/lib/safe-redirect";
-import { assertSafeKey, LocalStorageProvider } from "@/server/storage/local";
-import { clientIp } from "@/server/services/audit";
-import { sniffImageType } from "@/server/services/image-upload";
-import { escapeHtml } from "@/server/email/email-service";
+import { assertSafeKey, LocalStorageProvider } from "@/server/platform/storage/local";
+import { clientIp } from "@/server/modules/audit/audit";
+import { sniffImageType } from "@/server/modules/catalog/image-upload";
+import { escapeHtml } from "@/server/modules/notifications/email-service";
 
 describe("open redirect protection", () => {
   it.each([

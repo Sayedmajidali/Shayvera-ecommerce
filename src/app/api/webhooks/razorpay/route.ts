@@ -1,6 +1,6 @@
 import { toErrorResponse } from "@/lib/api";
 import { AppError } from "@/lib/errors";
-import { handleRazorpayWebhook } from "@/server/services/payments";
+import { handleRazorpayWebhook } from "@/server/modules/payments/payments";
 
 const MAX_BODY = 256 * 1024;
 

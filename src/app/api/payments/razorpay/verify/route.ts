@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ok, parseJson, route } from "@/lib/api";
-import { clientIp } from "@/server/services/audit";
-import { verifyCheckoutCallback } from "@/server/services/payments";
-import { enforceRateLimit } from "@/server/services/rate-limit";
+import { clientIp } from "@/server/modules/audit/audit";
+import { verifyCheckoutCallback } from "@/server/modules/payments/payments";
+import { enforceRateLimit } from "@/server/platform/rate-limit";
 
 const schema = z.object({
   razorpay_order_id: z.string().trim().min(1).max(64),

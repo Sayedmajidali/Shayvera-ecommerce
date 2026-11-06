@@ -1,10 +1,10 @@
 import { ok, parseJson, type RouteCtx } from "@/lib/api";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { stockAdjustmentSchema } from "@/lib/validation/catalog";
-import { adminRoute } from "@/server/auth/admin-route";
-import { audit } from "@/server/services/audit";
-import { moveStock } from "@/server/services/inventory";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { audit } from "@/server/modules/audit/audit";
+import { moveStock } from "@/server/modules/inventory/inventory";
 
 type Ctx = RouteCtx<{ id: string }>;
 

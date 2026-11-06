@@ -1,7 +1,7 @@
 import { ok, parseJson, route } from "@/lib/api";
 import { addressInputSchema } from "@/lib/validation/account";
-import { requireUser } from "@/server/auth/session";
-import { createAddress, listAddresses } from "@/server/services/account";
+import { requireUser } from "@/server/modules/auth/session";
+import { createAddress, listAddresses } from "@/server/modules/customers/account";
 
 export const GET = route(
   async (req) => {

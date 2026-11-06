@@ -1,11 +1,11 @@
 import { ok, parseJson, type RouteCtx } from "@/lib/api";
 import { productUpdateSchema } from "@/lib/validation/catalog";
-import { adminRoute } from "@/server/auth/admin-route";
+import { adminRoute } from "@/server/modules/auth/admin-route";
 import {
   deleteOrArchiveProduct,
   getProductAdmin,
   updateProduct,
-} from "@/server/services/catalog-admin";
+} from "@/server/modules/catalog/catalog-admin";
 
 type Ctx = RouteCtx<{ id: string }>;
 

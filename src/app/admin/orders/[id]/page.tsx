@@ -9,9 +9,9 @@ import { StatusBadge } from "@/components/admin/status-badge";
 import { stateName } from "@/lib/india";
 import { formatINR } from "@/lib/money";
 import type { AddressSnapshot } from "@/lib/validation/checkout";
-import { getOrderAdmin } from "@/server/services/admin-orders";
-import { ORDER_TRANSITIONS } from "@/server/services/order-status";
-import { requireAdminPage } from "@/server/auth/session";
+import { getOrderAdmin } from "@/server/modules/orders/admin-orders";
+import { ORDER_TRANSITIONS } from "@/server/modules/orders/order-status";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Order" };
 

@@ -18,11 +18,11 @@ import { FilterBar } from "@/components/admin/filter-bar";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
-import { listProductsAdmin } from "@/server/services/catalog-admin";
-import { requireAdminPage } from "@/server/auth/session";
+import { listProductsAdmin } from "@/server/modules/catalog/catalog-admin";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Products" };
 

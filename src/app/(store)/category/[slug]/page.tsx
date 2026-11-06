@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Breadcrumbs } from "@/components/store/breadcrumbs";
 import { ProductListing } from "@/components/store/product-listing";
 import { firstValues } from "@/lib/search-params";
-import { getCategoryBySlug, productListParamsSchema } from "@/server/queries/catalog";
+import { getCategoryBySlug, productListParamsSchema } from "@/server/modules/catalog/queries";
 
 export async function generateMetadata({
   params,

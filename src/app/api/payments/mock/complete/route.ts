@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ok, parseJson, route } from "@/lib/api";
 import { AppError } from "@/lib/errors";
-import { MockGateway, paymentGateway } from "@/server/payments/gateway";
+import { MockGateway, paymentGateway } from "@/server/modules/payments/gateway";
 
 const schema = z.object({
   razorpayOrderId: z.string().min(1).max(64),

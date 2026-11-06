@@ -1,7 +1,7 @@
 import { ok, parseJson } from "@/lib/api";
 import { categoryInputSchema } from "@/lib/validation/catalog";
-import { adminRoute } from "@/server/auth/admin-route";
-import { createCategory, listCategoriesAdmin } from "@/server/services/catalog-admin";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { createCategory, listCategoriesAdmin } from "@/server/modules/catalog/catalog-admin";
 
 export const GET = adminRoute(async () => ok(await listCategoriesAdmin()), { csrf: false });
 

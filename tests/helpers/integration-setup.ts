@@ -4,7 +4,7 @@ import { loadTestEnv } from "./test-env";
 loadTestEnv();
 
 const { resetDatabase } = await import("./db");
-const { db } = await import("@/lib/db");
+const { db } = await import("@/server/platform/db");
 
 beforeEach(async () => {
   await resetDatabase();

@@ -6,8 +6,8 @@
  *   npm run jobs:reconcile
  */
 import "dotenv/config";
-import { db } from "../src/lib/db";
-import { expireStalePendingOrders } from "../src/server/services/payments";
+import { db } from "../src/server/platform/db";
+import { expireStalePendingOrders } from "../src/server/modules/payments/payments";
 
 async function main() {
   const result = await expireStalePendingOrders(500);

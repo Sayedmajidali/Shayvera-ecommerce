@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { auth } from "@/lib/auth";
 import {
   TEST_PASSWORD,
@@ -14,7 +14,7 @@ import {
 import * as profileRoute from "@/app/api/account/profile/route";
 import * as addressesRoute from "@/app/api/account/addresses/route";
 import * as addressRoute from "@/app/api/account/addresses/[id]/route";
-import { getUserFromHeaders } from "@/server/auth/session";
+import { getUserFromHeaders } from "@/server/modules/auth/session";
 
 const address = {
   fullName: "Asha Rao",

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ok, parseSearchParams, route } from "@/lib/api";
-import { requireUser } from "@/server/auth/session";
-import { listCustomerOrders } from "@/server/services/orders";
+import { requireUser } from "@/server/modules/auth/session";
+import { listCustomerOrders } from "@/server/modules/orders/orders";
 
 export const GET = route(
   async (req) => {

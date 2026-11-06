@@ -15,7 +15,7 @@ import {
   getNavCategories,
   listProducts,
   type ProductListParams,
-} from "@/server/queries/catalog";
+} from "@/server/modules/catalog/queries";
 
 export async function ProductListing({
   params,

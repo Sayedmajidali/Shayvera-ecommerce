@@ -27,9 +27,9 @@ import { StatTile } from "@/components/admin/stat-tile";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
-import { getDashboardStats, RANGES, type RangeKey } from "@/server/services/analytics";
-import { maybeExpireStaleOrders } from "@/server/services/payments";
-import { requireAdminPage } from "@/server/auth/session";
+import { getDashboardStats, RANGES, type RangeKey } from "@/server/modules/analytics/dashboard";
+import { maybeExpireStaleOrders } from "@/server/modules/payments/payments";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Dashboard" };
 

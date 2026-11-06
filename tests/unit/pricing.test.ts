@@ -7,7 +7,7 @@ import {
   taxOn,
   type CouponDefinition,
   type PricingSettings,
-} from "@/server/services/pricing";
+} from "@/server/modules/pricing/pricing";
 
 const base: PricingSettings = {
   gstEnabled: false,

@@ -1,6 +1,6 @@
 import { ok, parseJson, type RouteCtx } from "@/lib/api";
-import { adminRoute } from "@/server/auth/admin-route";
-import { couponInputSchema, deleteCoupon, saveCoupon } from "@/server/services/admin-misc";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { couponInputSchema, deleteCoupon, saveCoupon } from "@/server/modules/coupons/coupon-admin";
 
 type Ctx = RouteCtx<{ id: string }>;
 

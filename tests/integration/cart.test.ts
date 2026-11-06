@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import * as cartRoute from "@/app/api/cart/route";
 import * as itemsRoute from "@/app/api/cart/items/route";
 import * as itemRoute from "@/app/api/cart/items/[id]/route";

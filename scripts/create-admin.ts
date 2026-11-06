@@ -8,8 +8,8 @@
 import "dotenv/config";
 import { parseArgs } from "node:util";
 import { createInterface } from "node:readline";
-import { provisionAdmin } from "../src/server/services/admin-provisioning";
-import { db } from "../src/lib/db";
+import { provisionAdmin } from "../src/server/modules/auth/admin-provisioning";
+import { db } from "../src/server/platform/db";
 
 async function promptHidden(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });

@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { CartLines, CouponForm } from "@/components/store/cart-client";
 import { OrderSummaryRows } from "@/components/store/order-summary";
 import { formatINR } from "@/lib/money";
-import { getCurrentCartView } from "@/server/queries/cart-page";
+import { getCurrentCartView } from "@/server/modules/cart/cart-page";
 
 export const metadata: Metadata = { title: "Your cart", robots: { index: false } };
 

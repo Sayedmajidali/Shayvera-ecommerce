@@ -15,9 +15,9 @@ import { AdminPagination } from "@/components/admin/admin-pagination";
 import { FilterBar } from "@/components/admin/filter-bar";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { StockAdjustButton } from "@/components/admin/stock-adjust-button";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { firstValues } from "@/lib/search-params";
-import { requireAdminPage } from "@/server/auth/session";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Inventory" };
 

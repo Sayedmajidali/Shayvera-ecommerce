@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ok, parseJson, route, type RouteCtx } from "@/lib/api";
-import { orderRequester } from "@/server/cart/order-requester";
-import { cancelOrderAsCustomer } from "@/server/services/order-actions";
+import { orderRequester } from "@/server/modules/orders/order-requester";
+import { cancelOrderAsCustomer } from "@/server/modules/orders/order-actions";
 
 const schema = z.object({
   reason: z.string().trim().max(200).optional().nullable(),

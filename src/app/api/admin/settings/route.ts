@@ -1,7 +1,7 @@
 import { ok, parseJson } from "@/lib/api";
-import { adminRoute } from "@/server/auth/admin-route";
-import { loadStoreSettings } from "@/server/queries/settings";
-import { settingsSchema, updateSettings } from "@/server/services/admin-misc";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { loadStoreSettings } from "@/server/modules/settings/queries";
+import { settingsSchema, updateSettings } from "@/server/modules/settings/settings-admin";
 
 export const GET = adminRoute(async () => ok(await loadStoreSettings()), { csrf: false });
 

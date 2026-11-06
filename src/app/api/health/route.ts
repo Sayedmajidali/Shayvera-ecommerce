@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
-import { logger } from "@/lib/logger";
+import { db } from "@/server/platform/db";
+import { logger } from "@/server/platform/logger";
 
 export const dynamic = "force-dynamic";
 

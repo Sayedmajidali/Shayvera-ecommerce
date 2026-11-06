@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { CouponManager } from "@/components/admin/coupon-manager";
 import { AdminPageHeader } from "@/components/admin/page-header";
-import { listCoupons } from "@/server/services/admin-misc";
-import { requireAdminPage } from "@/server/auth/session";
+import { listCoupons } from "@/server/modules/coupons/coupon-admin";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Coupons" };
 

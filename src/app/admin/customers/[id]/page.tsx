@@ -15,8 +15,8 @@ import { CustomerStatusToggle } from "@/components/admin/customer-status-toggle"
 import { StatusBadge } from "@/components/admin/status-badge";
 import { stateName } from "@/lib/india";
 import { formatINR } from "@/lib/money";
-import { getCustomer } from "@/server/services/admin-misc";
-import { requireAdminPage } from "@/server/auth/session";
+import { getCustomer } from "@/server/modules/customers/admin-customers";
+import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Customer" };
 

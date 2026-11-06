@@ -1,7 +1,7 @@
 import { ok, parseJson, route } from "@/lib/api";
 import { addressInputSchema } from "@/lib/validation/account";
-import { requireUser } from "@/server/auth/session";
-import { deleteAddress, updateAddress } from "@/server/services/account";
+import { requireUser } from "@/server/modules/auth/session";
+import { deleteAddress, updateAddress } from "@/server/modules/customers/account";
 
 type Ctx = { params: Promise<{ id: string }> };
 

@@ -6,7 +6,7 @@ import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "@prisma/client";
-import { storage } from "../src/server/storage";
+import { storage } from "../src/server/platform/storage";
 import { categories, coupons, products, reviewTexts } from "./seed/data";
 import { seedDemoOrders } from "./seed/demo-orders";
 import { renderBanner, renderIllustration } from "./seed/illustrations";

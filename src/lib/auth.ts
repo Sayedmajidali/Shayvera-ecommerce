@@ -2,8 +2,8 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
-import { db } from "@/lib/db";
-import { sendEmail, escapeHtml } from "@/server/email/email-service";
+import { db } from "@/server/platform/db";
+import { sendEmail, escapeHtml } from "@/server/modules/notifications/email-service";
 
 const appUrl =
   process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

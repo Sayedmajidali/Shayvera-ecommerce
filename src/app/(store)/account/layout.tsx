@@ -1,5 +1,5 @@
 import { AccountNav } from "@/components/store/account-nav";
-import { requireUserPage } from "@/server/auth/session";
+import { requireUserPage } from "@/server/modules/auth/session";
 
 export default async function AccountLayout({ children }: LayoutProps<"/account">) {
   const user = await requireUserPage("/account");

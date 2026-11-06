@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { eventually } from "../helpers/db";
 import * as orderRoute from "@/app/api/orders/[orderNumber]/route";
 import * as cancelRoute from "@/app/api/orders/[orderNumber]/cancel/route";
@@ -332,7 +332,7 @@ describe("order access and cancellation", () => {
   });
 
   it("rejects invalid status transitions", async () => {
-    const { transitionOrder } = await import("@/server/services/orders");
+    const { transitionOrder } = await import("@/server/modules/orders/orders");
     const p = await makeProduct();
     const { json } = await checkout(await cartWith(p.variants[0]!.id), checkoutBody());
     const order = await db.order.findUniqueOrThrow({

@@ -1,5 +1,5 @@
 import { ok, route } from "@/lib/api";
-import { listProducts, productListParamsSchema } from "@/server/queries/catalog";
+import { listProducts, productListParamsSchema } from "@/server/modules/catalog/queries";
 
 /** Public catalog listing: ?q=&category=&minPrice=&maxPrice=&inStock=1&sort=&page= (prices in rupees). */
 export const GET = route(

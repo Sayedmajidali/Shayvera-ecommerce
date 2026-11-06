@@ -1,9 +1,9 @@
 import { ok, parseJson, route } from "@/lib/api";
 import { checkoutSchema } from "@/lib/validation/checkout";
-import { cartIdentityFromRequest } from "@/server/cart/request";
-import { clientIp } from "@/server/services/audit";
-import { placeOrder } from "@/server/services/checkout";
-import { enforceRateLimit } from "@/server/services/rate-limit";
+import { cartIdentityFromRequest } from "@/server/modules/cart/request";
+import { clientIp } from "@/server/modules/audit/audit";
+import { placeOrder } from "@/server/modules/checkout/checkout";
+import { enforceRateLimit } from "@/server/platform/rate-limit";
 
 /** Places an order from the server-side cart. The request never contains prices or totals. */
 export const POST = route(async (req) => {

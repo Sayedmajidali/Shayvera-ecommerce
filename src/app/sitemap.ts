@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { siteConfig } from "@/lib/site";
-import { visibleProductWhere } from "@/server/queries/catalog";
+import { visibleProductWhere } from "@/server/modules/catalog/queries";
 
 // Generated per request from live catalog data (no build-time DB access).
 export const dynamic = "force-dynamic";

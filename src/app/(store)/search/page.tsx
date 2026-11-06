@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Breadcrumbs } from "@/components/store/breadcrumbs";
 import { ProductListing } from "@/components/store/product-listing";
 import { firstValues } from "@/lib/search-params";
-import { productListParamsSchema } from "@/server/queries/catalog";
+import { productListParamsSchema } from "@/server/modules/catalog/queries";
 
 export async function generateMetadata({ searchParams }: PageProps<"/search">): Promise<Metadata> {
   const q = firstValues(await searchParams).q;

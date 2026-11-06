@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ok, parseSearchParams, route } from "@/lib/api";
 import { STATE_CODES } from "@/lib/india";
-import { cartIdentityFromRequest } from "@/server/cart/request";
-import { getCartView } from "@/server/services/cart";
+import { cartIdentityFromRequest } from "@/server/modules/cart/request";
+import { getCartView } from "@/server/modules/cart/cart";
 
 const query = z.object({
   state: z.enum(STATE_CODES).optional().catch(undefined),

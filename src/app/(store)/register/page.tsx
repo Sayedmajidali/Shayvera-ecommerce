@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { AuthCard } from "@/components/store/auth-card";
 import { RegisterForm } from "@/components/store/auth-forms";
 import { firstValues } from "@/lib/search-params";
-import { getCurrentUser } from "@/server/auth/session";
+import { getCurrentUser } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Create account", robots: { index: false } };
 

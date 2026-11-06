@@ -1,6 +1,9 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { verifyCheckoutSignature, verifyWebhookSignature } from "@/server/payments/signature";
+import {
+  verifyCheckoutSignature,
+  verifyWebhookSignature,
+} from "@/server/modules/payments/signature";
 
 const secret = "s3cr3t";
 const sign = (data: string) => createHmac("sha256", secret).update(data).digest("hex");

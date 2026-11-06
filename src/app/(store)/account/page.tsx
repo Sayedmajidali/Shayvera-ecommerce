@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm, ProfileForm } from "@/components/store/profile-form";
-import { requireUserPage } from "@/server/auth/session";
+import { requireUserPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "My account", robots: { index: false } };
 

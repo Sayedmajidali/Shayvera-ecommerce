@@ -3,11 +3,11 @@
  * (cart → checkout → status transitions), then backdates timestamps across the last 60 days.
  */
 import { randomUUID } from "node:crypto";
-import { db } from "../../src/lib/db";
+import { db } from "../../src/server/platform/db";
 import { checkoutSchema } from "../../src/lib/validation/checkout";
-import { addItem, type CartIdentity } from "../../src/server/services/cart";
-import { placeOrder } from "../../src/server/services/checkout";
-import { transitionOrder } from "../../src/server/services/orders";
+import { addItem, type CartIdentity } from "../../src/server/modules/cart/cart";
+import { placeOrder } from "../../src/server/modules/checkout/checkout";
+import { transitionOrder } from "../../src/server/modules/orders/orders";
 
 const CUSTOMERS = [
   {

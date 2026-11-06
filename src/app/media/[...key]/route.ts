@@ -1,4 +1,4 @@
-import { storage } from "@/server/storage";
+import { storage } from "@/server/platform/storage";
 
 /** Serves uploaded media from the storage provider (local disk in development). */
 export async function GET(_req: Request, ctx: { params: Promise<{ key: string[] }> }) {

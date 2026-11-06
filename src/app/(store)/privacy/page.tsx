@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/store/legal-page";
-import { getStoreSettings } from "@/server/queries/settings";
+import { getStoreSettings } from "@/server/modules/settings/queries";
 
 export const metadata: Metadata = {
   title: "Privacy policy",

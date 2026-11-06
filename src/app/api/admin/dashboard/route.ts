@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { ok, parseSearchParams } from "@/lib/api";
-import { adminRoute } from "@/server/auth/admin-route";
-import { getDashboardStats } from "@/server/services/analytics";
+import { adminRoute } from "@/server/modules/auth/admin-route";
+import { getDashboardStats } from "@/server/modules/analytics/dashboard";
 
 export const GET = adminRoute(
   async (req) => {

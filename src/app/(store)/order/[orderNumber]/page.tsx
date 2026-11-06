@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { OrderDetail } from "@/components/store/order-detail";
 import { firstValues } from "@/lib/search-params";
-import { getCurrentUser } from "@/server/auth/session";
-import { resolveOrderForRequester } from "@/server/services/order-actions";
+import { getCurrentUser } from "@/server/modules/auth/session";
+import { resolveOrderForRequester } from "@/server/modules/orders/order-actions";
 
 export const metadata: Metadata = { title: "Your order", robots: { index: false, follow: false } };
 

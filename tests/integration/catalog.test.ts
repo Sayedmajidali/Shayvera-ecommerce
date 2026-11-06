@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import * as categoriesRoute from "@/app/api/admin/categories/route";
 import * as categoryRoute from "@/app/api/admin/categories/[id]/route";
 import * as productsRoute from "@/app/api/admin/products/route";
@@ -8,7 +8,7 @@ import * as productRoute from "@/app/api/admin/products/[id]/route";
 import * as imagesRoute from "@/app/api/admin/products/[id]/images/route";
 import * as variantRoute from "@/app/api/admin/variants/[id]/route";
 import * as stockRoute from "@/app/api/admin/variants/[id]/stock/route";
-import { listProducts, productListParamsSchema } from "@/server/queries/catalog";
+import { listProducts, productListParamsSchema } from "@/server/modules/catalog/queries";
 import { apiRequest, createAdmin, params, registerCustomer } from "../helpers/auth";
 import { makeCategory, makeProduct } from "../helpers/fixtures";
 

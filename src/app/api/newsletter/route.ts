@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { ok, parseJson, route } from "@/lib/api";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { emailSchema } from "@/lib/validation/common";
-import { clientIp } from "@/server/services/audit";
-import { enforceRateLimit } from "@/server/services/rate-limit";
+import { clientIp } from "@/server/modules/audit/audit";
+import { enforceRateLimit } from "@/server/platform/rate-limit";
 
 export const POST = route(async (req) => {
   await enforceRateLimit(`newsletter:${clientIp(req) ?? "unknown"}`, 5, 600);

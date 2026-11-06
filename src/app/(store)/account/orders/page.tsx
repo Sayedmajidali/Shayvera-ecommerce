@@ -8,9 +8,9 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Pagination } from "@/components/store/pagination";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
-import { requireUserPage } from "@/server/auth/session";
-import { ORDER_STATUS_LABEL } from "@/server/services/order-status";
-import { listCustomerOrders } from "@/server/services/orders";
+import { requireUserPage } from "@/server/modules/auth/session";
+import { ORDER_STATUS_LABEL } from "@/server/modules/orders/order-status";
+import { listCustomerOrders } from "@/server/modules/orders/orders";
 
 export const metadata: Metadata = { title: "My orders", robots: { index: false } };
 

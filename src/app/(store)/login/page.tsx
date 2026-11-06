@@ -5,7 +5,7 @@ import { AuthCard } from "@/components/store/auth-card";
 import { LoginForm } from "@/components/store/auth-forms";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 import { firstValues } from "@/lib/search-params";
-import { getCurrentUser } from "@/server/auth/session";
+import { getCurrentUser } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Sign in", robots: { index: false } };
 

@@ -1,18 +1,18 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { db } from "@/lib/db";
+import { db } from "@/server/platform/db";
 import { eventually } from "../helpers/db";
 import * as verifyRoute from "@/app/api/payments/razorpay/verify/route";
 import * as mockRoute from "@/app/api/payments/mock/complete/route";
 import * as webhookRoute from "@/app/api/webhooks/razorpay/route";
 import * as payRoute from "@/app/api/orders/[orderNumber]/pay/route";
 import * as cancelRoute from "@/app/api/orders/[orderNumber]/cancel/route";
-import { resetPaymentGateway } from "@/server/payments/gateway";
+import { resetPaymentGateway } from "@/server/modules/payments/gateway";
 import {
   createRefund,
   expireStalePendingOrders,
   reconcileOrderPayments,
-} from "@/server/services/payments";
+} from "@/server/modules/payments/payments";
 import { apiRequest, params } from "../helpers/auth";
 import { cartWith, checkout, checkoutBody } from "../helpers/checkout";
 import { makeProduct } from "../helpers/fixtures";

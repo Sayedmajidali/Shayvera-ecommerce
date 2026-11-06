@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ok, parseJson, route } from "@/lib/api";
-import { recordClientPaymentFailure } from "@/server/services/payments";
+import { recordClientPaymentFailure } from "@/server/modules/payments/payments";
 
 const schema = z.object({
   razorpay_order_id: z.string().trim().min(1).max(64),

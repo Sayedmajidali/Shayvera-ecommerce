@@ -20,7 +20,7 @@ import { apiFetch, ApiClientError } from "@/lib/fetcher";
 import { stateName } from "@/lib/india";
 import { formatINR } from "@/lib/money";
 import { cn } from "@/lib/utils";
-import type { CartView } from "@/server/services/cart";
+import type { CartView } from "@/server/modules/cart/cart";
 
 type SavedAddress = AddressValues & { id: string; isDefault: boolean };
 

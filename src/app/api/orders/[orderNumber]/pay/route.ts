@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { ok, parseJson, route, type RouteCtx } from "@/lib/api";
-import { orderRequester } from "@/server/cart/order-requester";
-import { resolveOrderForRequester } from "@/server/services/order-actions";
-import { startOnlinePayment } from "@/server/services/payments";
+import { orderRequester } from "@/server/modules/orders/order-requester";
+import { resolveOrderForRequester } from "@/server/modules/orders/order-actions";
+import { startOnlinePayment } from "@/server/modules/payments/payments";
 
 /** Starts or resumes payment for a pending online order (retry after failure / interrupted checkout). */
 export const POST = route<RouteCtx<{ orderNumber: string }>>(async (req, { params }) => {

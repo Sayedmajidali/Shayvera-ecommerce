@@ -1,5 +1,5 @@
 import { formatINR, percentFromBps } from "@/lib/money";
-import type { PriceBreakdown } from "@/server/services/pricing";
+import type { PriceBreakdown } from "@/server/modules/pricing/pricing";
 
 /** Server-computed price breakdown. Never computes money on the client. */
 export function OrderSummaryRows({
