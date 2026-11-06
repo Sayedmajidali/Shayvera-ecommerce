@@ -289,3 +289,30 @@
   cannot complete, schedule dedupe, heartbeat, notification delivery/dedupe/failure logging, health) and +11 unit
   (backoff, cache TTL/eviction, HTTP retry/timeout/non-JSON/correlation, log redaction, context isolation).
   Existing email assertions now drain the queue explicitly instead of polling.
+
+## v2 Phase 2 — Admin roles, permissions and staff management ✅
+
+- **Schema** (`admin_roles` migration, additive): `AdminPermission` enum (18 values), `AdminRole`
+  (`permissions[]`, `isSystem`), `User.adminRoleId` (FK `SET NULL`). The migration seeds the five built-in roles
+  (Owner, Operations, Catalog, Support, Accounts) and gives **existing administrators the Owner role**, so nobody
+  loses access on upgrade.
+- **Enforcement**: `adminRoute(permission, handler)` on all 37 admin handlers and `requireAdminPage(permission)` on
+  every admin page; permissions are loaded from the database per request (role edits apply on the next request);
+  admins without a role fail closed; the Owner role always resolves to every permission. Cancelling a paid online
+  order additionally requires `PAYMENTS_REFUND` (it refunds automatically). Staff who open a page outside their role
+  are redirected to `/admin/no-access`, which lists the sections they can use (`forbidden()` is still experimental in
+  this Next.js version, so it was not used).
+- **UI**: admin navigation and order actions hide what the role cannot do (server remains authoritative).
+- **Staff & roles page** (`/admin/staff`, `ADMINS_MANAGE`): invite by email (set-password link via the Better Auth
+  reset flow with invite wording; an existing customer account is promoted, signed out and notified), resend invite,
+  change role, disable/enable (revokes sessions), remove staff access (account kept as a customer). Custom roles with a
+  grouped permission picker; built-in roles keep their names, the Owner role is fixed, roles in use cannot be deleted.
+  Guards: no self-edits; the last active Owner cannot be demoted, disabled or removed — serialised with a Postgres
+  advisory lock so two owners demoting each other at once cannot both succeed. All changes audit-logged.
+- `npm run admin:create` now always creates an **Owner** (bootstrap); seeds and test resets ensure built-in roles.
+- **Tests**: +13 integration (`rbac.test.ts`: built-in roles match the migration; Owner always full; **sweep of every
+  admin route handler → 401 anonymous / 403 role-less**; per-role scoping; live role edits; paid-cancel needs refund
+  permission; invite → set password → scoped access; promotion signs out + notifies; self-edit / last-Owner guards;
+  concurrent mutual demotion; disable/remove; role protections and validation) and +1 E2E (owner invites a Catalog
+  staff member through the UI; the invitee sets a password, sees only catalog sections and is redirected from Orders).
+- Results: unit 88 · integration 129 · E2E 30 — all passing; lint, typecheck, build clean.

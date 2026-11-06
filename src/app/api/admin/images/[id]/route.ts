@@ -5,12 +5,12 @@ import { deleteImage, updateImageAlt } from "@/server/modules/catalog/catalog-ad
 
 type Ctx = RouteCtx<{ id: string }>;
 
-export const PATCH = adminRoute<Ctx>(async (req, { params }, { actor }) => {
+export const PATCH = adminRoute<Ctx>("CATALOG_MANAGE", async (req, { params }, { actor }) => {
   const { alt } = await parseJson(req, imageUpdateSchema);
   return ok(await updateImageAlt((await params).id, alt, actor));
 });
 
-export const DELETE = adminRoute<Ctx>(async (_req, { params }, { actor }) => {
+export const DELETE = adminRoute<Ctx>("CATALOG_MANAGE", async (_req, { params }, { actor }) => {
   await deleteImage((await params).id, actor);
   return ok({ deleted: true });
 });

@@ -33,7 +33,7 @@ const opt = (vals: string[]) =>
 
 export default async function AdminOrdersPage({ searchParams }: PageProps<"/admin/orders">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("ORDERS_VIEW");
   const raw = firstValues(await searchParams);
   const f = adminOrderFiltersSchema.parse(raw);
   const { orders, total, page, pageCount } = await listOrdersAdmin(f);

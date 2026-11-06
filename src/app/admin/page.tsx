@@ -34,7 +34,7 @@ export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function AdminDashboard({ searchParams }: PageProps<"/admin">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("DASHBOARD_VIEW");
   const sp = firstValues(await searchParams);
   const range = (sp.range && sp.range in RANGES ? sp.range : "30d") as RangeKey;
   const s = await getDashboardStats(range);

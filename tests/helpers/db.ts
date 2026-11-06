@@ -10,6 +10,9 @@ export async function resetDatabase() {
   const list = tables.map((t) => `"public"."${t.tablename}"`).join(", ");
   await db.$executeRawUnsafe(`TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`);
   await db.storeSettings.create({ data: { id: "default" } });
+  // Built-in roles are seeded by migration; restore them after truncation.
+  const { ensureBuiltInRoles } = await import("@/server/modules/auth/staff");
+  await ensureBuiltInRoles();
 }
 
 /** Polls until `fn` returns true (for fire-and-forget side effects such as emails). */

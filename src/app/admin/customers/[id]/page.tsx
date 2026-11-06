@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: "Customer" };
 
 export default async function CustomerPage({ params }: PageProps<"/admin/customers/[id]">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("CUSTOMERS_VIEW");
   const { id } = await params;
   const c = await getCustomer(id).catch(() => null);
   if (!c) notFound();

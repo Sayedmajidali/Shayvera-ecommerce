@@ -9,6 +9,7 @@ import { moveStock } from "@/server/modules/inventory/inventory";
 type Ctx = RouteCtx<{ id: string }>;
 
 export const GET = adminRoute<Ctx>(
+  "INVENTORY_MANAGE",
   async (_req, { params }) => {
     const { id } = await params;
     const history = await db.inventoryTransaction.findMany({
@@ -22,7 +23,7 @@ export const GET = adminRoute<Ctx>(
 );
 
 /** Manual stock adjustment; negative adjustments cannot take stock below zero. */
-export const POST = adminRoute<Ctx>(async (req, { params }, { actor }) => {
+export const POST = adminRoute<Ctx>("INVENTORY_MANAGE", async (req, { params }, { actor }) => {
   const { id } = await params;
   const input = await parseJson(req, stockAdjustmentSchema);
   if (!(await db.productVariant.findUnique({ where: { id }, select: { id: true } }))) {

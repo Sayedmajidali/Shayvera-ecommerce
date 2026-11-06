@@ -42,7 +42,7 @@ const PAGE = 25;
 
 export default async function InventoryPage({ searchParams }: PageProps<"/admin/inventory">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("INVENTORY_MANAGE");
   const raw = firstValues(await searchParams);
   const f = schema.parse(raw);
   const textFilter: Prisma.ProductVariantWhereInput = f.q

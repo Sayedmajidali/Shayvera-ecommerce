@@ -21,7 +21,7 @@ const PAGE = 30;
 
 export default async function AuditLogPage({ searchParams }: PageProps<"/admin/audit-log">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("AUDIT_VIEW");
   const raw = firstValues(await searchParams);
   const f = z
     .object({

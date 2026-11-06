@@ -107,3 +107,48 @@ test("customers cannot access the admin dashboard", async ({ page, request }) =>
   const anon = await request.get("/api/admin/orders");
   expect(anon.status()).toBe(401);
 });
+
+test.describe("staff & roles", () => {
+  test("owner invites a Catalog staff member who only sees catalog sections", async ({
+    page,
+    browser,
+  }) => {
+    await login(page, ADMIN, "/admin/staff");
+    await expect(page.getByRole("heading", { name: "Staff & roles" })).toBeVisible();
+    await expect(page.getByTestId("role-Owner")).toContainText("Everything");
+
+    await page.getByRole("button", { name: "Invite staff" }).click();
+    await page.getByLabel("Name").fill("Catalog Person");
+    await page.getByLabel("Email").fill("catalog@e2e.test");
+    await page.locator("#staff-role").click();
+    await page.getByRole("option", { name: "Catalog" }).click();
+    await page.getByRole("button", { name: "Send invitation" }).click();
+    await expect(page.getByTestId("staff-catalog@e2e.test")).toContainText("Invite pending");
+
+    const email = await db.outboundEmail.findFirstOrThrow({
+      where: { to: "catalog@e2e.test", template: "staff-invite" },
+    });
+    const link = email.text.match(/https?:\/\/\S+reset-password\/\S+/)![0];
+    const ctx = await browser.newContext();
+    const staffPage = await ctx.newPage();
+    await staffPage.goto(new URL(link).pathname + new URL(link).search);
+    await expect(staffPage.getByRole("heading", { name: "Set your password" })).toBeVisible();
+    await staffPage.getByLabel("New password", { exact: true }).fill("Catalog123!");
+    await staffPage.getByLabel("Confirm new password").fill("Catalog123!");
+    await staffPage.getByRole("button", { name: "Update password" }).click();
+    await staffPage.waitForURL(/\/login/);
+
+    await login(
+      staffPage,
+      { email: "catalog@e2e.test", password: "Catalog123!" },
+      "/admin/products",
+    );
+    const nav = staffPage.getByRole("navigation", { name: "Admin" }).first();
+    await expect(nav.getByRole("link", { name: "Products" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Orders" })).toHaveCount(0);
+    await staffPage.goto("/admin/orders");
+    await expect(staffPage).toHaveURL(/\/admin\/no-access/);
+    await expect(staffPage.getByRole("heading", { name: /don’t have access/ })).toBeVisible();
+    await ctx.close();
+  });
+});

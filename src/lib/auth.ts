@@ -36,6 +36,18 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
     resetPasswordTokenExpiresIn: 60 * 30,
     sendResetPassword: async ({ user, url }) => {
+      // Staff invitations reuse this flow; their callback URL carries `invite=1`.
+      const callback = new URL(url).searchParams.get("callbackURL") ?? "";
+      if (callback.includes("invite=1")) {
+        await sendEmail({
+          to: user.email,
+          subject: "You’ve been invited to the Shayvera Foods admin",
+          template: "staff-invite",
+          text: `Hi ${user.name},\n\nYou have been given staff access to the Shayvera Foods store admin. Set your password with the link below. It expires in 30 minutes; if it does, use "Forgot password" on the sign-in page with this email address.\n\n${url}\n\nIf you did not expect this, you can ignore this email.`,
+          html: `<p>Hi ${escapeHtml(user.name)},</p><p>You have been given staff access to the Shayvera Foods store admin. Set your password with the link below. It expires in 30 minutes; if it does, use “Forgot password” on the sign-in page with this email address.</p><p><a href="${escapeHtml(url)}">Set your password</a></p><p>If you did not expect this, you can ignore this email.</p>`,
+        });
+        return;
+      }
       await sendEmail({
         to: user.email,
         subject: "Reset your Shayvera password",

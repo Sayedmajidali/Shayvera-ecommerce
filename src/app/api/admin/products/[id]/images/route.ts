@@ -11,7 +11,7 @@ import { db } from "@/server/platform/db";
 type Ctx = RouteCtx<{ id: string }>;
 
 /** multipart/form-data: file (required), alt (optional). */
-export const POST = adminRoute<Ctx>(async (req, { params }, { actor }) => {
+export const POST = adminRoute<Ctx>("CATALOG_MANAGE", async (req, { params }, { actor }) => {
   const { id } = await params;
   await enforceRateLimit(`upload:${actor.id}`, 60, 600);
   const max = env().UPLOAD_MAX_BYTES;
@@ -35,7 +35,7 @@ export const POST = adminRoute<Ctx>(async (req, { params }, { actor }) => {
   return ok(await addProductImage(id, processed, alt, actor), 201);
 });
 
-export const PATCH = adminRoute<Ctx>(async (req, { params }, { actor }) => {
+export const PATCH = adminRoute<Ctx>("CATALOG_MANAGE", async (req, { params }, { actor }) => {
   const { order } = await parseJson(req, imageReorderSchema);
   await reorderImages((await params).id, order, actor);
   return ok({ reordered: true });

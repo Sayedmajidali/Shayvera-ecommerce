@@ -37,6 +37,8 @@ type Props = {
   refundablePaise: number;
   hasInvoice: boolean;
   requiresAttention: boolean;
+  /** The viewer's admin permissions; controls are hidden when the server would refuse them. */
+  permissions: string[];
 };
 
 const CARRIERS = [
@@ -86,9 +88,17 @@ export function OrderAdminActions(p: Props) {
     }
   };
 
-  const transitions = p.allowed.filter(
-    (s) => s !== "REFUNDED" && !(s === "CONFIRMED" && p.paymentMethod === "RAZORPAY"),
-  );
+  const can = (perm: string) => p.permissions.includes(perm);
+  const paidOnline = p.paymentMethod === "RAZORPAY" && p.paymentStatus === "PAID";
+  const transitions = can("ORDERS_MANAGE")
+    ? p.allowed.filter(
+        (s) =>
+          s !== "REFUNDED" &&
+          !(s === "CONFIRMED" && p.paymentMethod === "RAZORPAY") &&
+          !(s === "CANCELLED" && paidOnline && !can("PAYMENTS_REFUND")) &&
+          !(s === "SHIPPED" && !can("SHIPPING_MANAGE")),
+      )
+    : [];
 
   return (
     <div className="grid gap-4">
@@ -163,18 +173,19 @@ export function OrderAdminActions(p: Props) {
       )}
 
       <div className="flex flex-wrap gap-2">
-        {["CONFIRMED", "PROCESSING", "SHIPPED"].includes(p.status) && (
+        {can("SHIPPING_MANAGE") && ["CONFIRMED", "PROCESSING", "SHIPPED"].includes(p.status) && (
           <Button variant="outline" size="sm" onClick={() => setShipOpen(true)}>
             <Truck /> Add tracking
           </Button>
         )}
-        {(p.paymentStatus === "PAID" || p.paymentStatus === "PARTIALLY_REFUNDED") &&
+        {can("PAYMENTS_REFUND") &&
+          (p.paymentStatus === "PAID" || p.paymentStatus === "PARTIALLY_REFUNDED") &&
           p.refundablePaise > 0 && (
             <Button variant="outline" size="sm" onClick={() => setRefundOpen(true)}>
               <RotateCcw /> Refund
             </Button>
           )}
-        {p.paymentMethod === "RAZORPAY" && p.status === "PENDING" && (
+        {can("ORDERS_MANAGE") && p.paymentMethod === "RAZORPAY" && p.status === "PENDING" && (
           <Button
             variant="outline"
             size="sm"
@@ -201,7 +212,7 @@ export function OrderAdminActions(p: Props) {
                 <FileText /> View invoice
               </a>
             </Button>
-          ) : (
+          ) : can("ORDERS_MANAGE") ? (
             <Button
               variant="outline"
               size="sm"
@@ -220,8 +231,8 @@ export function OrderAdminActions(p: Props) {
             >
               <FileText /> Generate invoice
             </Button>
-          ))}
-        {p.requiresAttention && (
+          ) : null)}
+        {can("ORDERS_MANAGE") && p.requiresAttention && (
           <Button
             variant="outline"
             size="sm"

@@ -4,6 +4,7 @@ import { adminRoute } from "@/server/modules/auth/admin-route";
 import { getDashboardStats } from "@/server/modules/analytics/dashboard";
 
 export const GET = adminRoute(
+  "DASHBOARD_VIEW",
   async (req) => {
     const { range } = parseSearchParams(
       req.url,

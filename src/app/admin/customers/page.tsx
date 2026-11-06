@@ -31,7 +31,7 @@ const schema = z.object({
 
 export default async function CustomersPage({ searchParams }: PageProps<"/admin/customers">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("CUSTOMERS_VIEW");
   const raw = firstValues(await searchParams);
   const { customers, total, page, pageCount } = await listCustomers(schema.parse(raw));
   return (

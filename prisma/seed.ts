@@ -8,6 +8,7 @@ import { hashPassword } from "better-auth/crypto";
 import { PrismaClient } from "@prisma/client";
 import { storage } from "../src/server/platform/storage";
 import { categories, coupons, products, reviewTexts } from "./seed/data";
+import { BUILT_IN_ROLES } from "../src/server/modules/auth/permissions";
 import { seedDemoOrders } from "./seed/demo-orders";
 import { renderBanner, renderIllustration } from "./seed/illustrations";
 
@@ -256,7 +257,17 @@ async function seedCoupons() {
   }
 }
 
+async function seedRoles() {
+  for (const r of BUILT_IN_ROLES)
+    await db.adminRole.upsert({
+      where: { id: r.id },
+      create: { ...r, isSystem: true },
+      update: {},
+    });
+}
+
 async function main() {
+  await seedRoles();
   await upsertSettings();
   const categoryIds = await seedCategories();
   const created = await seedProducts(categoryIds);

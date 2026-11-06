@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Edit product" };
 
 export default async function EditProductPage({ params }: PageProps<"/admin/products/[id]">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("CATALOG_MANAGE");
   const { id } = await params;
   const [product, categories] = await Promise.all([
     db.product.findUnique({

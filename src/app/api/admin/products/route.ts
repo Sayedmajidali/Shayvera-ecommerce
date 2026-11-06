@@ -13,13 +13,14 @@ const filtersSchema = paginationSchema.extend({
 });
 
 export const GET = adminRoute(
+  "CATALOG_MANAGE",
   async (req) => ok(await listProductsAdmin(parseSearchParams(req.url, filtersSchema))),
   {
     csrf: false,
   },
 );
 
-export const POST = adminRoute(async (req, _ctx, { actor }) => {
+export const POST = adminRoute("CATALOG_MANAGE", async (req, _ctx, { actor }) => {
   const input = await parseJson(req, productCreateSchema, 256 * 1024);
   return ok(await createProduct(input, actor), 201);
 });

@@ -47,7 +47,7 @@ function Addr({ a, title }: { a: AddressSnapshot; title: string }) {
 
 export default async function AdminOrderPage({ params }: PageProps<"/admin/orders/[id]">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  const admin = await requireAdminPage("ORDERS_VIEW");
   const { id } = await params;
   const order = await getOrderAdmin(id).catch(() => null);
   if (!order) notFound();
@@ -252,6 +252,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                 refundablePaise={order.totalPaise - order.refundedPaise}
                 hasInvoice={Boolean(order.invoice)}
                 requiresAttention={order.requiresAttention}
+                permissions={admin.permissions}
               />
             </CardContent>
           </Card>

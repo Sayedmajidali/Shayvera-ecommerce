@@ -10,6 +10,7 @@ const schema = paginationSchema.extend({
 });
 
 export const GET = adminRoute(
+  "CUSTOMERS_VIEW",
   async (req) => ok(await listCustomers(parseSearchParams(req.url, schema))),
   { csrf: false },
 );

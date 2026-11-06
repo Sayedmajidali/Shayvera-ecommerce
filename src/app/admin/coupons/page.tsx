@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Coupons" };
 
 export default async function CouponsPage() {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("COUPONS_MANAGE");
   const coupons = await listCoupons();
   return (
     <>

@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Categories" };
 
 export default async function AdminCategoriesPage() {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("CATALOG_MANAGE");
   const categories = await listCategoriesAdmin();
   return (
     <>

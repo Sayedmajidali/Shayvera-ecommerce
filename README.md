@@ -182,9 +182,14 @@ GSTIN and FSSAI number are deliberately not seeded: enter them in Admin → Sett
 
 - Customers register at `/register`; sessions last 14 days (sliding). Password reset emails are written to the
   **development outbox** (Admin → _Messages & emails_) — no email provider is configured yet.
-- There is **no public admin sign-up**. Create or promote admins only from the command line:
+- There is **no public admin sign-up**. Bootstrap the first **Owner** from the command line:
   `npm run admin:create -- --email … --name "…"` (password via hidden prompt or `ADMIN_PASSWORD` env var).
-  Running it for an existing email promotes that user and resets the password.
+  Running it for an existing email promotes that user to Owner and resets the password.
+- Further staff are invited from **Admin → Staff & roles**: they receive an email to set their own password and get
+  a role. Built-in roles: **Owner** (everything), **Operations**, **Catalog**, **Support**, **Accounts**; custom roles
+  can be created with any of 18 permissions. Every admin page and API checks its permission on the server; staff who
+  open a page outside their role see a "no access" page. The last active Owner cannot be demoted, disabled or
+  removed, and nobody can change their own access.
 - Disable a customer in Admin → Customers (signs them out everywhere).
 
 ## Razorpay test mode

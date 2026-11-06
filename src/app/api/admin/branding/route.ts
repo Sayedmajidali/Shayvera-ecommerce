@@ -5,7 +5,7 @@ import { adminRoute } from "@/server/modules/auth/admin-route";
 import { processImageUpload } from "@/server/modules/catalog/image-upload";
 
 /** Uploads a logo or category image (validated + re-encoded). Returns its URL. */
-export const POST = adminRoute(async (req) => {
+export const POST = adminRoute("SETTINGS_MANAGE", async (req) => {
   const form = await req.formData().catch(() => {
     throw new AppError("VALIDATION_ERROR", "Expected a multipart form upload");
   });

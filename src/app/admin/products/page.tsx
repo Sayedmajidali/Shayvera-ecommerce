@@ -36,7 +36,7 @@ const schema = z.object({
 
 export default async function AdminProductsPage({ searchParams }: PageProps<"/admin/products">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("CATALOG_MANAGE");
   const raw = firstValues(await searchParams);
   const f = schema.parse(raw);
   const [result, categories] = await Promise.all([

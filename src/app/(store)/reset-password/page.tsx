@@ -8,8 +8,10 @@ export const metadata: Metadata = { title: "Choose a new password", robots: { in
 export default async function ResetPasswordPage({ searchParams }: PageProps<"/reset-password">) {
   const sp = firstValues(await searchParams);
   const token = sp.error ? null : (sp.token ?? null);
+  // Staff invitations use the same flow (Admin → Staff → Invite).
+  const invite = sp.invite === "1";
   return (
-    <AuthCard title="Choose a new password">
+    <AuthCard title={invite ? "Set your password" : "Choose a new password"}>
       <ResetPasswordForm token={token} />
     </AuthCard>
   );

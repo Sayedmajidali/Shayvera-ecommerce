@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "New product" };
 
 export default async function NewProductPage() {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("CATALOG_MANAGE");
   const categories = await db.category.findMany({
     orderBy: { name: "asc" },
     select: { id: true, name: true },

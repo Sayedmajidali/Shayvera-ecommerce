@@ -121,6 +121,9 @@ model User {
   role          Role       @default(CUSTOMER)
   status        UserStatus @default(ACTIVE)
   phone         String?
+  /// Staff role (only meaningful when role = ADMIN). Null = no admin permissions (fail closed).
+  adminRoleId   String?
+  adminRole     AdminRole? @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -134,7 +137,43 @@ model User {
   couponUsages CouponUsage[]
 
   @@index([role, createdAt])
+  @@index([adminRoleId])
   @@map("user")
+}
+
+/// Fine-grained admin capabilities. Checked server-side on every admin page and API.
+enum AdminPermission {
+  DASHBOARD_VIEW
+  REPORTS_VIEW
+  ORDERS_VIEW
+  ORDERS_MANAGE
+  PAYMENTS_VIEW
+  PAYMENTS_REFUND
+  SHIPPING_MANAGE
+  RETURNS_MANAGE
+  CATALOG_MANAGE
+  INVENTORY_MANAGE
+  CUSTOMERS_VIEW
+  CUSTOMERS_MANAGE
+  COUPONS_MANAGE
+  SETTINGS_MANAGE
+  MESSAGES_VIEW
+  AUDIT_VIEW
+  JOBS_MANAGE
+  ADMINS_MANAGE
+}
+
+/// Named set of permissions assigned to staff. Built-in roles (isSystem) are seeded by migration.
+model AdminRole {
+  id          String            @id @default(cuid())
+  name        String            @unique @db.VarChar(60)
+  description String?           @db.VarChar(300)
+  permissions AdminPermission[]
+  /// Built-in roles cannot be renamed or deleted; the Owner role always has every permission.
+  isSystem    Boolean           @default(false)
+  users       User[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 }
 
 model Session {

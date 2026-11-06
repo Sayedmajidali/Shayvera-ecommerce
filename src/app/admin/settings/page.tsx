@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("SETTINGS_MANAGE");
   const s = await loadStoreSettings();
   return (
     <>

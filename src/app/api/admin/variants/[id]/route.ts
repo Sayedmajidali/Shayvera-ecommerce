@@ -5,11 +5,11 @@ import { deleteVariant, updateVariant } from "@/server/modules/catalog/catalog-a
 
 type Ctx = RouteCtx<{ id: string }>;
 
-export const PUT = adminRoute<Ctx>(async (req, { params }, { actor }) => {
+export const PUT = adminRoute<Ctx>("CATALOG_MANAGE", async (req, { params }, { actor }) => {
   const input = await parseJson(req, variantInputSchema);
   return ok(await updateVariant((await params).id, input, actor));
 });
 
-export const DELETE = adminRoute<Ctx>(async (_req, { params }, { actor }) =>
+export const DELETE = adminRoute<Ctx>("CATALOG_MANAGE", async (_req, { params }, { actor }) =>
   ok(await deleteVariant((await params).id, actor)),
 );

@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Email outbox" };
 /** Development email sink: shows messages that a production email provider would send. */
 export default async function EmailsPage() {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage();
+  await requireAdminPage("MESSAGES_VIEW");
   const [emails, messages] = await Promise.all([
     db.outboundEmail.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),
     db.contactMessage.findMany({ orderBy: { createdAt: "desc" }, take: 50 }),

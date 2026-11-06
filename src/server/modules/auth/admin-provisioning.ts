@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { db } from "@/server/platform/db";
 import { emailSchema, passwordSchema, trimmed } from "@/lib/validation/common";
 import { z } from "zod";
+import { BUILT_IN_ROLES, OWNER_ROLE_ID } from "@/server/modules/auth/permissions";
 
 const inputSchema = z.object({
   email: emailSchema,
@@ -11,19 +12,26 @@ const inputSchema = z.object({
 });
 
 /**
- * Creates (or promotes) an administrator. Used only by the CLI provisioning script and tests —
- * there is deliberately no HTTP endpoint for admin registration.
+ * Creates (or promotes) an Owner. Used only by the CLI bootstrap script and tests. Further staff
+ * are invited from Admin → Staff (no self-registration endpoint exists).
  */
 export async function provisionAdmin(input: { email: string; name: string; password: string }) {
   const { email, name, password } = inputSchema.parse(input);
   const passwordHash = await hashPassword(password);
 
   return db.$transaction(async (tx) => {
+    // The CLI bootstraps the store, so the person always becomes an Owner.
+    for (const r of BUILT_IN_ROLES)
+      await tx.adminRole.upsert({
+        where: { id: r.id },
+        create: { ...r, isSystem: true },
+        update: {},
+      });
     const existing = await tx.user.findUnique({ where: { email } });
     if (existing) {
       await tx.user.update({
         where: { id: existing.id },
-        data: { role: "ADMIN", status: "ACTIVE", name },
+        data: { role: "ADMIN", status: "ACTIVE", name, adminRoleId: OWNER_ROLE_ID },
       });
       const credential = await tx.account.findFirst({
         where: { userId: existing.id, providerId: "credential" },
@@ -47,7 +55,15 @@ export async function provisionAdmin(input: { email: string; name: string; passw
     }
     const id = randomUUID();
     await tx.user.create({
-      data: { id, email, name, role: "ADMIN", status: "ACTIVE", emailVerified: true },
+      data: {
+        id,
+        email,
+        name,
+        role: "ADMIN",
+        status: "ACTIVE",
+        emailVerified: true,
+        adminRoleId: OWNER_ROLE_ID,
+      },
     });
     await tx.account.create({
       data: {

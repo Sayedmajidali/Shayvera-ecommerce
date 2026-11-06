@@ -108,6 +108,25 @@ Payment session (from checkout / pay): `{ keyId, razorpayOrderId, amountPaise, c
 
 ## Admin (role `ADMIN`; customers → 403, anonymous → 401; all mutations audit-logged)
 
+Every admin endpoint also requires a permission from the caller's staff role (403 `FORBIDDEN` otherwise; staff
+with no role get 403 everywhere). Permissions by endpoint group:
+
+| Endpoints                                                | Permission                            |
+| -------------------------------------------------------- | ------------------------------------- |
+| `dashboard`                                              | `DASHBOARD_VIEW`                      |
+| `orders` GET, `orders/:id` GET                           | `ORDERS_VIEW`                         |
+| `orders/:id/status`, `invoice`, `reconcile`, `attention` | `ORDERS_MANAGE`¹                      |
+| `orders/:id/shipments`                                   | `SHIPPING_MANAGE`                     |
+| `orders/:id/refunds`                                     | `PAYMENTS_REFUND`                     |
+| `products`, `variants`, `images`, `categories`           | `CATALOG_MANAGE`                      |
+| `variants/:id/stock`                                     | `INVENTORY_MANAGE`                    |
+| `customers` GET / `customers/:id` GET · PATCH            | `CUSTOMERS_VIEW` · `CUSTOMERS_MANAGE` |
+| `coupons`                                                | `COUPONS_MANAGE`                      |
+| `settings`, `branding`                                   | `SETTINGS_MANAGE`                     |
+| `staff`, `roles`                                         | `ADMINS_MANAGE`                       |
+
+¹ Cancelling a paid online order also needs `PAYMENTS_REFUND`, because it refunds automatically.
+
 | Method               | Path                                      | Notes                                                                                                                                                                                                                                                                                                                                |
 | -------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | GET                  | `/api/admin/dashboard?range=7d\|30d\|90d` | KPIs, daily series, bestsellers, low stock, recent orders.                                                                                                                                                                                                                                                                           |
@@ -135,6 +154,11 @@ Payment session (from checkout / pay): `{ keyId, razorpayOrderId, amountPaise, c
 | PUT / DELETE         | `/api/admin/coupons/:id`                  | DELETE → deleted or deactivated (if used).                                                                                                                                                                                                                                                                                           |
 | GET / PUT            | `/api/admin/settings`                     | Store, shipping, GST (GSTIN validated against state), COD, numbering.                                                                                                                                                                                                                                                                |
 | POST                 | `/api/admin/branding`                     | `multipart/form-data` `file`, `folder=branding\|categories` → `{ url }`                                                                                                                                                                                                                                                              |
+| GET / POST           | `/api/admin/staff`                        | POST `{ email, name, roleId }` → `{ userId, promoted }`. New people get a set-password email; an existing customer account is promoted (signed out, notified). 409 if already staff. Rate limited (20/h per inviter).                                                                                                                |
+| PATCH / DELETE       | `/api/admin/staff/:id`                    | PATCH `{ roleId?, status?: ACTIVE\|DISABLED }`; DELETE removes staff access (account remains a customer account). 409 for self-edits or when it would leave no active Owner.                                                                                                                                                         |
+| POST                 | `/api/admin/staff/:id/invite`             | Re-send the set-password email (only while no password is set; 5/h).                                                                                                                                                                                                                                                                 |
+| GET / POST           | `/api/admin/roles`                        | POST `{ name, description?, permissions: AdminPermission[] }` (unknown permissions → 400; duplicates removed).                                                                                                                                                                                                                       |
+| PATCH / DELETE       | `/api/admin/roles/:id`                    | Owner role is fixed (409); built-in roles cannot be renamed or deleted; roles in use cannot be deleted.                                                                                                                                                                                                                              |
 
 ## Non-API routes of note
 
