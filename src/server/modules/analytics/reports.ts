@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import type { InvoiceSnapshot } from "@/server/modules/invoices/invoices";
 import type { CreditNoteSnapshot } from "@/server/modules/invoices/credit-notes";
 import { db } from "@/server/platform/db";
@@ -223,105 +224,159 @@ export async function getSalesReport(r: ReportRange) {
   };
 }
 
-/**
- * GST register from issued invoices (their immutable snapshots), by invoice date. Prepared for the
- * accountant's review — the business's own GST filing rules decide how it is used.
- */
-export async function getGstRegister(r: ReportRange) {
-  const creditNotes = await db.creditNote.findMany({
-    where: { issuedAt: { gte: r.start, lt: r.end } },
-    orderBy: { issuedAt: "asc" },
-    select: { number: true, issuedAt: true, snapshot: true },
-  });
-  const creditRows = creditNotes.map((c) => {
-    const s = c.snapshot as unknown as CreditNoteSnapshot;
-    return {
-      number: c.number,
-      issuedAt: c.issuedAt,
-      invoiceNumber: s.invoiceNumber,
-      orderNumber: s.orderNumber,
-      placeOfSupply: `${s.placeOfSupply.stateCode} – ${s.placeOfSupply.stateName}`,
-      supplyType: s.supplyType,
-      ...s.totals,
-    };
-  });
-  const credit = creditRows.reduce(
-    (t, x) => ({
-      taxableValuePaise: t.taxableValuePaise + x.taxableValuePaise,
-      cgstPaise: t.cgstPaise + x.cgstPaise,
-      sgstPaise: t.sgstPaise + x.sgstPaise,
-      igstPaise: t.igstPaise + x.igstPaise,
-      taxPaise: t.taxPaise + x.taxPaise,
-      totalPaise: t.totalPaise + x.totalPaise,
-    }),
-    { taxableValuePaise: 0, cgstPaise: 0, sgstPaise: 0, igstPaise: 0, taxPaise: 0, totalPaise: 0 },
-  );
-  const invoices = await db.invoice.findMany({
-    where: { issuedAt: { gte: r.start, lt: r.end } },
-    orderBy: { issuedAt: "asc" },
-    select: {
-      invoiceNumber: true,
-      issuedAt: true,
-      snapshot: true,
-      order: { select: { status: true } },
-    },
-  });
-  const rows = invoices.map((inv) => {
-    const s = inv.snapshot as unknown as InvoiceSnapshot;
-    return {
-      invoiceNumber: inv.invoiceNumber,
-      issuedAt: inv.issuedAt,
-      orderNumber: s.orderNumber,
-      orderStatus: inv.order.status,
-      documentTitle: s.documentTitle,
-      placeOfSupply: `${s.placeOfSupply.stateCode} – ${s.placeOfSupply.stateName}`,
-      supplyType: s.supplyType,
-      taxableValuePaise: s.totals.taxableValuePaise,
-      cgstPaise: s.totals.cgstPaise,
-      sgstPaise: s.totals.sgstPaise,
-      igstPaise: s.totals.igstPaise,
-      taxPaise: s.totals.taxPaise,
-      grandTotalPaise: s.totals.grandTotalPaise,
-    };
-  });
-  const totals = rows.reduce(
-    (t, x) => ({
-      taxableValuePaise: t.taxableValuePaise + x.taxableValuePaise,
-      cgstPaise: t.cgstPaise + x.cgstPaise,
-      sgstPaise: t.sgstPaise + x.sgstPaise,
-      igstPaise: t.igstPaise + x.igstPaise,
-      taxPaise: t.taxPaise + x.taxPaise,
-      grandTotalPaise: t.grandTotalPaise + x.grandTotalPaise,
-    }),
+type TaxTotals = {
+  taxableValuePaise: number;
+  cgstPaise: number;
+  sgstPaise: number;
+  igstPaise: number;
+  taxPaise: number;
+};
+
+/** Sums the `totals` of document snapshots in Postgres (no snapshot is loaded into memory). */
+async function snapshotTotals(table: "Invoice" | "CreditNote", r: ReportRange) {
+  const totalKey = table === "Invoice" ? "grandTotalPaise" : "totalPaise";
+  const t = table === "Invoice" ? Prisma.sql`"Invoice"` : Prisma.sql`"CreditNote"`;
+  const [row] = await db.$queryRaw<
     {
-      taxableValuePaise: 0,
-      cgstPaise: 0,
-      sgstPaise: 0,
-      igstPaise: 0,
-      taxPaise: 0,
-      grandTotalPaise: 0,
-    },
-  );
-  // HSN summary from invoice lines (charges such as shipping have no HSN here).
-  const hsn = new Map<
-    string,
-    { hsn: string; quantity: number; taxableValuePaise: number; taxPaise: number }
-  >();
-  for (const inv of invoices) {
-    for (const l of (inv.snapshot as unknown as InvoiceSnapshot).lines) {
-      const key = l.hsn ?? "—";
-      const cur = hsn.get(key) ?? { hsn: key, quantity: 0, taxableValuePaise: 0, taxPaise: 0 };
-      cur.quantity += l.quantity;
-      cur.taxableValuePaise += l.taxableValuePaise;
-      cur.taxPaise += l.cgstPaise + l.sgstPaise + l.igstPaise;
-      hsn.set(key, cur);
-    }
+      n: number;
+      taxable: bigint;
+      cgst: bigint;
+      sgst: bigint;
+      igst: bigint;
+      tax: bigint;
+      total: bigint;
+    }[]
+  >`
+    SELECT COUNT(*)::int AS n,
+      COALESCE(SUM((snapshot->'totals'->>'taxableValuePaise')::bigint), 0)::bigint AS taxable,
+      COALESCE(SUM((snapshot->'totals'->>'cgstPaise')::bigint), 0)::bigint AS cgst,
+      COALESCE(SUM((snapshot->'totals'->>'sgstPaise')::bigint), 0)::bigint AS sgst,
+      COALESCE(SUM((snapshot->'totals'->>'igstPaise')::bigint), 0)::bigint AS igst,
+      COALESCE(SUM((snapshot->'totals'->>'taxPaise')::bigint), 0)::bigint AS tax,
+      COALESCE(SUM((snapshot->'totals'->>${totalKey})::bigint), 0)::bigint AS total
+    FROM ${t} WHERE "issuedAt" >= ${r.start} AND "issuedAt" < ${r.end}`;
+  return {
+    count: row?.n ?? 0,
+    totals: {
+      taxableValuePaise: n(row?.taxable),
+      cgstPaise: n(row?.cgst),
+      sgstPaise: n(row?.sgst),
+      igstPaise: n(row?.igst),
+      taxPaise: n(row?.tax),
+    } satisfies TaxTotals,
+    totalPaise: n(row?.total),
+  };
+}
+
+/**
+ * GST register from issued invoices and credit notes (their immutable snapshots), by document date.
+ * Totals and the HSN summary are aggregated in SQL; individual rows are loaded only when asked for
+ * (CSV exports). Prepared for the accountant's review — the business's own GST filing rules decide how
+ * it is used.
+ */
+export async function getGstRegister(r: ReportRange, opts: { rows?: boolean } = {}) {
+  const [inv, cn, hsnRows] = await Promise.all([
+    snapshotTotals("Invoice", r),
+    snapshotTotals("CreditNote", r),
+    // HSN summary from invoice lines (charges such as shipping have no HSN here).
+    db.$queryRaw<{ hsn: string; quantity: bigint; taxable: bigint; tax: bigint }[]>`
+      SELECT COALESCE(l->>'hsn', '—') AS hsn,
+        COALESCE(SUM((l->>'quantity')::int), 0)::bigint AS quantity,
+        COALESCE(SUM((l->>'taxableValuePaise')::bigint), 0)::bigint AS taxable,
+        COALESCE(SUM(COALESCE((l->>'cgstPaise')::bigint, 0) + COALESCE((l->>'sgstPaise')::bigint, 0)
+          + COALESCE((l->>'igstPaise')::bigint, 0)), 0)::bigint AS tax
+      FROM "Invoice" i, jsonb_array_elements(i.snapshot->'lines') l
+      WHERE i."issuedAt" >= ${r.start} AND i."issuedAt" < ${r.end}
+      GROUP BY 1 ORDER BY 1`,
+  ]);
+  const totals = { ...inv.totals, grandTotalPaise: inv.totalPaise };
+  const credit = { ...cn.totals, totalPaise: cn.totalPaise };
+
+  let rows: {
+    invoiceNumber: string;
+    issuedAt: Date;
+    orderNumber: string;
+    orderStatus: string;
+    documentTitle: string;
+    placeOfSupply: string;
+    supplyType: string;
+    taxableValuePaise: number;
+    cgstPaise: number;
+    sgstPaise: number;
+    igstPaise: number;
+    taxPaise: number;
+    grandTotalPaise: number;
+  }[] = [];
+  let creditRows: ({
+    number: string;
+    issuedAt: Date;
+    invoiceNumber: string;
+    orderNumber: string;
+    placeOfSupply: string;
+    supplyType: string;
+    totalPaise: number;
+  } & TaxTotals)[] = [];
+  if (opts.rows) {
+    const [invoices, creditNotes] = await Promise.all([
+      db.invoice.findMany({
+        where: { issuedAt: { gte: r.start, lt: r.end } },
+        orderBy: { issuedAt: "asc" },
+        select: {
+          invoiceNumber: true,
+          issuedAt: true,
+          snapshot: true,
+          order: { select: { status: true } },
+        },
+      }),
+      db.creditNote.findMany({
+        where: { issuedAt: { gte: r.start, lt: r.end } },
+        orderBy: { issuedAt: "asc" },
+        select: { number: true, issuedAt: true, snapshot: true },
+      }),
+    ]);
+    rows = invoices.map((i) => {
+      const s = i.snapshot as unknown as InvoiceSnapshot;
+      return {
+        invoiceNumber: i.invoiceNumber,
+        issuedAt: i.issuedAt,
+        orderNumber: s.orderNumber,
+        orderStatus: i.order.status,
+        documentTitle: s.documentTitle,
+        placeOfSupply: `${s.placeOfSupply.stateCode} – ${s.placeOfSupply.stateName}`,
+        supplyType: s.supplyType,
+        taxableValuePaise: s.totals.taxableValuePaise,
+        cgstPaise: s.totals.cgstPaise,
+        sgstPaise: s.totals.sgstPaise,
+        igstPaise: s.totals.igstPaise,
+        taxPaise: s.totals.taxPaise,
+        grandTotalPaise: s.totals.grandTotalPaise,
+      };
+    });
+    creditRows = creditNotes.map((c) => {
+      const s = c.snapshot as unknown as CreditNoteSnapshot;
+      return {
+        number: c.number,
+        issuedAt: c.issuedAt,
+        invoiceNumber: s.invoiceNumber,
+        orderNumber: s.orderNumber,
+        placeOfSupply: `${s.placeOfSupply.stateCode} – ${s.placeOfSupply.stateName}`,
+        supplyType: s.supplyType,
+        ...s.totals,
+      };
+    });
   }
   return {
     range: { from: r.from, to: r.to },
+    invoiceCount: inv.count,
+    creditNoteCount: cn.count,
     rows,
     totals,
-    hsn: [...hsn.values()],
+    hsn: hsnRows.map((h) => ({
+      hsn: h.hsn,
+      quantity: n(h.quantity),
+      taxableValuePaise: n(h.taxable),
+      taxPaise: n(h.tax),
+    })),
     creditNotes: creditRows,
     creditTotals: credit,
     /** Invoices minus credit notes issued in the period. */
@@ -355,7 +410,7 @@ const istDate = (d: Date) => new Date(d.getTime() + IST_OFFSET_MS).toISOString()
 export async function buildReportCsv(kind: ReportExport, r: ReportRange) {
   const file = (name: string) => `shayvera-${name}-${r.from}-to-${r.to}.csv`;
   if (kind === "gst" || kind === "hsn" || kind === "credit-notes") {
-    const g = await getGstRegister(r);
+    const g = await getGstRegister(r, { rows: kind !== "hsn" });
     if (kind === "credit-notes")
       return {
         filename: file("credit-notes"),

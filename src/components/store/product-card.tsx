@@ -17,8 +17,12 @@ export function ProductCard({
   const [primary, secondary] = product.images;
   return (
     <article className="group relative flex flex-col" data-testid="product-card">
+      {/* Same destination as the title link below: hidden from keyboard and screen readers so each
+          product is one tab stop and its name is announced once. */}
       <Link
         href={`/product/${product.slug}`}
+        aria-hidden
+        tabIndex={-1}
         className="bg-muted relative block aspect-[4/5] overflow-hidden rounded-xl"
       >
         {primary ? (
@@ -98,15 +102,28 @@ export function ProductCard({
 export function ProductGrid({
   products,
   priorityCount = 0,
+  heading,
 }: {
   products: ProductCardData[];
   priorityCount?: number;
+  /**
+   * Screen-reader heading for pages with no visible h2 above the grid (cards use h3 titles, so this
+   * keeps the outline h1 → h2 → h3). Omit where the surrounding section already has an h2.
+   */
+  heading?: string;
 }) {
-  return (
+  const grid = (
     <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:gap-x-6 xl:grid-cols-4">
       {products.map((p, i) => (
         <ProductCard key={p.id} product={p} priority={i < priorityCount} />
       ))}
     </div>
+  );
+  if (!heading) return grid;
+  return (
+    <>
+      <h2 className="sr-only">{heading}</h2>
+      {grid}
+    </>
   );
 }

@@ -16,7 +16,11 @@ import { StatTile } from "@/components/admin/stat-tile";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { firstValues } from "@/lib/search-params";
 import { requireAdminPage } from "@/server/modules/auth/session";
-import { getJobsDashboard, jobListSchema } from "@/server/modules/operations/jobs-dashboard";
+import {
+  getJobsDashboard,
+  getSystemStatus,
+  jobListSchema,
+} from "@/server/modules/operations/jobs-dashboard";
 
 export const metadata: Metadata = { title: "Background jobs" };
 
@@ -32,12 +36,12 @@ function age(ms: number) {
 export default async function JobsPage({ searchParams }: PageProps<"/admin/jobs">) {
   await requireAdminPage("JOBS_MANAGE");
   const f = jobListSchema.parse(firstValues(await searchParams));
-  const d = await getJobsDashboard(f);
+  const [d, status] = await Promise.all([getJobsDashboard(f), getSystemStatus()]);
   return (
     <>
       <AdminPageHeader
         title="Background jobs"
-        description="Emails, webhooks, refunds, courier bookings and scheduled checks run here. Failed jobs retry automatically with backoff; dead jobs need a decision."
+        description="Integration status, and the queue that runs emails, webhooks, refunds, courier bookings and scheduled checks. Failed jobs retry automatically with backoff; dead jobs need a decision."
       />
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4" data-testid="job-tiles">
         <StatTile
@@ -72,6 +76,42 @@ export default async function JobsPage({ searchParams }: PageProps<"/admin/jobs"
           tone={d.stats.dead > 0 ? "warning" : undefined}
         />
       </div>
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>System status</CardTitle>
+        </CardHeader>
+        <CardContent className="px-0">
+          <Table data-testid="system-status">
+            <TableBody>
+              {status.map((r) => (
+                <TableRow key={r.name}>
+                  <TableCell className="pl-5 font-medium">{r.name}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`inline-flex items-center gap-1.5 text-sm ${r.level === "warn" ? "font-medium" : ""}`}
+                    >
+                      <span
+                        aria-hidden
+                        className={`size-2 rounded-full ${r.level === "ok" ? "bg-success" : r.level === "warn" ? "bg-warning" : "bg-muted-foreground"}`}
+                      />
+                      <span className="sr-only">
+                        {r.level === "ok"
+                          ? "OK: "
+                          : r.level === "warn"
+                            ? "Needs attention: "
+                            : "Off: "}
+                      </span>
+                      {r.value}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground pr-5 text-xs">{r.detail}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {d.failingTypes.length > 0 && (
         <Card className="mt-6">

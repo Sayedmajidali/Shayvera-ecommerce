@@ -20,6 +20,7 @@ export default async function CartPage() {
     return (
       <div className="container-page py-16">
         <EmptyState
+          as="h1"
           icon={ShoppingBag}
           title="Your cart is empty"
           description="Looks like you haven’t added anything yet. Explore our bestsellers to get started."

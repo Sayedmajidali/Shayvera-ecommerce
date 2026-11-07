@@ -429,7 +429,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/admin/re
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell className="pl-5">{gst.rows.length} invoices</TableCell>
+                <TableCell className="pl-5">{gst.invoiceCount} invoices</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatINR(gst.totals.taxableValuePaise)}
                 </TableCell>
@@ -447,7 +447,7 @@ export default async function ReportsPage({ searchParams }: PageProps<"/admin/re
                 </TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-5">Less {gst.creditNotes.length} credit notes</TableCell>
+                <TableCell className="pl-5">Less {gst.creditNoteCount} credit notes</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatINR(gst.creditTotals.taxableValuePaise)}
                 </TableCell>

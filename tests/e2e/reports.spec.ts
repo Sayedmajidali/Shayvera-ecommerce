@@ -29,6 +29,11 @@ test.describe("admin reports and operations", () => {
     await expect(page.getByTestId("ops-alerts")).toContainText("background jobs out of retries");
 
     await page.goto("/admin/jobs?status=DEAD");
+    const status = page.getByTestId("system-status");
+    await expect(status).toContainText("Database");
+    await expect(status).toContainText("Simulator (testing only)");
+    // Secret values are never shown.
+    await expect(status).not.toContainText("e2e_webhook_secret");
     const row = page.getByTestId("job-row").filter({ hasText: "e2e.noop" });
     await expect(row).toContainText("E2E simulated failure");
     await row.getByRole("button", { name: "Retry" }).click();

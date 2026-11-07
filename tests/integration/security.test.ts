@@ -34,6 +34,7 @@ describe("security controls", () => {
         headers: { "content-length": String(10 * 1024 * 1024) },
         body: "{}",
       }),
+      undefined,
     );
     expect(res.status).toBe(413);
   });

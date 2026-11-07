@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Heart, LogOut, MapPin, Package, User } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -37,6 +36,8 @@ export function AccountNav() {
       <button
         type="button"
         onClick={async () => {
+          // Loaded on demand: keeps the auth client out of every page's initial JavaScript.
+          const { authClient } = await import("@/lib/auth-client");
           await authClient.signOut();
           router.push("/");
           router.refresh();

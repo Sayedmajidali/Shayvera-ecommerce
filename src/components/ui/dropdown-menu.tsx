@@ -11,19 +11,26 @@ const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 function DropdownMenuContent({
   className,
   sideOffset = 6,
+  portalled = true,
   ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
-  return (
-    <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
-        sideOffset={sideOffset}
-        className={cn(
-          "bg-popover text-popover-foreground shadow-lift data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[11rem] overflow-y-auto rounded-xl border p-1.5",
-          className,
-        )}
-        {...props}
-      />
-    </DropdownMenuPrimitive.Portal>
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Content> & {
+  /** false renders the menu in place (inside its landmark), e.g. for a non-modal header menu. */
+  portalled?: boolean;
+}) {
+  const content = (
+    <DropdownMenuPrimitive.Content
+      sideOffset={sideOffset}
+      className={cn(
+        "bg-popover text-popover-foreground shadow-lift data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[11rem] overflow-y-auto rounded-xl border p-1.5",
+        className,
+      )}
+      {...props}
+    />
+  );
+  return portalled ? (
+    <DropdownMenuPrimitive.Portal>{content}</DropdownMenuPrimitive.Portal>
+  ) : (
+    content
   );
 }
 

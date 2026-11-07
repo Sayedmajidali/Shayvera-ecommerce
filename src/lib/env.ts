@@ -45,6 +45,10 @@ const schema = z
     SHIPROCKET_WEBHOOK_TOKEN: z.string().default(""),
     SHIPPING_HTTP_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(10_000),
     RAZORPAY_HTTP_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(10_000),
+    /** Optional: error events are POSTed here as JSON (alert relay / error-tracking ingest). */
+    MONITORING_WEBHOOK_URL: z.preprocess((v) => (v === "" ? undefined : v), z.url().optional()),
+    /** API requests slower than this are logged as warnings. */
+    SLOW_REQUEST_MS: z.coerce.number().int().min(100).max(60_000).default(1500),
   })
   .superRefine((v, ctx) => {
     if (

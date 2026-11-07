@@ -10,6 +10,9 @@ import "dotenv/config";
 import { db } from "../src/server/platform/db";
 import { logger } from "../src/server/platform/logger";
 import { startJobLoop } from "../src/server/jobs/loop";
+import { setupMonitoring } from "../src/server/platform/monitoring";
+
+setupMonitoring("worker");
 
 const loop = startJobLoop({ label: "worker", pollMs: Number(process.env.WORKER_POLL_MS ?? 2000) });
 

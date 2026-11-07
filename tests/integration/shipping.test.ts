@@ -81,6 +81,7 @@ function webhook(body: object, token?: string) {
       headers: { "content-type": "application/json", ...(token ? { "x-api-key": token } : {}) },
       body: JSON.stringify(body),
     }),
+    undefined,
   );
 }
 const scan = (awb: string, id: number, label: string, at: string) => ({

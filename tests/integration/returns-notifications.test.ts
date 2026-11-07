@@ -176,7 +176,7 @@ describe("refunding a received return", () => {
 
     // The GST register nets the credit note against the invoice.
     const day = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
-    const g = await getGstRegister(reportRangeSchema.parse({ from: day, to: day }));
+    const g = await getGstRegister(reportRangeSchema.parse({ from: day, to: day }), { rows: true });
     expect(g.creditNotes).toHaveLength(1);
     expect(g.net.totalPaise).toBe(g.totals.grandTotalPaise - q.itemsPaise);
   });

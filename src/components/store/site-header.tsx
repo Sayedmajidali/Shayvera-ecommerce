@@ -23,13 +23,13 @@ export async function SiteHeader() {
   return (
     <>
       {settings.freeShippingThresholdPaise !== null && (
-        <div className="bg-primary text-primary-foreground">
+        <aside aria-label="Store announcement" className="bg-primary text-primary-foreground">
           <p className="container-page py-2 text-center text-xs tracking-wide">
             Free shipping across India on orders above{" "}
             {formatINR(settings.freeShippingThresholdPaise)}
             {settings.codEnabled && " · Cash on Delivery available"}
           </p>
-        </div>
+        </aside>
       )}
       <header className="bg-background/85 supports-[backdrop-filter]:bg-background/70 sticky top-0 z-40 border-b backdrop-blur-md">
         <div className="container-page flex h-16 items-center gap-4">

@@ -145,3 +145,43 @@ describe("withTimeout", () => {
     await expect(withTimeout(slow, 20, "Razorpay refund")).rejects.toBeInstanceOf(TimeoutError);
   });
 });
+
+describe("webhook error reporter", () => {
+  it("sends redacted events, caps the rate and never throws", async () => {
+    const { createWebhookReporter } = await import("@/server/platform/monitoring");
+    const calls: { url: string; body: Record<string, unknown> }[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: JSON.parse(String(init.body)) });
+      throw new Error("network down"); // a failing monitor must not surface
+    }) as unknown as typeof fetch;
+    try {
+      const report = createWebhookReporter("https://alerts.example/hook", {
+        service: "web",
+        maxPerMinute: 2,
+      });
+      expect(() =>
+        report(new Error("boom"), {
+          orderId: "o1",
+          token: "secret-token",
+          email: "asha@example.com",
+        }),
+      ).not.toThrow();
+      report(new Error("two"), {});
+      report(new Error("three"), {});
+      await new Promise((r) => setTimeout(r, 0));
+      expect(calls).toHaveLength(2);
+      const ctx = calls[0]!.body.context as Record<string, unknown>;
+      expect(calls[0]!.body).toMatchObject({
+        service: "web",
+        level: "error",
+        error: { message: "boom" },
+      });
+      expect(ctx.token).toBe("[redacted]");
+      expect(ctx.email).not.toBe("asha@example.com");
+      expect(ctx.orderId).toBe("o1");
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});

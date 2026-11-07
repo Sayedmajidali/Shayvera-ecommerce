@@ -517,19 +517,19 @@ model InventoryReservation {
 }
 
 model InventoryTransaction {
-  id           String          @id @default(cuid())
-  variantId    String
-  variant      ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  delta        Int
-  balanceAfter Int
-  reason       InventoryReason
-  orderId      String?
-  order        Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  note         String?
-  actorId      String?
+  id             String          @id @default(cuid())
+  variantId      String
+  variant        ProductVariant  @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  delta          Int
+  balanceAfter   Int
+  reason         InventoryReason
+  orderId        String?
+  order          Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  note           String?
+  actorId        String?
   /// Client-supplied key for manual adjustments: a retried request is applied once.
-  idempotencyKey String?       @unique @db.VarChar(64)
-  createdAt    DateTime        @default(now())
+  idempotencyKey String?         @unique @db.VarChar(64)
+  createdAt      DateTime        @default(now())
 
   @@index([variantId, createdAt])
   @@index([orderId])
@@ -651,6 +651,8 @@ model Order {
   @@index([paymentStatus, paymentExpiresAt])
   @@index([email])
   @@index([createdAt])
+  /// Dashboards and reports filter by placement date (India-day ranges).
+  @@index([placedAt])
 }
 
 model OrderItem {
@@ -719,6 +721,7 @@ model Payment {
   refunds Refund[]
 
   @@index([orderId])
+  @@index([status, capturedAt])
   @@index([status, createdAt])
 }
 
@@ -766,6 +769,8 @@ model Refund {
 
   @@index([orderId])
   @@index([requestId])
+  @@index([status, createdAt])
+  @@index([processedAt])
 }
 
 // ─────────────────────── Coupons & promotions ───────────────────────
@@ -859,6 +864,7 @@ model Shipment {
   @@index([orderId])
   @@index([provider, status])
   @@index([trackingNumber])
+  @@index([status, updatedAt])
 }
 
 /// Normalised tracking history of a shipment (webhook, poll, staff or system).
@@ -923,6 +929,8 @@ model Invoice {
   snapshot      Json
   issuedAt      DateTime     @default(now())
   creditNotes   CreditNote[]
+
+  @@index([issuedAt])
 }
 
 /// Credit note issued against an invoice when money is refunded (one per processed refund).

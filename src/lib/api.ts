@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { AppError } from "@/lib/errors";
 import { currentContext, resolveRequestId, runWithContext } from "@/server/platform/context";
 import { captureException } from "@/server/platform/monitoring";
+import { logger } from "@/server/platform/logger";
 
 export type ApiSuccess<T> = { data: T };
 export type ApiFailure = { error: { code: string; message: string; details?: unknown } };
@@ -100,6 +101,8 @@ export function assertSameOrigin(req: Request) {
   throw new AppError("FORBIDDEN", "Missing request origin");
 }
 
+const slowRequestMs = () => Number(process.env.SLOW_REQUEST_MS) || 1500;
+
 type Handler<C> = (req: Request, ctx: C) => Promise<Response>;
 
 /** Wraps a route handler with a correlation context, origin checks and uniform error handling. */
@@ -108,6 +111,7 @@ export function route<C = unknown>(handler: Handler<C>, opts: { csrf?: boolean }
   return async (req, ctx) => {
     const requestId = resolveRequestId(req.headers.get("x-request-id"));
     return runWithContext({ requestId }, async () => {
+      const started = performance.now();
       let res: Response;
       try {
         if (csrf) assertSameOrigin(req);
@@ -123,6 +127,14 @@ export function route<C = unknown>(handler: Handler<C>, opts: { csrf?: boolean }
       } catch {
         /* immutable response (e.g. redirect) */
       }
+      const ms = Math.round(performance.now() - started);
+      if (ms >= slowRequestMs())
+        logger.warn("Slow API request", {
+          method: req.method,
+          path: new URL(req.url).pathname,
+          status: res.status,
+          durationMs: ms,
+        });
       return res;
     });
   };

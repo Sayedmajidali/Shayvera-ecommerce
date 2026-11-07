@@ -28,7 +28,8 @@
     "test:integration": "vitest run --project integration",
     "test:all": "vitest run",
     "test:e2e": "playwright test",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "perf:check": "tsx --conditions=react-server scripts/perf-check.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",

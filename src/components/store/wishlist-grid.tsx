@@ -20,13 +20,16 @@ export function WishlistGrid({
   return (
     <div className="grid gap-8">
       {shown.length > 0 && (
-        <div
-          className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3"
-          data-testid="wishlist-grid"
-        >
-          {shown.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+        <div>
+          <h2 className="sr-only">Saved products</h2>
+          <div
+            className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3"
+            data-testid="wishlist-grid"
+          >
+            {shown.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
         </div>
       )}
       {gone.length > 0 && (

@@ -151,8 +151,18 @@ committed" is recoverable by reconciliation.
 ## 8. Observability
 
 Structured JSON logs (production) with `requestId`, `jobId`, `orderNumber` context; secrets and PII keys
-redacted. `GET /api/health` reports DB status, queue backlog/age and worker heartbeat. A `monitoring.ts` hook
-forwards exceptions to an error tracker when `SENTRY_DSN` (or equivalent) is configured.
+redacted. Every API route (webhooks included) runs inside `route()`: request id in an AsyncLocalStorage context
+and the `x-request-id` header, uniform error mapping (500s logged with the id, the user sees only the reference),
+and a warning for requests slower than `SLOW_REQUEST_MS`. Errors thrown while rendering pages, in server actions
+or in the proxy reach `onRequestError` in `instrumentation.ts` (route, digest, request id; query strings dropped
+because guest links carry tokens). `monitoring.ts` sends every captured exception to the log and, when
+`MONITORING_WEBHOOK_URL` is set, POSTs a redacted JSON event to it (≤ 20/min per process, 3 s timeout, never
+throws) — from both the web server and the worker; a Sentry-style SDK can replace the reporter via
+`registerErrorReporter` without touching call sites. Integration failures carry a stable `category`.
+`GET /api/health` reports DB status, queue backlog/age and worker heartbeat. Admin → Background jobs shows a
+**System status** table (DB latency, payment mode and last webhook, courier provider/token/pickup/last update,
+email provider, error reporting, staff alerts) plus queue health and dead jobs; Payments, Shipments, Requests and
+the dashboard "Needs attention" panel surface the business-level failures.
 
 ## 9. Deployment readiness
 

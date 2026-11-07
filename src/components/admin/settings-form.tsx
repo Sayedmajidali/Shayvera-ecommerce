@@ -237,8 +237,8 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
               className: "font-mono",
             })}
             <div className="grid gap-2">
-              <Label>Currency</Label>
-              <Input value="INR (₹)" disabled />
+              <Label htmlFor="s-currency">Currency</Label>
+              <Input id="s-currency" value="INR (₹)" disabled />
             </div>
           </div>
         </CardContent>

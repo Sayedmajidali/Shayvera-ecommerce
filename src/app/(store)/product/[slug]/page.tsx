@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { paiseToRupeesString } from "@/lib/money";
 import { notFound } from "next/navigation";
 import { RotateCcw, ShieldCheck, Truck } from "lucide-react";
 import {
@@ -63,8 +64,8 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
     offers: {
       "@type": "AggregateOffer",
       priceCurrency: "INR",
-      lowPrice: (Math.min(...prices) / 100).toFixed(2),
-      highPrice: (Math.max(...prices) / 100).toFixed(2),
+      lowPrice: paiseToRupeesString(Math.min(...prices)),
+      highPrice: paiseToRupeesString(Math.max(...prices)),
       offerCount: product.variants.length,
       availability: product.variants.some((v) => v.stock > 0)
         ? "https://schema.org/InStock"
@@ -146,6 +147,7 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
               replace it free
             </li>
           </ul>
+          <h2 className="sr-only">Product information</h2>
           <Accordion type="multiple" defaultValue={["description", "info"]} className="mt-8">
             <AccordionItem value="description">
               <AccordionTrigger>Description</AccordionTrigger>

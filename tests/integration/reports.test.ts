@@ -158,12 +158,12 @@ describe("GST register and CSV exports", () => {
     const inv = await db.invoice.findUniqueOrThrow({ where: { orderId: o.id } });
     const snap = inv.snapshot as unknown as InvoiceSnapshot;
 
-    const g = await getGstRegister(range("2025-04-01", "2025-04-30"));
+    const g = await getGstRegister(range("2025-04-01", "2025-04-30"), { rows: true });
     expect(g.rows).toHaveLength(1);
     expect(g.totals.taxableValuePaise).toBe(snap.totals.taxableValuePaise);
     expect(g.totals.taxPaise).toBe(snap.totals.taxPaise);
     expect(g.hsn.reduce((t, h) => t + h.quantity, 0)).toBe(1);
-    expect((await getGstRegister(range("2025-05-01", "2025-05-31"))).rows).toHaveLength(0);
+    expect((await getGstRegister(range("2025-05-01", "2025-05-31"))).invoiceCount).toBe(0);
 
     const gst = await buildReportCsv("gst", range("2025-04-01", "2025-04-30"));
     expect(gst.filename).toBe("shayvera-gst-register-2025-04-01-to-2025-04-30.csv");

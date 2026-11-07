@@ -217,15 +217,16 @@ every 5–10 minutes in production). Card data is never stored.
 
 ## Running the app
 
-| Task                                              | Command                                                   |
-| ------------------------------------------------- | --------------------------------------------------------- |
-| Development server                                | `npm run dev` → <http://localhost:3000>                   |
-| Production build / start                          | `npm run build` then `npm run start`                      |
-| Lint / format / typecheck                         | `npm run lint` · `npm run format` · `npm run typecheck`   |
-| Background job worker (production)                | `npm run worker`                                          |
-| Import products from a WooCommerce site (dry run) | `npm run catalog:import-woo -- --url https://shayvera.in` |
-| Expire stale unpaid orders now (one-off)          | `npm run jobs:reconcile`                                  |
-| Health check (DB, job queue, worker heartbeat)    | `GET /api/health`                                         |
+| Task                                              | Command                                                    |
+| ------------------------------------------------- | ---------------------------------------------------------- |
+| Development server                                | `npm run dev` → <http://localhost:3000>                    |
+| Production build / start                          | `npm run build` then `npm run start`                       |
+| Lint / format / typecheck                         | `npm run lint` · `npm run format` · `npm run typecheck`    |
+| Background job worker (production)                | `npm run worker`                                           |
+| Import products from a WooCommerce site (dry run) | `npm run catalog:import-woo -- --url https://shayvera.in`  |
+| Expire stale unpaid orders now (one-off)          | `npm run jobs:reconcile`                                   |
+| Health check (DB, job queue, worker heartbeat)    | `GET /api/health`                                          |
+| Performance check at volume (separate database)   | `PERF_DATABASE_URL=… npm run perf:check -- --orders 20000` |
 
 **Shipping / delivery checks.** `SHIPPING_PROVIDER` = `mock` (default in development: an offline courier simulator),
 `manual` (default in production until Shiprocket is set up: staff enter courier and AWB, no coverage check) or

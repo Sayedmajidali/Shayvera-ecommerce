@@ -612,3 +612,45 @@ Full re-review against the specification's security (§14) and reliability (§15
 - **API change**: `POST /api/admin/variants/:id/stock` now requires `idempotencyKey` (UUID); response may include
   `replayed: true`.
 - Results: unit 167 · integration 241 · E2E 44 — all passing; lint, typecheck, production build clean.
+
+## v2 Phase 13 — Performance, SEO, accessibility and observability ✅
+
+- **Database performance**: added indexes for every dashboard/report access path that lacked one
+  (`Order.placedAt`, `Shipment(status, updatedAt)`, `Refund(status, createdAt)` and `processedAt`,
+  `Payment(status, capturedAt)`, `Invoice.issuedAt`) and partial indexes for the work queues (orders/shipments
+  needing attention, unprocessed payment webhooks) — migration `performance_indexes`, additive.
+- **`npm run perf:check`**: seeds a year of synthetic data into a _separate_ database (`PERF_DATABASE_URL`;
+  refuses the app database) and times 14 dashboard, report, list and storefront queries against a budget.
+  Found and fixed one scaling problem: the GST register summed invoice snapshots in JavaScript (2.2 s for a year at
+  200k orders) — now aggregated in SQL (66 ms); rows load only for CSV exports. Results:
+
+  | Query (median)           | 20k orders   | 200k orders  |
+  | ------------------------ | ------------ | ------------ |
+  | Dashboard figures (90 d) | 19 ms        | 104 ms       |
+  | Dashboard alerts         | 7 ms         | 66 ms        |
+  | Sales report (365 d)     | 42 ms        | 455 ms       |
+  | GST register (365 d)     | 140 ms → SQL | 66 ms        |
+  | Orders list (page 1/500) | 28 / 40 ms   | 313 / 327 ms |
+  | Shipments / Payments     | 12 / 9 ms    | 51 / 36 ms   |
+  | Shop listing             | 3 ms         | 3 ms         |
+
+- **Front-end weight**: E2E performance budgets on the production build (compressed JS ≤ 250 KB per storefront
+  page, TTFB ≤ 1.5 s; measured 226–241 KB, TTFB 9–21 ms). The auth client is now loaded only when signing out
+  (−13 KB on every storefront page). Images already use `next/image`; search suggestions are debounced.
+- **SEO**: `robots.txt` also disallows `/credit-note/` and `/track/` (token pages); product structured-data prices
+  use exact integer formatting. Existing: dynamic metadata, Open Graph, canonical URLs, Product/Breadcrumb/
+  Organization JSON-LD, live sitemap without drafts, noindex on private pages.
+- **Accessibility**: axe now fails on moderate as well as serious/critical violations and covers 15 public pages
+  (incl. 404), cart/checkout with validation errors, all account pages, the open account menu and 18 admin pages.
+  Fixed: unlabeled currency field (critical); account menu hid the page from screen readers while focusable and had
+  a low-contrast line (serious); announcement bar outside landmarks; heading order on listing, product, account
+  and admin pages; empty cart without a page heading; 404 page without a main landmark; duplicate product links
+  (each product is now one tab stop and its name is read once). New keyboard tests: skip link, visible focus,
+  dialog focus trap/Escape/focus return, add to cart by keyboard.
+- **Observability**: `onRequestError` for page/action/proxy errors; configurable `MONITORING_WEBHOOK_URL` reporter
+  (redacted, rate-limited, web + worker); slow API request warnings (`SLOW_REQUEST_MS`); webhooks now run inside
+  the request context; **System status** table on Admin → Background jobs (modes and timestamps only, never secret
+  values — tested).
+- **Tests**: +2 unit (timeout earlier, webhook reporter), +1 integration (system status reveals no secrets),
+  +6 E2E performance budgets, +12 accessibility/keyboard tests (E2E 59 total).
+- Results: unit 168 · integration 242 · E2E 59 — all passing; lint, typecheck, production build clean.

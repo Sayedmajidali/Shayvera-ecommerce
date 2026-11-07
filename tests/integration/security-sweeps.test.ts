@@ -176,3 +176,28 @@ describe("stock adjustments are idempotent", () => {
     expect(missing.status).toBe(400);
   });
 });
+
+describe("system status", () => {
+  it("reports integration modes without revealing secret values", async () => {
+    const { getSystemStatus } = await import("@/server/modules/operations/jobs-dashboard");
+    const rows = await getSystemStatus();
+    expect(rows.map((r) => r.name)).toEqual([
+      "Database",
+      "Payments",
+      "Shipping",
+      "Email",
+      "Error reporting",
+      "Staff alerts",
+    ]);
+    const text = JSON.stringify(rows);
+    for (const key of [
+      "RAZORPAY_KEY_SECRET",
+      "RAZORPAY_WEBHOOK_SECRET",
+      "SHIPROCKET_WEBHOOK_TOKEN",
+      "BETTER_AUTH_SECRET",
+    ]) {
+      const value = process.env[key];
+      if (value && value.length >= 4) expect(text, key).not.toContain(value);
+    }
+  });
+});

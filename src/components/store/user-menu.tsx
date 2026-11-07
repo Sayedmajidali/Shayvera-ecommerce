@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Heart, LayoutDashboard, LogOut, Package, User } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,16 +24,17 @@ export function UserMenu({
 }) {
   const router = useRouter();
   return (
-    <DropdownMenu>
+    // Non-modal: a modal menu hides the rest of the page from screen readers while it stays focusable.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Account menu">
           <User className="size-5" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60">
+      <DropdownMenuContent align="end" className="w-60" portalled={false}>
         <DropdownMenuLabel className="font-normal">
           <p className="text-foreground truncate text-sm font-medium">{name}</p>
-          <p className="truncate text-xs">{email}</p>
+          <p className="text-foreground/80 truncate text-xs">{email}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
@@ -62,6 +62,8 @@ export function UserMenu({
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={async () => {
+            // Loaded on demand: keeps the auth client out of every page's initial JavaScript.
+            const { authClient } = await import("@/lib/auth-client");
             await authClient.signOut();
             router.push("/");
             router.refresh();

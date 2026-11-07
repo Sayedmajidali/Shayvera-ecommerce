@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { LogOut, Menu, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { ADMIN_LINKS } from "@/components/admin/admin-links";
 
@@ -54,6 +53,8 @@ function Footer({ name, email }: { name: string; email: string }) {
       <button
         type="button"
         onClick={async () => {
+          // Loaded on demand: keeps the auth client out of every page's initial JavaScript.
+          const { authClient } = await import("@/lib/auth-client");
           await authClient.signOut();
           router.push("/login");
           router.refresh();
