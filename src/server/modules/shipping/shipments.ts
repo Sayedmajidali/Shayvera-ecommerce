@@ -821,7 +821,9 @@ export function courierWebhookDedupeKey(
 ) {
   return createHash("sha256")
     .update(
-      [p.awb, p.shipment_status_id ?? p.current_status_id ?? "", p.current_timestamp ?? raw].join("|"),
+      [p.awb, p.shipment_status_id ?? p.current_status_id ?? "", p.current_timestamp ?? raw].join(
+        "|",
+      ),
     )
     .digest("hex");
 }

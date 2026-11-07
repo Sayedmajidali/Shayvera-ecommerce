@@ -90,6 +90,12 @@ browser; logger redacts tokens/signatures/keys and masks emails/phones); audit l
 report exports; webhook verification (Razorpay HMAC over the raw body with rotation; Shiprocket `x-api-key`
 constant-time); payment signature verification plus server-side payment fetch and amount check.
 
+**Phase 15 additions:** outbound SMTP requires TLS (implicit `smtps://` or mandatory STARTTLS; plain only to a
+local catcher on localhost) and logs never include `SMTP_URL`; S3 requests are signed with SigV4 (secret never
+sent), storage keys are validated before any network call, the bucket can stay private (images served through
+`/media`), and System status shows only hosts, never credentials. `nodemailer` (pinned, no dependencies) is the
+only new runtime dependency; the production audit remains clean.
+
 ## 3. Dependency audit (`npm audit`, 2026-11-07)
 
 | Scope                     | Result                                                                                                                                                                                                                                                         |

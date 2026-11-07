@@ -22,7 +22,16 @@ const schema = z
       .min(5)
       .max(24 * 60)
       .default(30),
-    STORAGE_DRIVER: z.enum(["local"]).default("local"),
+    EMAIL_PROVIDER: z.enum(["dev-outbox", "smtp"]).default("dev-outbox"),
+    SMTP_URL: z.string().default(""),
+    EMAIL_FROM: z.string().default(""),
+    EMAIL_REPLY_TO: z.string().default(""),
+    STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+    S3_ENDPOINT: z.preprocess((v) => (v === "" ? undefined : v), z.url().optional()),
+    S3_REGION: z.string().default("auto"),
+    S3_BUCKET: z.string().default(""),
+    S3_ACCESS_KEY_ID: z.string().default(""),
+    S3_SECRET_ACCESS_KEY: z.string().default(""),
     STORAGE_LOCAL_DIR: z.string().default("./storage/uploads"),
     UPLOAD_MAX_BYTES: z.coerce
       .number()
@@ -51,6 +60,25 @@ const schema = z
     SLOW_REQUEST_MS: z.coerce.number().int().min(100).max(60_000).default(1500),
   })
   .superRefine((v, ctx) => {
+    if (v.EMAIL_PROVIDER === "smtp" && (!v.SMTP_URL || !v.EMAIL_FROM))
+      ctx.addIssue({
+        code: "custom",
+        path: ["SMTP_URL"],
+        message: "EMAIL_PROVIDER=smtp needs SMTP_URL and EMAIL_FROM",
+      });
+    if (v.STORAGE_DRIVER === "s3")
+      for (const k of [
+        "S3_ENDPOINT",
+        "S3_BUCKET",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+      ] as const)
+        if (!v[k])
+          ctx.addIssue({
+            code: "custom",
+            path: [k],
+            message: `${k} is required when STORAGE_DRIVER=s3`,
+          });
     if (
       v.SHIPPING_PROVIDER === "shiprocket" &&
       (!v.SHIPROCKET_API_EMAIL || !v.SHIPROCKET_API_PASSWORD)

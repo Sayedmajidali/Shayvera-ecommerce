@@ -672,3 +672,27 @@ Full re-review against the specification's security (§14) and reliability (§15
   statements 82.0 %, functions 82.8 %, branches 72.4 %, with enforced floors.
 - **Stability**: unit + integration run three times and E2E twice, all green, no retries.
 - Results: unit 181 · integration 251 · E2E 60 — all passing; lint, typecheck, production build clean.
+
+## v2 Phase 15 — Final review and production readiness ✅
+
+- **Two production blockers found and fixed:**
+  - **Storage depended on the local disk** (spec: production must not). Added an S3-compatible provider
+    (`STORAGE_DRIVER=s3`: AWS S3, Cloudflare R2, DigitalOcean Spaces, MinIO) with SigV4 signing implemented in-house
+    and verified against the official AWS test vectors; image URLs (`/media/<key>`) are unchanged.
+  - **Email was a development outbox only** — order emails and password resets could never be delivered. Added an
+    SMTP provider (`EMAIL_PROVIDER=smtp`, `nodemailer` 10.2.1 pinned, TLS required), tested against a local fake
+    SMTP server.
+- **Backups**: `scripts/ops/db-backup.sh` (pg_dump + checksum + retention) and `db-restore.sh` (refuses non-empty
+  targets); restore drill run locally — counts and migration history matched.
+- **Deployment examples**: `deploy/Caddyfile.example` (HTTPS reverse proxy), production compose notes for storage,
+  email and backups. Not applied anywhere (no hosting yet, by design).
+- **System status** now includes storage and the real email mode; warns in production for local storage or the
+  dev outbox.
+- **Final review fixes**: intermittent axe failure traced to loading skeletons without a page heading (fixed);
+  docs consistency sweep (all API routes documented, all models in DATABASE_DESIGN, env vars in `.env.example`);
+  README environment, tests and handover sections rewritten for v2.
+- **`PRODUCTION_READINESS.md`**: verdict (development-complete, not launch-approved), acceptance-criteria matrix
+  with evidence, configuration, deployment architecture, storage, backups/recovery, pooling and roles,
+  monitoring/alerting plan, webhook requirements, pre-launch verifications and the launch review checklist.
+- Results: unit 185 · integration 254 · E2E 60 (run twice) — all passing; coverage lines 84.6 %; lint,
+  typecheck, production build clean; production `npm audit` 0 vulnerabilities.

@@ -130,27 +130,38 @@ Demo customer: `customer@shayvera.local` / `Customer123!`.
 
 ## Environment variables
 
-All variables are documented in `.env.example` and validated at runtime (`src/lib/env.ts`). Never commit `.env`.
+All variables are documented in `.env.example` and validated at start-up (`src/lib/env.ts`): an invalid
+combination (e.g. the mock gateway in production, `STORAGE_DRIVER=s3` without a bucket) stops the app with a clear
+message. Never commit `.env` / `.env.production`.
 
-| Variable                                              | Required            | Description                                                                                        |
-| ----------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------- |
-| `NEXT_PUBLIC_APP_URL`                                 | yes                 | Public base URL (`http://localhost:3000` locally). Used for links, canonical URLs, emails.         |
-| `DATABASE_URL`                                        | yes                 | PostgreSQL connection string for the app.                                                          |
-| `DATABASE_URL_TEST`                                   | tests               | Separate DB for integration tests (truncated on every test).                                       |
-| `DATABASE_URL_E2E`                                    | tests               | Separate DB for Playwright (reset + seeded each run; name must contain `e2e`).                     |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | docker              | Used by `docker-compose.yml`.                                                                      |
-| `BETTER_AUTH_SECRET`                                  | yes                 | ≥ 32 random characters. Signs sessions and guest order links. Rotating it signs everyone out.      |
-| `BETTER_AUTH_URL`                                     | yes                 | Same as the app URL.                                                                               |
-| `PAYMENT_GATEWAY`                                     | yes                 | `razorpay` (real API, test or live keys) or `mock` (offline simulator; **refused in production**). |
-| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`             | for online payments | From Razorpay Dashboard → Settings → API Keys (Test Mode). The secret never reaches the browser.   |
-| `RAZORPAY_WEBHOOK_SECRET`                             | for webhooks        | Secret you set when creating the webhook in the dashboard.                                         |
-| `PAYMENT_EXPIRY_MINUTES`                              | no (30)             | How long unpaid online orders keep stock reserved.                                                 |
-| `STORAGE_DRIVER` / `STORAGE_LOCAL_DIR`                | no                  | `local` / `./storage/uploads` (uploaded images; git-ignored).                                      |
-| `UPLOAD_MAX_BYTES`                                    | no (5 MB)           | Max image upload size.                                                                             |
-| `TRUSTED_PROXY_HOPS`                                  | no (1)              | Number of reverse proxies in front of the app (for client IP / rate limits).                       |
-| `LOG_LEVEL`                                           | no (info)           | `debug`, `info`, `warn`, `error`.                                                                  |
+| Variable                                                                                | Required          | Description                                                                                                  |
+| --------------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_APP_URL`                                                                   | yes               | Public base URL (`http://localhost:3000` locally). Links, canonical URLs, emails.                            |
+| `DATABASE_URL`                                                                          | yes               | PostgreSQL connection string for the app.                                                                    |
+| `DATABASE_URL_TEST` / `DATABASE_URL_E2E`                                                | tests             | Separate databases for integration tests (truncated per test) and Playwright (reset + seeded per run).       |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`                                   | docker            | Used by the compose files.                                                                                   |
+| `BETTER_AUTH_SECRET`                                                                    | yes               | ≥ 32 random characters. Signs sessions and guest order links; rotating it signs everyone out.                |
+| `BETTER_AUTH_URL`                                                                       | yes               | Same as the app URL.                                                                                         |
+| `PAYMENT_GATEWAY`                                                                       | yes               | `razorpay` (test or live keys) or `mock` (offline simulator; **refused in production**).                     |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET`                                               | online payments   | Razorpay Dashboard → API Keys. The secret never reaches the browser.                                         |
+| `RAZORPAY_WEBHOOK_SECRET` / `RAZORPAY_WEBHOOK_SECRET_PREVIOUS`                          | webhooks          | Current secret; the previous one during rotation.                                                            |
+| `RAZORPAY_HTTP_TIMEOUT_MS`, `PAYMENT_EXPIRY_MINUTES`                                    | no (10000, 30)    | Razorpay call timeout; how long unpaid online orders hold stock.                                             |
+| `SHIPPING_PROVIDER`                                                                     | no                | `shiprocket`, `mock` (dev default) or `manual` (production default until Shiprocket is set up).              |
+| `SHIPROCKET_API_EMAIL` / `SHIPROCKET_API_PASSWORD`                                      | Shiprocket        | A Shiprocket **API user** (not the main login).                                                              |
+| `SHIPROCKET_WEBHOOK_TOKEN`                                                              | Shiprocket (prod) | Security token configured on the Shiprocket webhook (`x-api-key`).                                           |
+| `SHIPROCKET_BASE_URL`, `SHIPPING_HTTP_TIMEOUT_MS`                                       | no                | API base URL; courier call timeout (10000).                                                                  |
+| `EMAIL_PROVIDER`                                                                        | prod: `smtp`      | `dev-outbox` (stored, not sent) or `smtp`.                                                                   |
+| `SMTP_URL` / `EMAIL_FROM` / `EMAIL_REPLY_TO`                                            | with `smtp`       | e.g. `smtps://user:pass@host:465`; verified sender; optional reply-to.                                       |
+| `STORAGE_DRIVER`                                                                        | no (`local`)      | `local` (one server) or `s3` (any S3-compatible service; required for more than one instance).               |
+| `STORAGE_LOCAL_DIR`, `UPLOAD_MAX_BYTES`                                                 | no                | Local upload folder (git-ignored); max image size (5 MB).                                                    |
+| `S3_ENDPOINT` / `S3_REGION` / `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | with `s3`         | Object storage. The bucket can be private; images are served at `/media/<key>`.                              |
+| `JOB_RUNNER`, `WORKER_POLL_MS`                                                          | no                | `worker` (production default: run `npm run worker`), `inline` (dev default) or `off` (tests); poll interval. |
+| `MONITORING_WEBHOOK_URL`, `SLOW_REQUEST_MS`                                             | no                | Error events POSTed here (redacted JSON); slow API request threshold (1500 ms).                              |
+| `TRUSTED_PROXY_HOPS`                                                                    | no (1)            | Reverse proxies in front of the app (client IP for rate limits / audit log).                                 |
+| `LOG_LEVEL`                                                                             | no (info)         | `debug`, `info`, `warn`, `error`.                                                                            |
 
 Test-only switches: `AUTH_RATE_LIMIT=off`, `APP_RATE_LIMIT=off`, `SEED_DEMO_ORDERS=false`, `E2E_TEST_MODE=true`.
+Performance check: `PERF_DATABASE_URL` (a separate, disposable database).
 
 ## Database
 
@@ -272,17 +283,24 @@ npm run test:integration
 ```
 
 ```bash
+npm run test:coverage
+```
+
+```bash
 npm run test:e2e
 ```
 
-- **Unit** (77): pricing, GST, coupons, money, India validators, order state machine, signatures, security helpers.
-- **Integration** (100): run route handlers and services against `DATABASE_URL_TEST` (truncated between tests),
-  including concurrency tests (oversell, coupon limits, idempotent double submit, refunds).
-- **E2E** (29): Playwright against a production build on port 3100 with `DATABASE_URL_E2E` and the mock gateway;
-  includes axe accessibility scans. First run: Playwright uses its bundled Chromium (`npx playwright install chromium`
-  if it is missing on your machine). HTML report: `npx playwright show-report`.
+- **Unit** (185): pricing, GST, coupons, money, India validators, order state machine, signatures, shipping
+  mapping and parsing, retry/backoff and timeouts, the Razorpay adapter (fake SDK), S3 signing (AWS test vectors),
+  CSV, security helpers.
+- **Integration** (254): route handlers and services against `DATABASE_URL_TEST`, including a concurrency suite,
+  payment and courier failure scenarios with mocks, RBAC and security sweeps, SMTP delivery to a local fake server.
+- **Coverage**: lines ≈ 85 % of server/API code, with enforced floors.
+- **E2E** (60): Playwright against a production build on port 3100 with `DATABASE_URL_E2E`, the payment simulator
+  and the mock courier; customer and admin journeys, phone checkout, axe accessibility scans, keyboard tests and
+  performance budgets. HTML report: `npx playwright show-report`.
 
-Results and coverage: `QA_REPORT.md`.
+Results, traceability and what is mocked vs verified: `QA_REPORT.md`.
 
 ## Project structure
 
@@ -319,34 +337,16 @@ tests/             unit/ · integration/ · e2e/ · helpers/
 
 ## Handover
 
-### Completed and tested
+**Status: development-complete; not yet approved for launch.** The full assessment — what is done and tested,
+what is mocked, what is still unverified, and the launch checklist — is in **`PRODUCTION_READINESS.md`**.
 
-Everything in `PROJECT_PLAN.md` Phases 0–13: storefront, auth & RBAC, catalog management with secure uploads,
-cart & server-side pricing, checkout & COD, Razorpay (via simulator + signed payloads), admin dashboard and
-operations, GST/invoices/India rules, security hardening, unit/integration/E2E/accessibility tests, SEO.
-Test evidence: `QA_REPORT.md`.
+In short:
 
-### Known limitations
-
-- Real Razorpay round-trip and Docker Compose start-up were not executed in the build sandbox (network/daemon
-  unavailable); run the checklists above locally.
-- Emails go to a database outbox; no email provider; email verification not required.
-- Product reviews are displayed (seeded) but there is no customer review submission or moderation UI yet.
-- Local disk image storage (single instance only); invoices are printable HTML (browser "Save as PDF"), not stored PDFs.
-- No courier API integration (manual tracking only); no multi-currency; no B2B GSTIN capture for buyers.
-- CSP uses `'unsafe-inline'` for scripts (see SECURITY_REVIEW.md); no admin MFA.
-- Legal pages, GST settings and invoice format are templates requiring professional review.
-
-### Required credentials / configuration before going live
-
-`BETTER_AUTH_SECRET` (new, random), production `DATABASE_URL`, Razorpay **live** keys + webhook secret,
-public `NEXT_PUBLIC_APP_URL`/`BETTER_AUTH_URL` on HTTPS, store details/GST settings in Admin → Settings,
-`TRUSTED_PROXY_HOPS` matching the hosting setup.
-
-### Production deployment tasks
-
-Hosting and HTTPS; managed PostgreSQL with automated backups/PITR and least-privilege roles; object storage
-(implement `StorageProvider` for S3/Cloudinary); transactional email provider (implement `sendEmail`) and email
-verification; scheduled `jobs:reconcile`; Razorpay live activation and webhook registration; nonce-based CSP;
-admin MFA; error tracking, uptime monitoring and log retention; Prisma 7 upgrade evaluation (clears the CLI
-advisory); legal/tax review; load testing.
+- **Implemented and tested** (`QA_REPORT.md`): storefront, accounts, cart, checkout (COD + Razorpay), order
+  lifecycle with cancellations/returns/refunds and credit notes, inventory reservations, Shiprocket shipping
+  module, admin (dashboards, reports, staff roles, jobs), notifications (SMTP + staff alerts), S3-compatible
+  storage, security hardening, observability, backups.
+- **Awaiting real-provider verification:** Razorpay test-mode round trip (needs `rzp_test_` keys); Shiprocket
+  API (no sandbox exists — needs the business's API user); SMTP and S3 against the chosen providers; Docker build.
+- **Business inputs still needed:** legal name, GSTIN and FSSAI number, real prices and pack sizes, support
+  contact details, pickup address, Razorpay and Shiprocket accounts, email sender domain.

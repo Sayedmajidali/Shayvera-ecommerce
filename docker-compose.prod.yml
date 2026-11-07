@@ -4,7 +4,13 @@
 #   docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
 #
 # Required in .env.production: POSTGRES_PASSWORD, BETTER_AUTH_SECRET, NEXT_PUBLIC_APP_URL,
-# BETTER_AUTH_URL, payment and shipping credentials. Never commit that file.
+# BETTER_AUTH_URL, payment and shipping credentials, EMAIL_PROVIDER=smtp + SMTP_URL + EMAIL_FROM.
+# Never commit that file.
+#
+# Storage: the `uploads` volume is for STORAGE_DRIVER=local on ONE host. Before running more than one
+# web instance (or on any host without durable disks) set STORAGE_DRIVER=s3 and the S3_* variables;
+# the volume is then unused. HTTPS: put a reverse proxy in front (example: deploy/Caddyfile.example).
+# Backups: scripts/ops/db-backup.sh from another machine, plus the provider's PITR on managed DBs.
 services:
   db:
     image: postgres:16-alpine

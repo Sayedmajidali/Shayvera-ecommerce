@@ -105,5 +105,6 @@ Keep **auto-capture enabled** (Settings → Payment Capture) — the system conf
 | Fast-ack webhooks, rotation, redelivery, retries       | integration-tested (Phase 8)                                         |
 | Refund timeouts (after/before creation), rejections    | integration-tested with a failure-injecting gateway (Phase 8)        |
 | Browser flow                                           | Playwright with the mock checkout modal                              |
+| Real adapter (request mapping, error classes, timeout) | unit-tested with a fake Razorpay SDK client (Phase 14)               |
 | Real Razorpay **test mode** round trip                 | **not yet verified** — needs `rzp_test_` keys (see README checklist) |
 | Live mode                                              | not in scope until launch                                            |

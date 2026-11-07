@@ -15,15 +15,15 @@ Supersedes the v1 report of 2026-11-05.
 | ----------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Lint                                            | `npm run lint`             | ✅ 0 errors, 0 warnings                                                                                 |
 | Typecheck (strict + `noUncheckedIndexedAccess`) | `npm run typecheck`        | ✅                                                                                                      |
-| Unit tests                                      | `npm run test:unit`        | ✅ **181 / 181** (15 files)                                                                             |
-| Integration tests (real PostgreSQL)             | `npm run test:integration` | ✅ **251 / 251** (22 files)                                                                             |
+| Unit tests                                      | `npm run test:unit`        | ✅ **185 / 185** (16 files)                                                                             |
+| Integration tests (real PostgreSQL)             | `npm run test:integration` | ✅ **254 / 254** (23 files)                                                                             |
 | End-to-end (production build, isolated DB)      | `npm run test:e2e`         | ✅ **60 / 60** (12 files; desktop Chrome + Pixel 7)                                                     |
 | Code coverage (unit + integration)              | `npm run test:coverage`    | ✅ lines **84.6 %**, statements 82.0 %, functions 82.8 %, branches 72.4 % (enforced floors 80/78/78/68) |
 | Production build                                | `npm run build`            | ✅                                                                                                      |
 | Dependency audit (production)                   | `npm audit --omit=dev`     | ✅ 0 vulnerabilities (dev tooling: 8 moderate, accepted — SECURITY_REVIEW.md §3)                        |
 | Performance at volume                           | `npm run perf:check`       | ✅ 14/14 within budget at 20k orders (500 ms) and 200k orders (1 s) — §6                                |
 
-**Stability:** the complete unit + integration suite was run **three consecutive times** (432 tests each, no
+**Stability:** the complete unit + integration suite was run **three consecutive times** (432 tests each in Phase 14, no
 failure, no retry) and the E2E suite **twice** (60/60 both times; Playwright retries are off outside CI). The new
 concurrency suite was additionally run three times on its own.
 
@@ -162,20 +162,21 @@ and the real Razorpay adapter (45 % → covered request mapping and error classi
 
 ## 7. Defects found by testing in v2 and fixed
 
-| Phase | Defect                                                                                                                                                                                                              | Found by                               |
-| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| 7     | Emails suppressed for approved cancellations/received returns by an over-broad "restoring" guard                                                                                                                    | lifecycle integration test             |
-| 9     | Retrying a failed booking did nothing (job already SUCCEEDED); return pickup 500 (parcel spread)                                                                                                                    | shipping integration tests             |
-| 10    | Daily sales chart put orders placed 00:00–05:30 IST on the previous day (UTC stored as `timestamp`, converted the wrong way)                                                                                        | report integration test (IST boundary) |
-| 11    | Two simultaneous refunds of one return: the second failed with a misleading "exceeds refundable amount"                                                                                                             | concurrent refund test                 |
-| 12    | Login CSRF on Better Auth sign-in/sign-up; open redirect via tab in `next`; stock adjustments applied twice on retry; Razorpay calls without timeout; stock dialog in the variants editor not sending its key       | security sweep, unit tests, E2E        |
-| 13    | GST register O(n) in memory (2.2 s); unlabelled field, menu hiding the page from screen readers, heading/landmark issues, duplicate product links                                                                   | `perf:check`, stricter axe scans       |
-| 14    | A Shiprocket success response without ids was treated as a **definite refusal** (booking FAILED, staff told to fix it) although the parcel might exist — now an unknown outcome, retried with a lookup by reference | new invalid-response workflow test     |
-| 14    | Product fixture not safe for parallel creation (duplicate SKU) — test-only                                                                                                                                          | new dashboard test                     |
+| Phase | Defect                                                                                                                                                                                                              | Found by                                           |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 7     | Emails suppressed for approved cancellations/received returns by an over-broad "restoring" guard                                                                                                                    | lifecycle integration test                         |
+| 9     | Retrying a failed booking did nothing (job already SUCCEEDED); return pickup 500 (parcel spread)                                                                                                                    | shipping integration tests                         |
+| 10    | Daily sales chart put orders placed 00:00–05:30 IST on the previous day (UTC stored as `timestamp`, converted the wrong way)                                                                                        | report integration test (IST boundary)             |
+| 11    | Two simultaneous refunds of one return: the second failed with a misleading "exceeds refundable amount"                                                                                                             | concurrent refund test                             |
+| 12    | Login CSRF on Better Auth sign-in/sign-up; open redirect via tab in `next`; stock adjustments applied twice on retry; Razorpay calls without timeout; stock dialog in the variants editor not sending its key       | security sweep, unit tests, E2E                    |
+| 13    | GST register O(n) in memory (2.2 s); unlabelled field, menu hiding the page from screen readers, heading/landmark issues, duplicate product links                                                                   | `perf:check`, stricter axe scans                   |
+| 14    | A Shiprocket success response without ids was treated as a **definite refusal** (booking FAILED, staff told to fix it) although the parcel might exist — now an unknown outcome, retried with a lookup by reference | new invalid-response workflow test                 |
+| 15    | Intermittent axe failure on `/shop` and `/search`: the streamed loading skeleton had no page heading (screen readers saw a heading-less page while loading)                                                         | full-suite reruns; reproduced with `--repeat-each` |
+| 14    | Product fixture not safe for parallel creation (duplicate SKU) — test-only                                                                                                                                          | new dashboard test                                 |
 
 ## 8. Known limitations (not covered by automated tests)
 
-- Real Razorpay test-mode and Shiprocket API round trips (§3); real email delivery; Docker image build.
+- Real Razorpay test-mode and Shiprocket API round trips, a real SMTP service and a real bucket (§3); Docker image build.
 - Cross-browser: E2E runs on Chromium (desktop + Pixel 7 emulation) only; Safari/Firefox not tested.
 - Load testing beyond the query-level `perf:check` (no concurrent-user HTTP load test).
 - Visual regression testing is not set up; screenshots exist only for failed tests.

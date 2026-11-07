@@ -5,7 +5,6 @@ import { db } from "@/server/platform/db";
 import { queueStats } from "@/server/platform/jobs/queue";
 import { readHeartbeat } from "@/server/platform/jobs/scheduler";
 import { env, shippingProviderName } from "@/lib/env";
-import { emailProvider } from "@/server/modules/notifications/email-service";
 
 export const jobListSchema = z.object({
   status: z.enum(["QUEUED", "RUNNING", "FAILED", "DEAD", "SUCCEEDED"]).optional().catch(undefined),
@@ -135,12 +134,24 @@ export async function getSystemStatus(): Promise<StatusRow[]> {
           : `Webhook token ${e.SHIPROCKET_WEBHOOK_TOKEN ? "set" : "missing"} · pickup location ${pickup ? `“${pickup.name}”` : "not set"} · last courier update ${ago(lastCourierEvent?.receivedAt)}`,
     },
     {
-      name: "Email",
-      level: prod && emailProvider().name === "dev-outbox" ? "warn" : "ok",
+      name: "Storage",
+      level: e.STORAGE_DRIVER === "local" && prod ? "warn" : "ok",
       value:
-        emailProvider().name === "dev-outbox"
-          ? "Development outbox (not delivered)"
-          : emailProvider().name,
+        e.STORAGE_DRIVER === "s3"
+          ? `S3-compatible · bucket “${e.S3_BUCKET}” at ${e.S3_ENDPOINT ? new URL(e.S3_ENDPOINT).host : "?"}`
+          : "Local disk",
+      detail:
+        e.STORAGE_DRIVER === "local"
+          ? "Fine for one server; use STORAGE_DRIVER=s3 before running more than one instance"
+          : undefined,
+    },
+    {
+      name: "Email",
+      level: prod && e.EMAIL_PROVIDER === "dev-outbox" ? "warn" : "ok",
+      value:
+        e.EMAIL_PROVIDER === "smtp"
+          ? `SMTP · ${e.SMTP_URL ? new URL(e.SMTP_URL).hostname : "?"} · from ${e.EMAIL_FROM}`
+          : "Development outbox (not delivered)",
       detail: "Messages are listed in Admin → Messages & emails",
     },
     {

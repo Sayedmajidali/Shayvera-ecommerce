@@ -1,0 +1,35 @@
+# Example reverse proxy for a single host (Caddy obtains and renews HTTPS certificates itself).
+# NOT applied anywhere — copy and adapt when production deployment begins (PRODUCTION_READINESS.md §4).
+#
+# The app listens on 127.0.0.1:3000 (docker-compose.prod.yml). With this proxy as the only hop,
+# set TRUSTED_PROXY_HOPS=1 so rate limits and audit logs see the real client IP.
+shop.example.in {
+	encode zstd gzip
+
+	# Webhooks must reach the app unchanged (raw body is signed); keep them small and fast.
+	@webhooks path /api/webhooks/*
+	request_body @webhooks {
+		max_size 256KB
+	}
+
+	# Large uploads are refused by the app too; this caps them before they reach it.
+	request_body {
+		max_size 6MB
+	}
+
+	reverse_proxy 127.0.0.1:3000 {
+		header_up X-Request-Id {http.request.uuid}
+		health_uri /api/health
+		health_interval 30s
+	}
+
+	log {
+		output file /var/log/caddy/shop.log
+		format json
+	}
+}
+
+# Redirect a bare/alternate domain to the canonical one.
+www.shop.example.in {
+	redir https://shop.example.in{uri} permanent
+}

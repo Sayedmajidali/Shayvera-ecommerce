@@ -37,6 +37,9 @@ lives in `PROGRESS.md`.
 
 ## 3. Roadmap (v2 phases)
 
+**Status (2026-11-07): Phases 0–15 complete.** Development-complete; launch requires the verifications and sign-off
+in `PRODUCTION_READINESS.md` §9–10.
+
 Each phase ends with: typecheck, lint, unit + integration tests green, `PROGRESS.md` updated, commit + push.
 
 | Phase | Scope                                                                                                                                               | Acceptance                                                                                                |

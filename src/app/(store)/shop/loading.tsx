@@ -8,6 +8,8 @@ export default function Loading() {
       aria-busy="true"
       aria-label="Loading products"
     >
+      {/* Keeps a page heading while results stream in (screen readers, axe page-has-heading-one). */}
+      <h1 className="sr-only">Shop</h1>
       <Skeleton className="h-4 w-40" />
       <Skeleton className="mt-6 h-12 w-72" />
       <div className="mt-10 grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 xl:grid-cols-4">

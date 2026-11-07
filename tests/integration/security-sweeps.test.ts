@@ -185,6 +185,7 @@ describe("system status", () => {
       "Database",
       "Payments",
       "Shipping",
+      "Storage",
       "Email",
       "Error reporting",
       "Staff alerts",

@@ -6,8 +6,8 @@ export type StoredObject = {
 };
 
 /**
- * Storage abstraction. LocalStorageProvider is used in development; a Cloudinary/S3
- * implementation can be added and selected with STORAGE_DRIVER without touching callers.
+ * Storage abstraction selected with STORAGE_DRIVER: `local` (development, single host) or `s3`
+ * (any S3-compatible service — required for multi-instance production). Callers never change.
  */
 export interface StorageProvider {
   put(key: string, body: Buffer, contentType: string): Promise<StoredObject>;
