@@ -654,3 +654,21 @@ Full re-review against the specification's security (§14) and reliability (§15
 - **Tests**: +2 unit (timeout earlier, webhook reporter), +1 integration (system status reveals no secrets),
   +6 E2E performance budgets, +12 accessibility/keyboard tests (E2E 59 total).
 - Results: unit 168 · integration 242 · E2E 59 — all passing; lint, typecheck, production build clean.
+
+## v2 Phase 14 — Test consolidation and QA ✅
+
+- **Traceability**: every item of the specification's testing strategy (unit, integration, mocked provider
+  scenarios, customer and admin E2E flows, concurrency) is mapped to concrete tests in `QA_REPORT.md` §2.
+- **Gaps closed**: unit tests for inventory availability, the courier webhook dedupe key (extracted as a pure
+  function) and the real Razorpay adapter with a fake SDK (mapping; 4xx/408/429/5xx/network/timeout
+  classification); Shiprocket workflow tests for service unavailability (503) and an unreadable success response;
+  exact-count tests for the Payments and Shipments dashboards; a mobile COD checkout E2E.
+- **Concurrency suite** (`concurrency.test.ts`): checkouts racing staff adjustments, 20 parallel adjustments (no
+  lost update), removals racing reservations, cancel-vs-pack conflict, five simultaneous courier webhook
+  deliveries — all asserting stock/ledger/reservation invariants.
+- **Defect fixed**: a Shiprocket create-order success response without ids was classified as a definite refusal
+  (booking failed, staff asked to fix it); it is now an unknown outcome retried with a lookup by reference.
+- **Coverage**: `npm run test:coverage` (`@vitest/coverage-v8` 4.1.12, pinned to Vitest) — lines 84.6 %,
+  statements 82.0 %, functions 82.8 %, branches 72.4 %, with enforced floors.
+- **Stability**: unit + integration run three times and E2E twice, all green, no retries.
+- Results: unit 181 · integration 251 · E2E 60 — all passing; lint, typecheck, production build clean.

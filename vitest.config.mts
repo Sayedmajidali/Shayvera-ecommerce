@@ -8,6 +8,17 @@ const alias = {
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
+    // `npm run test:coverage`: server and shared code exercised by unit + integration tests. UI
+    // components and pages are covered by the Playwright suite instead (not instrumented here).
+    coverage: {
+      provider: "v8",
+      include: ["src/server/**/*.ts", "src/lib/**/*.ts", "src/app/api/**/*.ts"],
+      exclude: ["**/*.d.ts", "src/server/jobs/loop.ts"],
+      reporter: ["text-summary", "json-summary", "html"],
+      reportsDirectory: "coverage",
+      // Floors a little below the measured values (QA_REPORT.md): a drop fails `test:coverage`.
+      thresholds: { lines: 80, statements: 78, functions: 78, branches: 68 },
+    },
     projects: [
       {
         extends: true,

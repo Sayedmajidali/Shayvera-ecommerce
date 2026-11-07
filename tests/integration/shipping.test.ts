@@ -13,6 +13,7 @@ import { setShippingProvider } from "@/server/modules/shipping/provider";
 import { MockShippingProvider, MockShipments } from "@/server/modules/shipping/providers/mock";
 import { ManualShippingProvider } from "@/server/modules/shipping/providers/manual";
 import { syncTracking } from "@/server/modules/shipping/shipments";
+import { ShiprocketUnexpectedResponse } from "@/server/modules/shipping/providers/shiprocket/shipments";
 import { approveRequest } from "@/server/modules/orders/requests";
 import { transitionOrder } from "@/server/modules/orders/orders";
 import { apiRequest, createAdmin, params } from "../helpers/auth";
@@ -158,6 +159,64 @@ describe("booking", () => {
     s = await shipmentOf(o.orderId);
     expect(s.status).toBe("AWB_ASSIGNED");
     expect(ships.calls).toBe(1); // the retry found it instead of creating again
+  });
+
+  it("service unavailable (503) before anything was created: retried from the queue, one parcel", async () => {
+    class Unavailable extends MockShipments {
+      calls = 0;
+      override async createShipment(input: Parameters<MockShipments["createShipment"]>[0]) {
+        this.calls++;
+        if (this.calls === 1)
+          throw new HttpError("shiprocket create-order failed with HTTP 503", 503, null, true);
+        return super.createShipment(input);
+      }
+    }
+    const ships = new Unavailable();
+    Object.defineProperty(provider, "shipments", { value: ships });
+    const o = await codOrder();
+    await book(o.orderId);
+    await drainJobs();
+    let s = await shipmentOf(o.orderId);
+    expect(s.status).toBe("CREATING"); // not FAILED: an outage is not the merchant's mistake
+    expect(s.lastError).toMatch(/503/);
+    await db.job.updateMany({
+      where: { type: "shipping.create" },
+      data: { runAt: new Date(Date.now() - 1000) },
+    });
+    await drainJobs();
+    s = await shipmentOf(o.orderId);
+    expect(s.status).toBe("AWB_ASSIGNED");
+    expect(ships.calls).toBe(2);
+    expect(await ships.findShipmentByReference(s.reference!)).not.toBeNull();
+  });
+
+  it("an unreadable success response is an unknown outcome: found by reference, not re-created", async () => {
+    class Garbled extends MockShipments {
+      calls = 0;
+      override async createShipment(input: Parameters<MockShipments["createShipment"]>[0]) {
+        this.calls++;
+        const ref = await super.createShipment(input);
+        if (this.calls === 1)
+          throw new ShiprocketUnexpectedResponse("Unexpected create-order response: Order created");
+        return ref;
+      }
+    }
+    const ships = new Garbled();
+    Object.defineProperty(provider, "shipments", { value: ships });
+    const o = await codOrder();
+    await book(o.orderId);
+    await drainJobs();
+    let s = await shipmentOf(o.orderId);
+    expect(s.status).toBe("CREATING");
+    expect(s.needsAttention).toBe(false);
+    await db.job.updateMany({
+      where: { type: "shipping.create" },
+      data: { runAt: new Date(Date.now() - 1000) },
+    });
+    await drainJobs();
+    s = await shipmentOf(o.orderId);
+    expect(s.status).toBe("AWB_ASSIGNED");
+    expect(ships.calls).toBe(1);
   });
 
   it("treats the provider's duplicate-reference error as 'already exists'", async () => {

@@ -87,7 +87,8 @@ function mapPayment(p: RzpPayment): GatewayPayment {
   };
 }
 
-class RazorpayGateway implements PaymentGateway {
+/** Real Razorpay adapter (exported for adapter tests with a fake SDK client). */
+export class RazorpayGateway implements PaymentGateway {
   readonly name = "razorpay" as const;
   private instance: Razorpay | null = null;
   constructor(

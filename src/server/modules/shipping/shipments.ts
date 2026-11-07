@@ -806,6 +806,26 @@ const webhookBody = z
   .passthrough();
 
 /** Stores an authenticated courier webhook once and queues its processing (fast 200). */
+/**
+ * One stored event per courier scan: AWB + status id + the courier's own timestamp. A redelivery of
+ * the same scan has the same key; without a timestamp the raw body decides.
+ */
+export function courierWebhookDedupeKey(
+  p: {
+    awb: string | number;
+    shipment_status_id?: number | string | null;
+    current_status_id?: number | string | null;
+    current_timestamp?: string | null;
+  },
+  raw: string,
+) {
+  return createHash("sha256")
+    .update(
+      [p.awb, p.shipment_status_id ?? p.current_status_id ?? "", p.current_timestamp ?? raw].join("|"),
+    )
+    .digest("hex");
+}
+
 export async function receiveCourierWebhook(raw: string) {
   let parsed: z.infer<typeof webhookBody>;
   try {
@@ -813,15 +833,7 @@ export async function receiveCourierWebhook(raw: string) {
   } catch {
     throw new AppError("VALIDATION_ERROR", "Malformed courier webhook");
   }
-  const dedupeKey = createHash("sha256")
-    .update(
-      [
-        parsed.awb,
-        parsed.shipment_status_id ?? parsed.current_status_id ?? "",
-        parsed.current_timestamp ?? raw,
-      ].join("|"),
-    )
-    .digest("hex");
+  const dedupeKey = courierWebhookDedupeKey(parsed, raw);
   try {
     await db.$transaction(async (tx) => {
       const ev = await tx.webhookEvent.create({

@@ -42,6 +42,15 @@ export class ShiprocketRejected extends Error {
   override name = "ShiprocketRejected";
 }
 
+/**
+ * A success response we cannot read (e.g. ids missing after an API change). The operation may have
+ * happened, so this is an *unknown* outcome: retried with a lookup by reference, never treated as a
+ * refusal.
+ */
+export class ShiprocketUnexpectedResponse extends Error {
+  override name = "ShiprocketUnexpectedResponse";
+}
+
 function splitName(full: string) {
   const parts = full.trim().split(/\s+/);
   return { first: parts[0] ?? full, last: parts.slice(1).join(" ") };
@@ -133,7 +142,9 @@ export function parseCreateResponse(body: unknown): ProviderShipmentRef {
   const orderId = str(b?.order_id);
   const shipmentId = str(b?.shipment_id);
   if (!orderId || !shipmentId)
-    throw new ShiprocketRejected(String(b?.message ?? "Unexpected create response"));
+    throw new ShiprocketUnexpectedResponse(
+      `Unexpected create-order response${b?.message ? `: ${String(b.message).slice(0, 120)}` : ""}`,
+    );
   return { providerOrderId: orderId, providerShipmentId: shipmentId, awb: str(b.awb_code) };
 }
 

@@ -299,3 +299,50 @@ describe("courier webhook token", () => {
     expect(courierWebhookAuthorized(null)).toBe(false);
   });
 });
+
+describe("create-order response classification", () => {
+  it("a success body without ids is an unknown outcome, not a refusal", async () => {
+    const {
+      parseCreateResponse,
+      ShiprocketUnexpectedResponse,
+      ShiprocketRejected: Rejected,
+    } = await import("@/server/modules/shipping/providers/shiprocket/shipments");
+    expect(parseCreateResponse({ order_id: 101, shipment_id: 202, awb_code: "" })).toMatchObject({
+      providerOrderId: "101",
+      providerShipmentId: "202",
+    });
+    const err = (() => {
+      try {
+        parseCreateResponse({ status: "NEW", message: "Order created" });
+      } catch (e) {
+        return e;
+      }
+    })();
+    expect(err).toBeInstanceOf(ShiprocketUnexpectedResponse);
+    expect(err).not.toBeInstanceOf(Rejected);
+  });
+});
+
+describe("courier webhook deduplication key", () => {
+  it("is stable for a redelivered scan and different for a new scan", async () => {
+    const { courierWebhookDedupeKey } = await import("@/server/modules/shipping/shipments");
+    const scan = { awb: "123", shipment_status_id: 17, current_timestamp: "07 11 2026 10:15:00" };
+    const a = courierWebhookDedupeKey(scan, '{"x":1}');
+    expect(courierWebhookDedupeKey({ ...scan }, '{"x":2,"retry":true}')).toBe(a); // body noise ignored
+    expect(courierWebhookDedupeKey({ ...scan, shipment_status_id: 7 }, "")).not.toBe(a);
+    expect(
+      courierWebhookDedupeKey({ ...scan, current_timestamp: "07 11 2026 10:16:00" }, ""),
+    ).not.toBe(a);
+    expect(courierWebhookDedupeKey({ ...scan, awb: "124" }, "")).not.toBe(a);
+    // Legacy field name is honoured; without a timestamp the raw body decides.
+    expect(
+      courierWebhookDedupeKey(
+        { awb: "123", current_status_id: 17, current_timestamp: scan.current_timestamp },
+        "",
+      ),
+    ).toBe(a);
+    const noTime = { awb: "123", shipment_status_id: 17 };
+    expect(courierWebhookDedupeKey(noTime, "A")).not.toBe(courierWebhookDedupeKey(noTime, "B"));
+    expect(a).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
