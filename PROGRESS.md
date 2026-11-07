@@ -589,3 +589,26 @@
   failed-refund alerts, daily low-stock digest, settings validation, auto-invoice on/off); return E2E extended through
   invoice → refund → customer sees refund and opens the credit note.
 - Results: unit 161 · integration 232 · E2E 44 — all passing; lint, typecheck, production build clean.
+
+## v2 Phase 12 — Security hardening and reliability review ✅
+
+Full re-review against the specification's security (§14) and reliability (§15) lists; results in
+`SECURITY_REVIEW.md` §2a, §3 and §5.
+
+- **Fixed**: login CSRF on Better Auth sign-in/sign-up (origin check added in front of every auth POST); open
+  redirect via tab/newline in the post-login `next` path (URL-parser-based check); non-idempotent stock
+  adjustments (required idempotency key stored uniquely on the ledger; retries and concurrent duplicates apply
+  once; both admin dialogs send it); Razorpay SDK calls without timeout (bounded, unknown outcome → reconcile);
+  missing rate limits on payment start, failure reports, request withdrawal, cart writes, address/profile updates;
+  branding upload size check before parsing + rate limit; API `Cache-Control: private, no-store` default;
+  `server-only` on every module that reads secrets; `Cross-Origin-Opener-Policy`.
+- **Dependencies**: `deepmerge-ts` advisory (Prisma CLI) resolved with a pinned override → production audit
+  clean; dev-only `minimatch` advisory accepted (the suggested fix downgrades `eslint-config-next`).
+- **Automated sweeps** (`security-sweeps.test.ts`): all 69 mutating API handlers reject cross-origin and
+  origin-less requests; Better Auth rejects untrusted origins; every admin page names its permission; client
+  components import server code as types only and read no private env; secret-reading modules are server-only;
+  no unsafe raw SQL; API responses not cacheable; payment-start rate limit; idempotent stock adjustments.
+- **Migration**: `inventory_idempotency` (nullable unique `InventoryTransaction.idempotencyKey`; additive).
+- **API change**: `POST /api/admin/variants/:id/stock` now requires `idempotencyKey` (UUID); response may include
+  `replayed: true`.
+- Results: unit 167 · integration 241 · E2E 44 — all passing; lint, typecheck, production build clean.

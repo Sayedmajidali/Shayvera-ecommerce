@@ -1,6 +1,7 @@
 # Security Review
 
-Review date: 2026-11-05 · Scope: entire application at the end of Phase 10 (local development build).
+Review dates: 2026-11-05 (v1, end of Phase 10) · **2026-11-07 (v2 Phase 12: full re-review of the v2 platform —
+roles, jobs, Razorpay hardening, Shiprocket, reports, returns, credit notes)**. Scope: local development build.
 
 > Implementing these controls does **not** make the application "completely secure". This document records
 > what was reviewed, what was changed, and the risks that remain. Re-review before production launch and
@@ -48,18 +49,60 @@ Review date: 2026-11-05 · Scope: entire application at the end of Phase 10 (loc
 | 5   | Low      | Duplicate-payment refunds could have been counted against the order's refundable total.                                                                                                         | Separate accounting path for duplicate captures.                                                    |
 | 6   | Low      | Contact-form submissions were stored but not visible to staff (risk of ignored customer issues).                                                                                                | Shown in Admin → Messages & emails.                                                                 |
 
-## 3. Dependency audit (`npm audit`, 2026-11-05)
+## 2a. v2 Phase 12 review (2026-11-07) — findings and fixes
 
-| Package                                                      | Severity | Path        | Assessment                                                                                                                                                                                                                                                                                                                       |
-| ------------------------------------------------------------ | -------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `deepmerge-ts` (<8) via `@prisma/config` → `prisma` CLI      | High     | CLI only    | Stack exhaustion when merging recursive objects. Only reached when the Prisma CLI loads our own `prisma.config.ts` (trusted, static input); not reachable from HTTP requests or the Prisma Client runtime. Fix requires Prisma 7 (major, driver-adapter migration). **Accepted; upgrade tracked** (PROJECT_PLAN → future tasks). |
-| `minimatch`, `@typescript-eslint/*` via `eslint-config-next` | Moderate | dev tooling | ReDoS in lint tooling; not shipped to production. Accepted until upstream releases a fix.                                                                                                                                                                                                                                        |
+Method: every requirement in the specification's security (§14) and reliability (§15) lists was checked against
+the code; repeatable checks were turned into automated sweep tests (`tests/integration/security-sweeps.test.ts`)
+so regressions fail CI rather than relying on a future reviewer.
 
-No vulnerabilities were reported in runtime UI/server libraries (Next.js, React, Better Auth, Razorpay SDK, sharp, zod).
+| #   | Severity       | Finding                                                                                                                                                                                                                       | Fix                                                                                                                                                                                                                         |
+| --- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7   | Medium         | **Login CSRF.** Better Auth only checks the origin of requests that already carry cookies, so a third-party page could POST to sign-in/sign-up and log a visitor into an attacker-controlled account (verified by test: 200). | Every `POST /api/auth/*` passes our same-origin check first (403 otherwise). Test: untrusted origin → 403, no `Set-Cookie`.                                                                                                 |
+| 8   | Medium         | **Open redirect after sign-in.** `safeRedirectPath` rejected `//x` and `/\x` but not `/<TAB>/evil.com`; browsers strip tabs/newlines from URLs, turning it into `//evil.com`.                                                 | Paths are resolved with the WHATWG URL parser and must stay same-origin; control characters and backslashes are refused. Unit tests for tab/newline/backslash variants.                                                     |
+| 9   | Medium         | **Stock adjustments were not idempotent.** A retried request (timeout, lost response, re-submit) applied the change twice — contrary to "an inventory adjustment must not be applied twice".                                  | Required client-generated `idempotencyKey` per adjustment, stored uniquely on the ledger row; a retry or concurrent duplicate returns the first result; key reuse for a different change → 409. Both admin dialogs send it. |
+| 10  | Medium         | **Razorpay SDK calls had no timeout.** A hung connection would block the request (and a worker job) indefinitely.                                                                                                             | Every gateway call is bounded (`RAZORPAY_HTTP_TIMEOUT_MS`, default 10 s) and the SDK's axios client gets the same timeout; a timeout is an _unknown_ outcome, so refunds are reconciled before any retry (Phase 8 path).    |
+| 11  | Low            | Public endpoints that call Razorpay or write rows had no rate limit: payment start, client failure report, request withdrawal, cart writes, address/profile updates.                                                          | Per-order / per-IP / per-user limits added (e.g. payment start 20/order/hour and 60/IP/hour). Test: 21st payment start → 429.                                                                                               |
+| 12  | Low            | Branding/category image upload buffered the whole multipart body before any size check and had no rate limit (admin-only).                                                                                                    | Declared size checked before parsing; 60 uploads / 10 min per staff member (same as product images).                                                                                                                        |
+| 13  | Low            | API responses had no explicit cache policy (account and order JSON could be stored by an intermediary if one were misconfigured).                                                                                             | API responses default to `Cache-Control: private, no-store`.                                                                                                                                                                |
+| 14  | Low            | Modules that read secrets (`auth`, payment gateway/signature, Shiprocket client, order-access HMAC, email) were not all marked server-only, so an accidental client import would bundle them.                                 | `import "server-only"` added (build fails on a client import); sweep test requires it for every module reading a `*SECRET/PASSWORD/TOKEN/_KEY` variable.                                                                    |
+| 15  | Info           | No `Cross-Origin-Opener-Policy`.                                                                                                                                                                                              | `same-origin-allow-popups` (keeps Razorpay UPI/3-D Secure popups working).                                                                                                                                                  |
+| 16  | High (tooling) | `deepmerge-ts` < 8 (stack exhaustion) via the Prisma CLI.                                                                                                                                                                     | Pinned the patched `deepmerge-ts@8.0.2` with an npm `overrides` entry (Prisma CLI verified: validate, generate, migrate status). Production audit now clean.                                                                |
+
+**Automated sweeps** (fail the build if violated):
+
+- every `POST/PUT/PATCH/DELETE` API handler (69 today) rejects cross-origin and origin-less requests with 403 before
+  any work (webhooks are exempt: signature/token-authenticated);
+- every admin API handler returns 401 anonymous / 403 without the permission (RBAC sweep, Phase 2);
+- every admin page calls `requireAdminPage("<PERMISSION>")`;
+- client components import server code as types only and read no non-public env variables;
+- every module reading a secret is `server-only`; no `$queryRawUnsafe`/`$executeRawUnsafe`/`Prisma.raw`.
+
+**Reviewed and found adequate (no change):** password hashing and policy (Better Auth scrypt, ≥ 8 chars with a
+letter and a digit, server-enforced); sessions (HTTP-only, `SameSite=Lax`, `Secure` over HTTPS, 14-day expiry,
+revoked on password reset and on account disable; disabled users cannot create sessions); role/status fields not
+user-writable; customer data isolation (addresses, cart lines, wishlist, orders, requests all scoped by owner or
+HMAC token, with tests); input validation (zod on every body/query, JSON body cap 64 KB, webhook caps 256 KB);
+XSS (React escaping; only JSON-LD uses `dangerouslySetInnerHTML`, with `<` escaped; email HTML escaped); SQL
+(Prisma + tagged templates only); uploads (magic-byte sniffing, re-encoding with sharp, size limits, safe storage
+keys); security headers (CSP, HSTS over HTTPS, `nosniff`, `DENY` framing, referrer and permissions policies);
+safe errors (generic 500 body, details logged with request id); secrets (env-validated, never sent to the
+browser; logger redacts tokens/signatures/keys and masks emails/phones); audit log on every admin mutation and on
+report exports; webhook verification (Razorpay HMAC over the raw body with rotation; Shiprocket `x-api-key`
+constant-time); payment signature verification plus server-side payment fetch and amount check.
+
+## 3. Dependency audit (`npm audit`, 2026-11-07)
+
+| Scope                     | Result                                                                                                                                                                                                                                                         |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production (`--omit=dev`) | **0 vulnerabilities.** The `deepmerge-ts` advisory (Prisma CLI) is resolved by the pinned override `deepmerge-ts@8.0.2`.                                                                                                                                       |
+| Dev tooling               | 8 × moderate, one advisory: `minimatch` ReDoS via `@typescript-eslint/*` ← `eslint-config-next`. Lint-time only, fed our own glob patterns. npm's suggested "fix" downgrades `eslint-config-next` below Next 16, so it is **accepted** until upstream updates. |
+
+Re-run `npm audit --omit=dev` in CI before each deploy.
 
 ## 4. Remaining risks and recommendations
 
-1. **CSP allows `'unsafe-inline'` scripts.** Required by Next.js inline bootstrap without nonces. Mitigated by
+1. **CSP allows `'unsafe-inline'` scripts.** (unchanged in Phase 12: nonces would force every page to render
+   dynamically and break statically prerendered pages; revisit with the production build.) Required by Next.js inline bootstrap without nonces. Mitigated by
    React escaping, no user HTML, strict `object-src`/`base-uri`/`frame-ancestors`. _Recommendation:_ adopt
    nonce-based CSP via `proxy.ts` before launch.
 2. **Email verification is not required** (no email provider in local dev). Accounts can be created for
@@ -82,3 +125,24 @@ No vulnerabilities were reported in runtime UI/server libraries (Next.js, React,
     qualified professionals.
 11. **Guest order access tokens do not expire** (they are HMACs of the order id). Rotating `BETTER_AUTH_SECRET`
     invalidates all tokens and sessions.
+12. **Staff sessions last as long as customer sessions (14 days).** Staff accounts are high-value. _Recommendation:_
+    MFA for staff (item 3) and a shorter staff session lifetime before launch.
+13. **Prisma 7 upgrade** is still worth planning (the CLI advisory is mitigated by an override, not an upgrade).
+14. **Per-IP limits use `X-Forwarded-For` hops**: when the app is reachable directly (no proxy), clients can
+    spoof the header; expose the app only behind the configured proxy.
+
+## 5. Reliability review (specification §15)
+
+| Requirement                                   | Implementation                                                                                                                                                                                                                                   | Evidence                                                                                        |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| API timeouts                                  | Shiprocket `httpJson` (`SHIPPING_HTTP_TIMEOUT_MS`), Razorpay (`RAZORPAY_HTTP_TIMEOUT_MS`, Phase 12), checkout serviceability 3 s budget                                                                                                          | `platform.test.ts` (withTimeout), `shiprocket.test.ts`                                          |
+| Controlled retries, backoff + jitter          | Job queue: exponential backoff with full jitter, max attempts, then DEAD; HTTP client retries only idempotent requests                                                                                                                           | `jobs.test.ts`, `platform.test.ts`                                                              |
+| No blind retries of non-idempotent operations | Payment: capture verified with Razorpay, event-id dedupe. Refund: unknown outcome reconciled by `notes.refundId`. Shipment: search by reference before re-create. Order: checkout idempotency key. Stock adjustment: idempotency key (Phase 12). | `payments-hardening.test.ts`, `shipping.test.ts`, `checkout.test.ts`, `security-sweeps.test.ts` |
+| Idempotency                                   | Unique keys: order `idempotencyKey`, payment event id, webhook dedupe keys, job `dedupeKey`, shipment `reference`, notification dedupe, credit note per refund, refund per return request, stock adjustment key                                  | integration suites                                                                              |
+| Structured error logging                      | JSON logs with request/job ids, redaction; `captureIntegrationFailure` with provider/operation context                                                                                                                                           | `platform.test.ts`                                                                              |
+| Failed integration event records              | Stored on the entity staff act on: `PaymentEvent.processingError`, `Refund.failureReason`, `Shipment.lastError`/`needsAttention`, `WebhookEvent.processingError`/`note`, `Job.lastError` (DEAD), `Notification.lastError`                        | admin dashboards (Payments, Shipments, Jobs, Messages)                                          |
+| Retryable background jobs; manual retry       | Postgres queue + worker; retry buttons for webhooks, shipments, refunds (re-issue), jobs, notifications; all audit-logged                                                                                                                        | `jobs.test.ts`, `reports.test.ts`                                                               |
+| Reconciliation                                | `payments.reconcile` (15 min), `shipping.sync-tracking` (30 min), `inventory.reconcile` (hourly, report-only), reservation expiry (2 min)                                                                                                        | `payments-hardening.test.ts`, `shipping.test.ts`, `inventory.test.ts`                           |
+| Transactional outbox                          | Emails, staff alerts, webhooks follow-ups, shipment booking/cancellation, capture follow-ups, auto-invoice are enqueued in the same transaction as the state change                                                                              | `jobs.test.ts`, `returns-notifications.test.ts`                                                 |
+| Provider stored references and results        | Razorpay order/payment/refund ids, Shiprocket order/shipment ids, AWB, label/manifest URLs, raw statuses, webhook payloads                                                                                                                       | schema                                                                                          |
+| Stable when a provider is down                | Checkout continues without serviceability (order flagged), COD available when Razorpay is down, refunds stay pending and reconcile, courier bookings retry from the queue                                                                        | `delivery.test.ts`, `payments-hardening.test.ts`, `shipping.test.ts`                            |

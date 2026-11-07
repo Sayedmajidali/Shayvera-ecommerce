@@ -527,6 +527,8 @@ model InventoryTransaction {
   order        Order?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
   note         String?
   actorId      String?
+  /// Client-supplied key for manual adjustments: a retried request is applied once.
+  idempotencyKey String?       @unique @db.VarChar(64)
   createdAt    DateTime        @default(now())
 
   @@index([variantId, createdAt])

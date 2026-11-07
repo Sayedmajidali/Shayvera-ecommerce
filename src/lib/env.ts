@@ -44,6 +44,7 @@ const schema = z
     SHIPROCKET_BASE_URL: z.url().default("https://apiv2.shiprocket.in/v1/external"),
     SHIPROCKET_WEBHOOK_TOKEN: z.string().default(""),
     SHIPPING_HTTP_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(10_000),
+    RAZORPAY_HTTP_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(10_000),
   })
   .superRefine((v, ctx) => {
     if (

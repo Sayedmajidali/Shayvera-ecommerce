@@ -9,6 +9,8 @@ type Movement = {
   orderId?: string | null;
   note?: string | null;
   actorId?: string | null;
+  /** Unique per manual adjustment; a duplicate aborts the transaction with P2002. */
+  idempotencyKey?: string | null;
 };
 
 /**
@@ -48,6 +50,7 @@ export async function moveStock(tx: Tx, m: Movement): Promise<number> {
       orderId: m.orderId ?? null,
       note: m.note ?? null,
       actorId: m.actorId ?? null,
+      idempotencyKey: m.idempotencyKey ?? null,
     },
   });
   return inv.quantityOnHand;

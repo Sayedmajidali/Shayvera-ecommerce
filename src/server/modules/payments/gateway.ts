@@ -1,3 +1,5 @@
+import "server-only";
+import { withTimeout } from "@/server/platform/timeout";
 import { randomBytes } from "node:crypto";
 import Razorpay from "razorpay";
 import { db } from "@/server/platform/db";
@@ -29,6 +31,9 @@ export type GatewayRefund = {
  * nothing happened and the action may be retried or corrected. Otherwise (timeout, network, 5xx,
  * rate limit) the outcome is unknown and must be reconciled before any retry of a non-idempotent call.
  */
+const razorpayTimeoutMs = () =>
+  Math.min(60_000, Math.max(1000, Number(process.env.RAZORPAY_HTTP_TIMEOUT_MS) || 10_000));
+
 export class GatewayError extends AppError {
   constructor(
     message: string,
@@ -91,13 +96,20 @@ class RazorpayGateway implements PaymentGateway {
   ) {}
 
   private async client(): Promise<Razorpay> {
-    this.instance ??= new Razorpay({ key_id: this.keyId, key_secret: this.keySecret });
+    if (!this.instance) {
+      this.instance = new Razorpay({ key_id: this.keyId, key_secret: this.keySecret });
+      // Backstop: the SDK's axios client has no timeout by default (closes the socket too).
+      const rq = (this.instance as unknown as { api?: { rq?: { defaults: { timeout?: number } } } })
+        .api?.rq;
+      if (rq) rq.defaults.timeout = razorpayTimeoutMs();
+    }
     return this.instance;
   }
 
   private async call<T>(label: string, fn: () => Promise<T>): Promise<T> {
     try {
-      return await fn();
+      // A timeout is an unknown outcome (no statusCode below → not definitive): callers reconcile.
+      return await withTimeout(fn(), razorpayTimeoutMs(), `Razorpay ${label}`);
     } catch (error) {
       const e = error as { statusCode?: number; error?: { code?: string; description?: string } };
       logger.error("Razorpay API call failed", {

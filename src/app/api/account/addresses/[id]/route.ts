@@ -2,11 +2,13 @@ import { ok, parseJson, route } from "@/lib/api";
 import { addressInputSchema } from "@/lib/validation/account";
 import { requireUser } from "@/server/modules/auth/session";
 import { deleteAddress, updateAddress } from "@/server/modules/customers/account";
+import { enforceRateLimit } from "@/server/platform/rate-limit";
 
 type Ctx = { params: Promise<{ id: string }> };
 
 export const PUT = route<Ctx>(async (req, { params }) => {
   const user = await requireUser(req);
+  await enforceRateLimit(`address:user:${user.id}`, 30, 3600);
   const { id } = await params;
   const input = await parseJson(req, addressInputSchema);
   return ok(await updateAddress(user.id, id, input));

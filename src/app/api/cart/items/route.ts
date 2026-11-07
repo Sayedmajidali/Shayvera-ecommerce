@@ -2,6 +2,8 @@ import { z } from "zod";
 import { ok, parseJson, route } from "@/lib/api";
 import { cartIdentityFromRequest, withGuestCookie } from "@/server/modules/cart/request";
 import { addItem, MAX_QTY_PER_LINE } from "@/server/modules/cart/cart";
+import { enforceRateLimit } from "@/server/platform/rate-limit";
+import { clientIp } from "@/server/modules/audit/audit";
 
 const schema = z.object({
   variantId: z.string().trim().min(1).max(64),
@@ -9,6 +11,7 @@ const schema = z.object({
 });
 
 export const POST = route(async (req) => {
+  await enforceRateLimit(`cart:ip:${clientIp(req) ?? "unknown"}`, 120, 60);
   const { identity } = await cartIdentityFromRequest(req);
   const { variantId, quantity } = await parseJson(req, schema);
   const { createdToken } = await addItem(identity, variantId, quantity);

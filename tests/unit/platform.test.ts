@@ -135,3 +135,13 @@ describe("request context", () => {
     expect(currentContext()).toBeUndefined();
   });
 });
+
+describe("withTimeout", () => {
+  it("passes results through and rejects slow work with TimeoutError", async () => {
+    const { withTimeout, TimeoutError } = await import("@/server/platform/timeout");
+    await expect(withTimeout(Promise.resolve(7), 50)).resolves.toBe(7);
+    await expect(withTimeout(Promise.reject(new Error("boom")), 50)).rejects.toThrow("boom");
+    const slow = new Promise((r) => setTimeout(() => r("late"), 200));
+    await expect(withTimeout(slow, 20, "Razorpay refund")).rejects.toBeInstanceOf(TimeoutError);
+  });
+});

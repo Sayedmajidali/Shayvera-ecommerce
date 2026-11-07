@@ -1,3 +1,4 @@
+import "server-only";
 import { createHash } from "node:crypto";
 import { Prisma, type OrderStatus } from "@prisma/client";
 import { db, type Tx } from "@/server/platform/db";

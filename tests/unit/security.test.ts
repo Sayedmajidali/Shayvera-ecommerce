@@ -14,6 +14,12 @@ describe("open redirect protection", () => {
     ["https://evil.com", "/account"],
     ["javascript:alert(1)", "/account"],
     ["/ok\r\nSet-Cookie: x=1", "/account"],
+    // Browsers drop tabs/newlines inside URLs, turning these into "//evil.com".
+    ["/\t/evil.com", "/account"],
+    ["/\n/evil.com", "/account"],
+    ["/%09/evil.com", "/%09/evil.com"],
+    ["/admin/orders/x#tab", "/admin/orders/x#tab"],
+    ["/a\\b", "/account"],
     [null, "/account"],
   ])("%s → %s", (input, expected) =>
     expect(safeRedirectPath(input as string | null)).toBe(expected),

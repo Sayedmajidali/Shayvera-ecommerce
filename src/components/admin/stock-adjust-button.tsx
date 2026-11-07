@@ -40,12 +40,17 @@ export function StockAdjustButton({
   const [reason, setReason] = useState("RESTOCK");
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
+  // One key per adjustment: a retried request (lost response, double submit) is applied once.
+  const [key, setKey] = useState(() => crypto.randomUUID());
   return (
     <>
       <Button
         variant="outline"
         size="sm"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setKey(crypto.randomUUID());
+          setOpen(true);
+        }}
         aria-label={`Adjust stock for ${sku}`}
       >
         <Boxes /> Adjust
@@ -69,9 +74,10 @@ export function StockAdjustButton({
               setPending(true);
               try {
                 await apiFetch(`/api/admin/variants/${variantId}/stock`, {
-                  body: { delta: Number(delta), reason, note },
+                  body: { delta: Number(delta), reason, note, idempotencyKey: key },
                 });
                 toast.success("Stock updated");
+                setKey(crypto.randomUUID());
                 setOpen(false);
                 setDelta("");
                 setNote("");

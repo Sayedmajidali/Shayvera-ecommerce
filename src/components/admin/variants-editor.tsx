@@ -78,6 +78,8 @@ export function VariantsEditor({
   const router = useRouter();
   const [editing, setEditing] = useState<AdminVariant | "new" | null>(null);
   const [stockFor, setStockFor] = useState<AdminVariant | null>(null);
+  // One key per adjustment dialog: a retried request (lost response, double submit) is applied once.
+  const [adjKey, setAdjKey] = useState("");
   const [form, setForm] = useState<Form | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
@@ -173,7 +175,12 @@ export function VariantsEditor({
     setPending(true);
     try {
       await apiFetch(`/api/admin/variants/${stockFor.id}/stock`, {
-        body: { delta: Number(adj.delta), reason: adj.reason, note: adj.note },
+        body: {
+          delta: Number(adj.delta),
+          reason: adj.reason,
+          note: adj.note,
+          idempotencyKey: adjKey,
+        },
       });
       toast.success("Stock updated");
       setStockFor(null);
@@ -244,6 +251,7 @@ export function VariantsEditor({
                       variant="ghost"
                       size="icon-sm"
                       onClick={() => {
+                        setAdjKey(crypto.randomUUID());
                         setStockFor(v);
                         setAdj({ delta: "", reason: "RESTOCK", note: "" });
                       }}

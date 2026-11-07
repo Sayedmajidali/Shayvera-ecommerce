@@ -143,7 +143,7 @@ describe("available stock", () => {
         apiRequest(`/api/admin/variants/${variantId}/stock`, {
           method: "POST",
           cookie,
-          body: { delta, reason: "DAMAGE" },
+          body: { delta, reason: "DAMAGE", idempotencyKey: crypto.randomUUID() },
         }),
         params({ id: variantId }),
       );

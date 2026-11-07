@@ -117,6 +117,9 @@ export function route<C = unknown>(handler: Handler<C>, opts: { csrf?: boolean }
       }
       try {
         res.headers.set("x-request-id", requestId);
+        // API responses carry personal or session-specific data: never cache in shared caches.
+        if (!res.headers.has("cache-control"))
+          res.headers.set("cache-control", "private, no-store");
       } catch {
         /* immutable response (e.g. redirect) */
       }

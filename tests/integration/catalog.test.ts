@@ -243,7 +243,7 @@ describe("product CRUD", () => {
       apiRequest(`/api/admin/variants/${v.id}/stock`, {
         method: "POST",
         cookie,
-        body: { delta: -5, reason: "DAMAGE" },
+        body: { delta: -5, reason: "DAMAGE", idempotencyKey: crypto.randomUUID() },
       }),
       params({ id: v.id }),
     );
@@ -252,7 +252,7 @@ describe("product CRUD", () => {
       apiRequest(`/api/admin/variants/${v.id}/stock`, {
         method: "POST",
         cookie,
-        body: { delta: 7, reason: "RESTOCK", note: "PO-12" },
+        body: { delta: 7, reason: "RESTOCK", note: "PO-12", idempotencyKey: crypto.randomUUID() },
       }),
       params({ id: v.id }),
     );

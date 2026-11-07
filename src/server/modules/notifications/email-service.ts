@@ -1,3 +1,4 @@
+import "server-only";
 import { db } from "@/server/platform/db";
 import { logger } from "@/server/platform/logger";
 
