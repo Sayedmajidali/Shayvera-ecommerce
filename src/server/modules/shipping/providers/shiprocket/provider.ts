@@ -7,6 +7,7 @@ import type {
   ShippingProvider,
 } from "../../types";
 import { ShiprocketClient, type ShiprocketConfig } from "./client";
+import { ShiprocketShipments } from "./shipments";
 
 const num = z.union([z.number(), z.string()]).transform((v, ctx) => {
   const n = typeof v === "number" ? v : Number(v);
@@ -69,9 +70,11 @@ export class ShiprocketProvider implements ShippingProvider {
   readonly name = "shiprocket" as const;
   readonly supportsServiceability = true;
   readonly client: ShiprocketClient;
+  readonly shipments: ShiprocketShipments;
 
   constructor(cfg: ShiprocketConfig) {
     this.client = new ShiprocketClient(cfg);
+    this.shipments = new ShiprocketShipments(this.client);
   }
 
   async checkServiceability(q: ServiceabilityQuery, opts: { timeoutMs: number }) {

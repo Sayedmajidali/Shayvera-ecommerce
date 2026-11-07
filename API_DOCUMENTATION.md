@@ -193,6 +193,22 @@ changes are refused (409) while a request is open.
 | GET / POST           | `/api/admin/roles`                        | POST `{ name, description?, permissions: AdminPermission[] }` (unknown permissions → 400; duplicates removed).                                                                                                                                                                                                                       |
 | PATCH / DELETE       | `/api/admin/roles/:id`                    | Owner role is fixed (409); built-in roles cannot be renamed or deleted; roles in use cannot be deleted.                                                                                                                                                                                                                              |
 
+### Shipping (v2 Phase 9, `SHIPPING_MANAGE` unless noted)
+
+| Method    | Path                                         | Notes                                                                                                                                                                         |
+| --------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET       | `/api/admin/orders/:id/courier-quotes`       | → `{ parcel, couriers[{courierId,name,ratePaise,cod,etaDays}], recommendedCourierId, available }` (store cost; admin only).                                                   |
+| POST      | `/api/admin/orders/:id/book-shipment`        | `{ courierId?, weightGrams?, lengthMm?, breadthMm?, heightMm? }` → 201 `{ shipmentId }`; booking runs as a job. 409 if an active booking exists; 422 manual mode / no pickup. |
+| POST      | `/api/admin/shipments/:id/pickup`            | `{ date?: YYYY-MM-DD }` → schedules pickup and fetches the manifest.                                                                                                          |
+| GET       | `/api/admin/shipments/:id/document?kind=`    | `label\|manifest` → `{ url }` (generated on first request).                                                                                                                   |
+| POST      | `/api/admin/shipments/:id/cancel`            | `{ reason }` — before pickup only (409 after).                                                                                                                                |
+| POST      | `/api/admin/shipments/:id/retry`             | Retry a `FAILED` booking.                                                                                                                                                     |
+| POST      | `/api/admin/shipments/:id/refresh`           | Pull tracking from the courier now.                                                                                                                                           |
+| POST      | `/api/admin/requests/:id/return-pickup`      | `RETURNS_MANAGE` + `SHIPPING_MANAGE`. Reverse pickup for an approved return.                                                                                                  |
+| GET / PUT | `/api/admin/pickup-location`                 | `SETTINGS_MANAGE`. `{ name, contactName, phone, email, line1, line2?, city, stateCode, pincode }` — `name` = Shiprocket pickup nickname; also sets the store PIN.             |
+| POST      | `/api/webhooks/courier` (public)             | Shiprocket tracking webhook. Header `x-api-key` = `SHIPROCKET_WEBHOOK_TOKEN` (401 otherwise); 256 KB cap; stored + queued → `{ ok, duplicate }`.                              |
+| GET       | `/api/shipping/mock-document?kind=` (public) | Placeholder label/manifest; 404 unless `SHIPPING_PROVIDER=mock`.                                                                                                              |
+
 ## Non-API routes of note
 
 | Path                                              | Purpose                                           |

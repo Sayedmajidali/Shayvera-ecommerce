@@ -508,3 +508,27 @@
   duplicate-refund job re-run refunds once; lost callback + webhook confirmed by reconciliation), +1 E2E (payments
   dashboard). Existing webhook tests deliver then run the queue as the worker would; the E2E server runs the job loop.
 - Results: unit 134 · integration 193 · E2E 40 — all passing; lint, typecheck clean.
+
+## v2 Phase 9 — Shiprocket shipment module ✅ (mock-verified; live API unverified)
+
+- **Provider contract** `ShipmentOperations` (create, find by reference, AWB, pickup, label, manifest, track, cancel,
+  return, tracking URL) implemented by `ShiprocketShipments` (official collection endpoints) and an in-memory mock.
+- **Schema**: 18 shipment statuses, extended `Shipment`, `ShipmentEvent`, `PickupLocation`, `WebhookEvent`; one active
+  courier shipment per order enforced by a partial unique index (migrations `shipping_module`, `shipping_active_guard`).
+- **Workflows**: queued idempotent booking (search-before-recreate, 422 duplicate → lookup, definite vs unknown
+  errors, retry), pickup + manifest, on-demand label/manifest, cancel before pickup, automatic courier cancellation
+  when an order is cancelled, reverse pickup for approved returns, webhook (token, dedupe, fast ack, stale/terminal
+  protection, unknown AWB/code handling) and 30-minute tracking sync. Shipment status drives order status
+  (READY_TO_SHIP → SHIPPED → OUT_FOR_DELIVERY → DELIVERED with COD paid; RTO → RETURNED).
+- **Admin**: Shipping panel on orders, return pickup button, pickup location in Settings, `/admin/shipments`
+  dashboard + nav link. **Customer**: shipment status, ETD and scan history on order and tracking pages.
+- **Behaviour change**: `shipmentToCancel` on an approved cancellation now flags only manual shipment records
+  (courier bookings are cancelled by the system). Return pickups and cancelled bookings no longer appear in the
+  customer's view or the "shipped" email.
+- **Verification status**: implemented from the official Shiprocket collection; adapter parsing unit-tested against
+  documented payloads; workflows integration- and E2E-tested with the mock courier. **No real Shiprocket call has been
+  made** (no sandbox exists; awaiting the business's API user and pickup address).
+- **Tests**: +24 unit (`shipping.test.ts`: body building, response parsing, IST timestamps, status normalisation,
+  order mapping), +17 integration (`shipping.test.ts`), +1 E2E (`shipping.spec.ts`: pickup location → book → AWB →
+  pickup → webhook → customer sees "Out for delivery"; wrong token 401). The admin route sweep covers the new routes.
+- Results: unit 158 · integration 210 · E2E 41 — all passing; lint, typecheck, production build clean.

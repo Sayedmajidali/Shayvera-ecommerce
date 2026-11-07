@@ -50,7 +50,14 @@ export async function renderOrderEmail(
 ): Promise<EmailMessage | null> {
   const order = await db.order.findUnique({
     where: { id: orderId },
-    include: { items: true, shipments: { orderBy: { createdAt: "desc" }, take: 1 } },
+    include: {
+      items: true,
+      shipments: {
+        where: { isReturn: false, status: { notIn: ["CANCELLED", "FAILED"] } },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
   });
   if (!order) return null;
   const lines = order.items.map(

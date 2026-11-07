@@ -136,13 +136,26 @@ enum ReviewStatus {
   REJECTED
 }
 
+/// Normalised parcel status (SHIPPING_INTEGRATION.md §3). SHIPPED/RETURNED are kept for manual shipments.
 enum ShipmentStatus {
   PENDING
+  CREATING
+  CREATED
+  AWB_ASSIGNED
+  PICKUP_SCHEDULED
+  PICKED_UP
   SHIPPED
   IN_TRANSIT
   OUT_FOR_DELIVERY
   DELIVERED
+  UNDELIVERED
+  RTO_INITIATED
+  RTO_DELIVERED
   RETURNED
+  CANCELLED
+  LOST
+  DAMAGED
+  FAILED
 }
 
 enum RefundStatus {
@@ -788,21 +801,107 @@ model CouponUsage {
 
 // ─────────────────────── Fulfilment & invoicing ───────────────────────
 
+/// One parcel. `provider` = shiprocket | mock | manual. For provider shipments `trackingNumber` is the AWB.
 model Shipment {
-  id             String         @id @default(cuid())
-  orderId        String
-  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  carrier        String
-  trackingNumber String?
-  trackingUrl    String?
-  status         ShipmentStatus @default(PENDING)
-  shippedAt      DateTime?
-  deliveredAt    DateTime?
-  notes          String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id                 String          @id @default(cuid())
+  orderId            String
+  order              Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider           String          @default("manual") @db.VarChar(20)
+  /// Our unique reference sent to the provider (Shiprocket `order_id`), e.g. SHV26000123-1.
+  reference          String?         @unique @db.VarChar(50)
+  /// Return pickup from the customer (true) or delivery to the customer (false).
+  isReturn           Boolean         @default(false)
+  pickupLocationId   String?
+  pickupLocation     PickupLocation? @relation(fields: [pickupLocationId], references: [id], onDelete: SetNull)
+  carrier            String
+  courierId          String?         @db.VarChar(30)
+  trackingNumber     String?
+  trackingUrl        String?
+  providerOrderId    String?         @db.VarChar(40)
+  providerShipmentId String?         @db.VarChar(40)
+  status             ShipmentStatus  @default(PENDING)
+  /// Raw provider status label and code of the latest applied event.
+  providerStatus     String?         @db.VarChar(80)
+  providerStatusCode Int?
+  labelUrl           String?
+  manifestUrl        String?
+  pickupScheduledAt  DateTime?
+  etd                DateTime?
+  weightGrams        Int?
+  lengthMm           Int?
+  breadthMm          Int?
+  heightMm           Int?
+  /// Amount the courier collects (COD orders); null for prepaid.
+  codAmountPaise     Int?
+  /// Time of the latest applied tracking event (stale-event protection).
+  lastEventAt        DateTime?
+  attempts           Int             @default(0)
+  lastError          String?         @db.VarChar(500)
+  /// Set when tracking reported a problem (pickup exception, lost, damaged, unknown event).
+  needsAttention     Boolean         @default(false)
+  shippedAt          DateTime?
+  deliveredAt        DateTime?
+  cancelledAt        DateTime?
+  notes              String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  events             ShipmentEvent[]
 
   @@index([orderId])
+  @@index([provider, status])
+  @@index([trackingNumber])
+}
+
+/// Normalised tracking history of a shipment (webhook, poll, staff or system).
+model ShipmentEvent {
+  id                 String          @id @default(cuid())
+  shipmentId         String
+  shipment           Shipment        @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  status             ShipmentStatus?
+  providerStatus     String?         @db.VarChar(80)
+  providerStatusCode Int?
+  activity           String?         @db.VarChar(300)
+  location           String?         @db.VarChar(200)
+  occurredAt         DateTime
+  source             String          @db.VarChar(10)
+  /// sha256 of shipment + time + code + activity: the same scan is stored once.
+  dedupeHash         String          @unique @db.VarChar(64)
+  createdAt          DateTime        @default(now())
+
+  @@index([shipmentId, occurredAt])
+}
+
+/// Warehouse the courier picks up from. `name` must equal the pickup location nickname in Shiprocket.
+model PickupLocation {
+  id          String     @id @default(cuid())
+  name        String     @unique @db.VarChar(60)
+  contactName String     @db.VarChar(80)
+  phone       String     @db.VarChar(15)
+  email       String     @db.VarChar(120)
+  line1       String     @db.VarChar(200)
+  line2       String?    @db.VarChar(200)
+  city        String     @db.VarChar(80)
+  stateCode   String     @db.VarChar(2)
+  pincode     String     @db.VarChar(6)
+  isDefault   Boolean    @default(false)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  shipments   Shipment[]
+}
+
+/// Every inbound provider webhook (stored before processing; processed by a job).
+model WebhookEvent {
+  id              String    @id @default(cuid())
+  provider        String    @db.VarChar(20)
+  dedupeKey       String    @unique @db.VarChar(80)
+  payload         Json
+  processedAt     DateTime?
+  processingError String?   @db.VarChar(500)
+  /// Outcome note, e.g. "unknown AWB".
+  note            String?   @db.VarChar(200)
+  receivedAt      DateTime  @default(now())
+
+  @@index([provider, receivedAt])
 }
 
 model Invoice {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, PackageCheck, X } from "lucide-react";
+import { Check, Loader2, PackageCheck, Truck, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,11 +37,17 @@ export function OrderRequestsPanel({
   items,
   permissions,
   paidOnline,
+  courierReturns = false,
+  returnPickupBooked = false,
 }: {
   requests: AdminOrderRequest[];
   items: Item[];
   permissions: string[];
   paidOnline: boolean;
+  /** A courier integration is configured, so a reverse pickup can be booked. */
+  courierReturns?: boolean;
+  /** An active return pickup already exists for this order. */
+  returnPickupBooked?: boolean;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -158,6 +164,23 @@ export function OrderRequestsPanel({
               >
                 <PackageCheck /> Mark items received
               </Button>
+              {courierReturns && !returnPickupBooked && can("SHIPPING_MANAGE") && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy !== null}
+                  onClick={() =>
+                    run(
+                      `pickup-${r.id}`,
+                      () => apiFetch(`/api/admin/requests/${r.id}/return-pickup`, { body: {} }),
+                      "Return pickup booked with the courier",
+                    )
+                  }
+                >
+                  {busy === `pickup-${r.id}` ? <Loader2 className="animate-spin" /> : <Truck />}
+                  Book return pickup
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="outline"

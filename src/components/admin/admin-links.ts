@@ -12,6 +12,7 @@ import {
   Users,
   Undo2,
   CreditCard,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/server/modules/auth/permissions";
@@ -27,6 +28,7 @@ export const ADMIN_LINKS = [
     permission: "RETURNS_MANAGE",
   },
   { href: "/admin/payments", label: "Payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
+  { href: "/admin/shipments", label: "Shipments", icon: Truck, permission: "SHIPPING_MANAGE" },
   { href: "/admin/products", label: "Products", icon: Package, permission: "CATALOG_MANAGE" },
   {
     href: "/admin/categories",

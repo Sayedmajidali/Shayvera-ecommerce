@@ -55,6 +55,7 @@ export async function getTrackingView(orderNumber: string, token: string | null)
       },
       statusHistory: { orderBy: { createdAt: "asc" }, select: { toStatus: true, createdAt: true } },
       shipments: {
+        where: { isReturn: false, status: { notIn: ["CANCELLED", "FAILED"] } },
         orderBy: { createdAt: "desc" },
         take: 1,
         select: {
@@ -62,8 +63,15 @@ export async function getTrackingView(orderNumber: string, token: string | null)
           trackingNumber: true,
           trackingUrl: true,
           status: true,
+          etd: true,
           shippedAt: true,
           deliveredAt: true,
+          events: {
+            where: { status: { not: null } },
+            orderBy: { occurredAt: "desc" },
+            take: 15,
+            select: { id: true, status: true, activity: true, location: true, occurredAt: true },
+          },
         },
       },
     },

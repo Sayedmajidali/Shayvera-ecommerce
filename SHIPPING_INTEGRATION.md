@@ -133,8 +133,8 @@ in the Shiprocket account.
 | Item                                                                                                       | Status                                                                                                                                                                                                                                          |
 | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Endpoint paths, payloads, status codes, webhook format                                                     | implemented from the official collection (2026-11-06)                                                                                                                                                                                           |
-| Adapter request building / response parsing                                                                | auth + serviceability: unit-tested against the official example payload with an HTTP-level fake (Phase 6); remaining operations: Phase 9                                                                                                        |
-| Workflows (create, duplicate, timeout, invalid response, outage, tracking, webhooks, stale events, cancel) | integration-tested with `MockShippingProvider` and an HTTP-level fake of the Shiprocket API                                                                                                                                                     |
+| Adapter request building / response parsing                                                                | unit-tested against the official example payloads: auth + serviceability (Phase 6); create/return body building, create/search/AWB/tracking parsing, IST timestamps, status mapping (Phase 9)                                                   |
+| Workflows (create, duplicate, timeout, invalid response, outage, tracking, webhooks, stale events, cancel) | integration-tested with `MockShippingProvider` (failure injection: timeout after create, 422 duplicate, definite refusal); admin booking → webhook → customer page E2E-tested with the mock courier                                             |
 | Real Shiprocket API                                                                                        | **unverified — awaiting business credentials**. Plan: create API user → set env → run `npm run shipping:verify` (auth + serviceability only, read-only) → one real test shipment created and immediately cancelled with the business's consent. |
 
 ## Parcel estimate (implemented in Phase 4)
@@ -171,3 +171,54 @@ creating a shipment (Phase 9). Unit-tested; the Shiprocket calls that use it are
   prepaid-only; 2 / 4 / 6 days for same region / same zone / elsewhere.
 - **Real-account check**: `npm run shipping:verify -- --from <store PIN> --to <PIN>` logs in and requests one quote —
   read-only, creates nothing.
+
+## Shipment module (implemented in Phase 9)
+
+As built — differences from the design above are noted.
+
+- **Schema**: `ShipmentStatus` has 18 values (PENDING, CREATING, CREATED, AWB_ASSIGNED, PICKUP_SCHEDULED, PICKED_UP,
+  SHIPPED, IN_TRANSIT, OUT_FOR_DELIVERY, DELIVERED, UNDELIVERED, RTO_INITIATED, RTO_DELIVERED, RETURNED, CANCELLED,
+  LOST, DAMAGED, FAILED). `Shipment` gained provider, unique `reference`, `isReturn`, pickup location, provider
+  order/shipment ids, raw status + code, label/manifest URLs, pickup date, ETD, parcel, COD amount, `lastEventAt`,
+  `attempts`, `lastError`, `needsAttention`. New `ShipmentEvent`, `PickupLocation` (its `name` is the Shiprocket pickup
+  nickname) and `WebhookEvent`. **Not built**: `ShipmentItem` (one parcel per order holds every line; split parcels
+  are not supported yet) and webhook header/auth-result columns (rejected webhooks are logged, not stored).
+- **Database guards**: partial unique index — at most one active (not CANCELLED/FAILED) courier delivery shipment per
+  order; at most one default pickup location; CHECK constraints on parcel and COD values.
+- **Booking** (`requestShipment` → job `shipping.create`): the `PENDING` row and the job are written in one
+  transaction; a concurrent second click hits the unique index → 409. The job compare-and-sets to `CREATING`; on a
+  retry it first searches Shiprocket by reference; a 422 duplicate is looked up instead of re-created; then AWB
+  (chosen courier or recommended) → `AWB_ASSIGNED`, order → `READY_TO_SHIP` (stock deducted), label fetched best-effort.
+  A definite refusal (4xx) → `FAILED` + needs attention + error shown to staff (Retry button); unknown outcomes
+  (timeout/5xx) are retried by the queue with backoff, never blindly re-created.
+- **Pickup / documents**: schedule pickup (optional date; "already scheduled" responses count as success) and fetch
+  the manifest; label/manifest URLs are fetched on demand and stored.
+- **Tracking**: webhook `POST /api/webhooks/courier` (x-api-key, timing-safe, required in production, 256 KB cap) →
+  `WebhookEvent` (dedupe `sha256(awb|shipment_status_id|current_timestamp)`) + job `shipping.webhook` → 200.
+  `applyTrackingUpdate` locks the shipment row, always records the scan, ignores stale events and never leaves a
+  terminal state; unknown codes are stored and flag the shipment; LOST/DAMAGED/RTO flag it too. Order status follows
+  via the shipment→order table, stepping through SHIPPED when a pickup scan was missed; DELIVERED marks COD paid.
+  Unknown AWBs are stored, answered 200 and listed on the Shipments dashboard. `shipping.sync-tracking` polls active
+  shipments every 30 minutes.
+- **Cancellation**: staff cancel a booking before pickup (409 after); cancelling an order (including an approved
+  customer cancellation) enqueues `shipping.cancel` for its active courier bookings automatically. A manual shipment
+  record still has to be cancelled with the courier by staff.
+- **Returns**: for an approved return request staff can book a reverse pickup (`POST /orders/create/return`,
+  reference `SHV…-R1`), from the customer's address to the pickup location. Refunds and restocking still follow the
+  Phase 7 "Mark items received" step — nothing is refunded or restocked automatically.
+- **Admin UI**: order page Shipping panel (book with courier quotes and parcel override, label, schedule pickup,
+  manifest, refresh, cancel, retry, scan history); "Book return pickup" on approved returns; pickup location card in
+  Settings; Shipments dashboard (`/admin/shipments`, `SHIPPING_MANAGE`) with tiles, needs-attention queue with retry,
+  unmatched courier updates and a filterable list. With `SHIPPING_PROVIDER=manual` the v1 "Add shipment" form is
+  kept and the booking buttons are hidden.
+- **Customer UI**: order and tracking pages show the live delivery shipment only (no return pickups or cancelled
+  bookings), a softened status ("Packed, waiting for courier pickup", "Delayed, our team is looking into it"), courier,
+  AWB, expected delivery date and the scan history (status, place, time).
+- **Mock courier**: in-memory, AWB `MOCK<shipmentId>`, 422 on duplicate reference, documents served by
+  `/api/shipping/mock-document` (refused when the provider is not `mock`).
+
+**Go-live checklist (needs the business):** create the Shiprocket API user and the pickup address (nickname = the
+name entered in Admin → Settings → Pickup location) → set `SHIPPING_PROVIDER=shiprocket`, credentials and
+`SHIPROCKET_WEBHOOK_TOKEN` → configure the webhook URL `https://<domain>/api/webhooks/courier` with that token →
+`npm run shipping:verify` → with the business's consent, book one real shipment and cancel it immediately, checking
+AWB, label and the cancellation webhook.

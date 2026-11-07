@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { AdminPageHeader } from "@/components/admin/page-header";
 import { SettingsForm } from "@/components/admin/settings-form";
+import { PickupLocationForm } from "@/components/admin/pickup-location-form";
+import { getDefaultPickupLocation } from "@/server/modules/shipping/shipments";
 import { loadStoreSettings } from "@/server/modules/settings/queries";
 import { requireAdminPage } from "@/server/modules/auth/session";
 
@@ -9,7 +11,7 @@ export const metadata: Metadata = { title: "Settings" };
 export default async function SettingsPage() {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
   await requireAdminPage("SETTINGS_MANAGE");
-  const s = await loadStoreSettings();
+  const [s, pickup] = await Promise.all([loadStoreSettings(), getDefaultPickupLocation()]);
   return (
     <>
       <AdminPageHeader
@@ -51,6 +53,23 @@ export default async function SettingsPage() {
           returnWindowDays: s.returnWindowDays,
         }}
       />
+      <div className="mt-6">
+        <PickupLocationForm
+          initial={
+            pickup && {
+              name: pickup.name,
+              contactName: pickup.contactName,
+              phone: pickup.phone,
+              email: pickup.email,
+              line1: pickup.line1,
+              line2: pickup.line2 ?? "",
+              city: pickup.city,
+              stateCode: pickup.stateCode,
+              pincode: pickup.pincode,
+            }
+          }
+        />
+      </div>
     </>
   );
 }

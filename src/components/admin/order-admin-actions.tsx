@@ -39,6 +39,8 @@ type Props = {
   requiresAttention: boolean;
   /** Whether the order's status allows a tax invoice. */
   invoiceable: boolean;
+  /** Manual shipping: staff type courier + AWB. Otherwise shipments are booked in the Shipping panel. */
+  manualShipping: boolean;
   /** The viewer's admin permissions; controls are hidden when the server would refuse them. */
   permissions: string[];
 };
@@ -187,6 +189,7 @@ export function OrderAdminActions(p: Props) {
 
       <div className="flex flex-wrap gap-2">
         {can("SHIPPING_MANAGE") &&
+          p.manualShipping &&
           ["CONFIRMED", "PROCESSING", "READY_TO_SHIP", "SHIPPED", "OUT_FOR_DELIVERY"].includes(
             p.status,
           ) && (

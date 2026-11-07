@@ -8,6 +8,7 @@ import { OrderTimeline } from "@/components/store/order-timeline";
 import { firstValues } from "@/lib/search-params";
 import { formatINR } from "@/lib/money";
 import { ORDER_STATUS_LABEL } from "@/server/modules/orders/order-status";
+import { ShipmentTracking } from "@/components/store/shipment-tracking";
 import { getTrackingView } from "@/server/modules/orders/tracking";
 
 export const metadata: Metadata = {
@@ -58,28 +59,7 @@ export default async function TrackingResultPage({
             <Truck className="size-4" aria-hidden /> Shipment
           </h2>
           {shipment ? (
-            <dl className="grid gap-2">
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Courier</dt>
-                <dd>{shipment.carrier}</dd>
-              </div>
-              {shipment.trackingNumber && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Tracking no.</dt>
-                  <dd className="font-mono">{shipment.trackingNumber}</dd>
-                </div>
-              )}
-              {shipment.trackingUrl && (
-                <a
-                  href={shipment.trackingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-2 font-medium underline underline-offset-4"
-                >
-                  Track with the courier
-                </a>
-              )}
-            </dl>
+            <ShipmentTracking shipment={shipment} />
           ) : (
             <p className="text-muted-foreground">
               Not shipped yet. You’ll get an email with tracking details once it’s on its way.

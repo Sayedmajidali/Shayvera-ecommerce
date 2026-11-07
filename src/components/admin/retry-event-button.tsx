@@ -7,7 +7,16 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { apiFetch, ApiClientError } from "@/lib/fetcher";
 
-export function RetryEventButton({ eventId }: { eventId: string }) {
+export function RetryEventButton({
+  eventId,
+  url,
+  label = "Retry",
+}: {
+  eventId?: string;
+  /** Endpoint to POST to; defaults to retrying a payment webhook event. */
+  url?: string;
+  label?: string;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return (
@@ -18,7 +27,7 @@ export function RetryEventButton({ eventId }: { eventId: string }) {
       onClick={async () => {
         setBusy(true);
         try {
-          await apiFetch(`/api/admin/payments/events/${eventId}/retry`, { body: {} });
+          await apiFetch(url ?? `/api/admin/payments/events/${eventId}/retry`, { body: {} });
           toast.success("Queued for processing");
           router.refresh();
         } catch (err) {
@@ -28,7 +37,7 @@ export function RetryEventButton({ eventId }: { eventId: string }) {
         }
       }}
     >
-      {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />} Retry
+      {busy ? <Loader2 className="animate-spin" /> : <RefreshCw />} {label}
     </Button>
   );
 }

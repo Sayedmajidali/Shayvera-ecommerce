@@ -289,8 +289,11 @@ export async function approveRequest(
     requestId: id,
     outcome: "cancelled" as const,
     refundStarted,
-    // Manual shipment records must be cancelled with the courier by staff (automated in Phase 9).
-    shipmentToCancel: order.shipments.length > 0,
+    // Courier bookings are cancelled automatically (shipping.cancel job); a manual shipment
+    // record has to be cancelled with the courier by staff.
+    shipmentToCancel: order.shipments.some(
+      (s) => s.provider === "manual" && !["CANCELLED", "FAILED"].includes(s.status),
+    ),
   };
 }
 

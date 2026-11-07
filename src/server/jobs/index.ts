@@ -12,6 +12,12 @@ import {
   runCaptureFollowUp,
 } from "@/server/modules/payments/payments";
 import { findInventoryDrift } from "@/server/modules/inventory/inventory";
+import {
+  cancelShipment,
+  processCourierWebhook,
+  processShipmentCreation,
+  syncTracking,
+} from "@/server/modules/shipping/shipments";
 
 /**
  * Composition root for background work: every job type and periodic schedule is listed here, so
@@ -32,6 +38,14 @@ export function registerAllJobs() {
   registered = true;
 
   registerJob("notification.send", (p, ctx) => deliverNotification(p.notificationId, ctx));
+
+  registerJob("shipping.create", (p, ctx) => processShipmentCreation(p.shipmentId, ctx));
+  registerJob("shipping.cancel", (p) => cancelShipment(p.shipmentId, p.reason, null));
+  registerJob("shipping.webhook", (p) => processCourierWebhook(p.webhookEventId));
+  registerJob("shipping.sync-tracking", async () => {
+    const r = await syncTracking();
+    if (r.checked) logger.info("Tracking sync", r);
+  });
 
   registerJob("payments.webhook", (p, ctx) => processWebhookEvent(p.eventId, ctx));
   registerJob("payments.capture-followup", (p) => runCaptureFollowUp(p));
@@ -98,6 +112,7 @@ export function registerAllJobs() {
 export const SCHEDULES: Schedule[] = [
   { type: "payments.expire-unpaid", everyMs: 2 * 60_000, payload: {} },
   { type: "payments.reconcile", everyMs: 15 * 60_000, payload: {} },
+  { type: "shipping.sync-tracking", everyMs: 30 * 60_000, payload: {} },
   { type: "maintenance.cleanup", everyMs: 60 * 60_000, payload: {} },
   { type: "inventory.reconcile", everyMs: 60 * 60_000, payload: {} },
 ];

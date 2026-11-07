@@ -6,6 +6,9 @@ import { AlertTriangle, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { OrderAdminActions } from "@/components/admin/order-admin-actions";
 import { OrderRequestsPanel } from "@/components/admin/order-requests-panel";
+import { ShippingPanel } from "@/components/admin/shipping-panel";
+import { shippingProviderName } from "@/lib/env";
+import { SHIPMENT_STATUS_LABEL } from "@/server/modules/shipping/status";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { stateName } from "@/lib/india";
 import { formatINR } from "@/lib/money";
@@ -292,6 +295,10 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
               <CardContent>
                 <OrderRequestsPanel
                   permissions={admin.permissions}
+                  courierReturns={shippingProviderName() !== "manual"}
+                  returnPickupBooked={order.shipments.some(
+                    (s) => s.isReturn && !["CANCELLED", "FAILED"].includes(s.status),
+                  )}
                   paidOnline={order.paymentMethod === "RAZORPAY" && order.paymentStatus === "PAID"}
                   items={order.items.map((i) => ({
                     id: i.id,
@@ -328,6 +335,7 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                 requiresAttention={order.requiresAttention}
                 permissions={admin.permissions}
                 invoiceable={INVOICEABLE_STATUSES.includes(order.status)}
+                manualShipping={shippingProviderName() === "manual"}
               />
             </CardContent>
           </Card>
@@ -357,33 +365,44 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
               )}
             </CardContent>
           </Card>
-          {order.shipments.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Shipments</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3 text-sm">
-                {order.shipments.map((s) => (
-                  <div key={s.id}>
-                    <p className="font-medium">
-                      {s.carrier} <StatusBadge status={s.status} className="ml-1" />
-                    </p>
-                    {s.trackingNumber && <p className="font-mono text-xs">{s.trackingNumber}</p>}
-                    {s.trackingUrl && (
-                      <a
-                        href={s.trackingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs underline"
-                      >
-                        Tracking link
-                      </a>
-                    )}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Shipping</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ShippingPanel
+                orderId={order.id}
+                orderStatus={order.status}
+                providerName={shippingProviderName()}
+                canManage={admin.permissions.includes("SHIPPING_MANAGE")}
+                shipments={order.shipments.map((s) => ({
+                  id: s.id,
+                  isReturn: s.isReturn,
+                  provider: s.provider,
+                  status: s.status,
+                  statusLabel: SHIPMENT_STATUS_LABEL[s.status],
+                  carrier: s.carrier,
+                  reference: s.reference,
+                  trackingNumber: s.trackingNumber,
+                  trackingUrl: s.trackingUrl,
+                  labelUrl: s.labelUrl,
+                  manifestUrl: s.manifestUrl,
+                  pickupScheduledAt: s.pickupScheduledAt?.toISOString() ?? null,
+                  etd: s.etd?.toISOString() ?? null,
+                  lastError: s.lastError,
+                  needsAttention: s.needsAttention,
+                  weightGrams: s.weightGrams,
+                  events: s.events.map((e) => ({
+                    id: e.id,
+                    activity: e.activity,
+                    location: e.location,
+                    occurredAt: e.occurredAt.toISOString(),
+                    providerStatus: e.providerStatus,
+                  })),
+                }))}
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
     </>

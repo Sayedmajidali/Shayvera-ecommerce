@@ -2,6 +2,7 @@ import type { ActorType, InventoryReason, OrderStatus, Prisma } from "@prisma/cl
 import { db, type Tx } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/server/platform/logger";
+import { enqueue } from "@/server/platform/jobs/queue";
 import {
   clearReservationExpiry,
   consumeReservations,
@@ -115,6 +116,25 @@ export async function transitionOrder(
     }
   }
 
+  if (p.to === "CANCELLED") {
+    // Courier bookings that have not been picked up are cancelled at the provider (job, retried).
+    const booked = await tx.shipment.findMany({
+      where: {
+        orderId: order.id,
+        provider: { not: "manual" },
+        isReturn: false,
+        status: { in: ["PENDING", "CREATING", "CREATED", "AWB_ASSIGNED", "PICKUP_SCHEDULED"] },
+      },
+      select: { id: true },
+    });
+    for (const s of booked)
+      await enqueue(
+        "shipping.cancel",
+        { shipmentId: s.id, reason: `Order ${order.orderNumber} cancelled` },
+        { tx, dedupeKey: `ship-cancel:${s.id}` },
+      );
+  }
+
   if (p.to === "CANCELLED" && STOCK_HOLDING_STATUSES.includes(from)) {
     await releaseReservations(tx, order.id, {
       actorId: p.actor.id ?? null,
@@ -210,7 +230,20 @@ export const orderDetailInclude = {
   items: true,
   statusHistory: { orderBy: { createdAt: "asc" } },
   payments: { orderBy: { createdAt: "asc" } },
-  shipments: { orderBy: { createdAt: "desc" } },
+  // Customer-facing: the live delivery shipment only (no return pickups or cancelled bookings).
+  shipments: {
+    where: { isReturn: false, status: { notIn: ["CANCELLED", "FAILED"] } },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+    include: {
+      events: {
+        where: { status: { not: null } },
+        orderBy: { occurredAt: "desc" },
+        take: 15,
+        select: { id: true, status: true, activity: true, location: true, occurredAt: true },
+      },
+    },
+  },
   refunds: { orderBy: { createdAt: "desc" } },
   invoice: { select: { invoiceNumber: true, issuedAt: true } },
   requests: { orderBy: { createdAt: "desc" }, take: 5 },

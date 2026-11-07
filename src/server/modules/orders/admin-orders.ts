@@ -99,6 +99,10 @@ export async function getOrderAdmin(id: string) {
       ...orderDetailInclude,
       user: { select: { id: true, name: true, email: true, phone: true } },
       reservations: { select: { variantId: true, quantity: true, status: true, expiresAt: true } },
+      shipments: {
+        orderBy: { createdAt: "desc" },
+        include: { events: { orderBy: { occurredAt: "desc" }, take: 8 } },
+      },
       paymentEvents: {
         orderBy: { receivedAt: "desc" },
         take: 30,

@@ -18,6 +18,7 @@ import {
   progressStep,
 } from "@/server/modules/orders/order-status";
 import { returnDeadline } from "@/server/modules/orders/requests";
+import { ShipmentTracking } from "@/components/store/shipment-tracking";
 import type { orderDetailInclude } from "@/server/modules/orders/orders";
 import type { Prisma } from "@prisma/client";
 
@@ -177,31 +178,8 @@ export async function OrderDetail({
 
       {shipment && (
         <div className="bg-card rounded-2xl border p-5 text-sm">
-          <p className="font-medium">Shipment</p>
-          <p className="text-muted-foreground mt-1">
-            {shipment.carrier}
-            {shipment.trackingNumber && (
-              <>
-                {" "}
-                · Tracking{" "}
-                <span className="text-foreground font-mono">{shipment.trackingNumber}</span>
-              </>
-            )}
-            {shipment.trackingUrl && (
-              <>
-                {" "}
-                ·{" "}
-                <a
-                  href={shipment.trackingUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline underline-offset-4"
-                >
-                  Track package
-                </a>
-              </>
-            )}
-          </p>
+          <p className="mb-3 font-medium">Shipment</p>
+          <ShipmentTracking shipment={shipment} />
         </div>
       )}
 

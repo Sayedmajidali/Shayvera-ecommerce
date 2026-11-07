@@ -232,6 +232,9 @@ every 5–10 minutes in production). Card data is never stored.
 `shiprocket` (needs `SHIPROCKET_API_EMAIL` / `SHIPROCKET_API_PASSWORD` of a Shiprocket **API user**). Set the store
 PIN code in Admin → Settings so checkout can check couriers from your warehouse. After adding real credentials, run the
 read-only `npm run shipping:verify -- --from <store PIN> --to <customer PIN>` first. Shiprocket has no sandbox.
+To book shipments, add the pickup location in Admin → Settings (its name must match the pickup nickname in Shiprocket),
+set `SHIPROCKET_WEBHOOK_TOKEN` and configure the Shiprocket webhook to `https://<your domain>/api/webhooks/courier` with
+that token. Bookings, pickups, labels and tracking are then managed from the order page and Admin → Shipments.
 
 **Importing the existing catalog.** `npm run catalog:import-woo -- --url https://shayvera.in` reads the public
 WooCommerce Store API and prints what it would do; add `--apply` to write. Imported products are **DRAFT with zero
