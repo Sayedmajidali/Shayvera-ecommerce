@@ -221,6 +221,7 @@ model OrderRequest {
   receipt        Json?
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
+  refunds        Refund[]
 
   @@index([orderId])
   @@index([status, createdAt])
@@ -636,6 +637,7 @@ model Order {
   shipments     Shipment[]
   refunds       Refund[]
   invoice       Invoice?
+  creditNotes   CreditNote[]
   couponUsage   CouponUsage?
   inventoryTxs  InventoryTransaction[]
   reservations  InventoryReservation[]
@@ -740,23 +742,28 @@ model PaymentEvent {
 }
 
 model Refund {
-  id               String       @id @default(cuid())
+  id               String        @id @default(cuid())
   orderId          String
-  order            Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order            Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   paymentId        String?
-  payment          Payment?     @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  payment          Payment?      @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   amountPaise      Int
   reason           String
-  status           RefundStatus @default(PENDING)
+  status           RefundStatus  @default(PENDING)
   method           RefundMethod
-  razorpayRefundId String?      @unique
+  razorpayRefundId String?       @unique
   createdById      String?
   processedAt      DateTime?
   failureReason    String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  /// The return request this refund settles (at most one non-failed refund per request).
+  requestId        String?
+  request          OrderRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  creditNote       CreditNote?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   @@index([orderId])
+  @@index([requestId])
 }
 
 // ─────────────────────── Coupons & promotions ───────────────────────
@@ -905,14 +912,35 @@ model WebhookEvent {
 }
 
 model Invoice {
-  id            String   @id @default(cuid())
-  orderId       String   @unique
-  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  invoiceNumber String   @unique
+  id            String       @id @default(cuid())
+  orderId       String       @unique
+  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  invoiceNumber String       @unique
   financialYear String
   /// Immutable snapshot: seller (name, GSTIN, address), buyer, lines, tax split, totals.
   snapshot      Json
+  issuedAt      DateTime     @default(now())
+  creditNotes   CreditNote[]
+}
+
+/// Credit note issued against an invoice when money is refunded (one per processed refund).
+model CreditNote {
+  id            String   @id @default(cuid())
+  number        String   @unique
+  financialYear String
+  invoiceId     String
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: NoAction)
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  refundId      String   @unique
+  refund        Refund   @relation(fields: [refundId], references: [id], onDelete: NoAction)
+  /// Immutable snapshot: seller, buyer, original invoice, reason, taxable value and tax split, total.
+  snapshot      Json
+  amountPaise   Int
   issuedAt      DateTime @default(now())
+
+  @@index([orderId])
+  @@index([issuedAt])
 }
 
 // ─────────────────────────── Store & ops ───────────────────────────
@@ -957,6 +985,11 @@ model StoreSettings {
   minOrderPaise              Int      @default(0)
   orderPrefix                String   @default("SHV")
   invoicePrefix              String   @default("INV")
+  creditNotePrefix           String   @default("CN")
+  /// Issue the invoice automatically when an order is delivered.
+  autoIssueInvoice           Boolean  @default(false)
+  /// Staff addresses for operational alerts (new orders, requests, failures, low stock). Empty = off.
+  alertEmails                String[] @default([])
   lowStockThreshold          Int      @default(5)
   updatedAt                  DateTime @updatedAt
 }

@@ -34,7 +34,7 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/admin/i
     <>
       <AdminPageHeader
         title="Invoices"
-        description="Issued invoices are immutable snapshots, numbered per financial year. Issue one from the order page."
+        description="Issued invoices and credit notes are immutable snapshots, numbered per financial year. A credit note is issued automatically when an invoiced order is refunded."
       />
       {d.uninvoiced.length > 0 && (
         <Card className="border-warning/50 mb-6">
@@ -140,6 +140,50 @@ export default async function InvoicesPage({ searchParams }: PageProps<"/admin/i
           />
         </div>
       </Card>
+      {d.creditNotes.length > 0 && (
+        <Card className="mt-6 gap-0 py-0">
+          <CardHeader className="py-4">
+            <CardTitle>Recent credit notes</CardTitle>
+          </CardHeader>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Credit note</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Against invoice</TableHead>
+                <TableHead>Order</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {d.creditNotes.map((c) => (
+                <TableRow key={c.id} data-testid="credit-note-row">
+                  <TableCell>
+                    <a
+                      href={`/credit-note/${c.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-xs font-medium hover:underline"
+                    >
+                      {c.number}
+                    </a>
+                  </TableCell>
+                  <TableCell className="text-sm">{date(c.issuedAt)}</TableCell>
+                  <TableCell className="font-mono text-xs">{c.invoice.invoiceNumber}</TableCell>
+                  <TableCell>
+                    <Link href={`/admin/orders/${c.order.id}`} className="hover:underline">
+                      {c.order.orderNumber}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {formatINR(c.amountPaise)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </>
   );
 }

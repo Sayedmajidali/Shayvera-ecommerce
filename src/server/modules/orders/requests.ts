@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { Prisma, type OrderRequest } from "@prisma/client";
 import { AppError } from "@/lib/errors";
+import { divRound, formatINRExact } from "@/lib/money";
 import { idSchema, optionalTrimmed, trimmed } from "@/lib/validation/common";
 import { db, type Tx } from "@/server/platform/db";
 import { audit } from "@/server/modules/audit/audit";
@@ -477,4 +478,106 @@ export async function requestStats() {
       : null,
     refunds30d: { count: refunds._count, paise: refunds._sum.amountPaise ?? 0 },
   };
+}
+
+// ───────────────────────────── Return refunds ─────────────────────────────
+
+type ReceiptLine = { orderItemId: string; receivedQuantity: number; restockQuantity: number };
+
+/**
+ * What a received return is worth: each received unit at its paid price (line total incl. tax and
+ * after discounts, pro-rated per unit). Shipping and COD fees are offered separately — the store
+ * decides whether to refund them. Staff may refund less (e.g. a deduction after inspection), never more.
+ */
+export async function returnRefundQuote(requestId: string) {
+  const req = await db.orderRequest.findUnique({
+    where: { id: requestId },
+    include: {
+      order: { include: { items: true } },
+      refunds: { select: { id: true, status: true, amountPaise: true, createdAt: true } },
+    },
+  });
+  if (!req || req.type !== "RETURN") throw new AppError("NOT_FOUND", "Return request not found");
+  const receipt = (req.receipt as ReceiptLine[] | null) ?? [];
+  const items = receipt
+    .filter((r) => r.receivedQuantity > 0)
+    .map((r) => {
+      const i = req.order.items.find((x) => x.id === r.orderItemId);
+      if (!i) return null;
+      return {
+        orderItemId: i.id,
+        name: `${i.productName} (${i.variantName})`,
+        quantity: r.receivedQuantity,
+        valuePaise: divRound(i.lineTotalPaise * r.receivedQuantity, i.quantity),
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+  const itemsPaise = items.reduce((t, i) => t + i.valuePaise, 0);
+  const remaining = req.order.totalPaise - req.order.refundedPaise;
+  const live = req.refunds.find((r) => r.status !== "FAILED") ?? null;
+  return {
+    requestId: req.id,
+    orderId: req.orderId,
+    status: req.status,
+    items,
+    itemsPaise,
+    shippingPaise: req.order.shippingPaise + req.order.codFeePaise,
+    remainingPaise: remaining,
+    paid: req.order.paymentStatus === "PAID" || req.order.paymentStatus === "PARTIALLY_REFUNDED",
+    refund: live,
+  };
+}
+
+export const refundReturnSchema = z.object({
+  amountPaise: z.coerce.number().int().positive("Enter an amount"),
+  includeShipping: z.boolean().default(false),
+  note: optionalTrimmed(300),
+});
+
+/** Refunds a received return (once per request; linked to it, with a credit note if invoiced). */
+export async function refundReturn(
+  requestId: string,
+  input: z.infer<typeof refundReturnSchema>,
+  staff: StaffActor,
+) {
+  const data = refundReturnSchema.parse(input);
+  const q = await returnRefundQuote(requestId);
+  if (q.status !== "COMPLETED")
+    throw new AppError("INVALID_STATE", "Mark the returned items as received first");
+  if (!q.paid) throw new AppError("INVALID_STATE", "This order has no payment to refund");
+  if (q.refund) throw new AppError("CONFLICT", "This return has already been refunded");
+  const max = Math.min(
+    q.itemsPaise + (data.includeShipping ? q.shippingPaise : 0),
+    q.remainingPaise,
+  );
+  if (data.amountPaise > max)
+    throw new AppError(
+      "VALIDATION_ERROR",
+      `At most ${formatINRExact(max)} can be refunded for this return`,
+      { amountPaise: "Amount is more than the returned items are worth" },
+    );
+  const order = await db.order.findUniqueOrThrow({
+    where: { id: q.orderId },
+    select: { orderNumber: true },
+  });
+  const refund = await createRefund({
+    orderId: q.orderId,
+    amountPaise: data.amountPaise,
+    reason:
+      `Return ${order.orderNumber}: ${q.items.map((i) => `${i.name} × ${i.quantity}`).join(", ")}${data.note ? ` — ${data.note}` : ""}`.slice(
+        0,
+        500,
+      ),
+    actor: { type: "ADMIN", id: staff.id },
+    requestId,
+  });
+  await audit({
+    actorId: staff.id,
+    action: "order.return.refund",
+    entityType: "Order",
+    entityId: q.orderId,
+    metadata: { requestId, refundId: refund.id, amountPaise: data.amountPaise },
+    ipAddress: staff.ip,
+  });
+  return refund;
 }

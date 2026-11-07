@@ -2,6 +2,7 @@ import "server-only";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { Prisma, type Shipment, type ShipmentStatus } from "@prisma/client";
+import { queueStaffAlert } from "@/server/modules/notifications/staff-alerts";
 import { AppError } from "@/lib/errors";
 import { stateName } from "@/lib/india";
 import {
@@ -326,6 +327,15 @@ export async function processShipmentCreation(shipmentId: string, ctx?: JobConte
       shipmentId: s.id,
       definitive,
     });
+    if (definitive || ctx?.isLastAttempt)
+      await db.$transaction((tx) =>
+        queueStaffAlert(tx, {
+          kind: "shipment_problem",
+          orderId: s.orderId,
+          dedupeKey: `${s.id}:booking-failed:${s.attempts}`,
+          extra: `Courier booking failed: ${errorText(error).slice(0, 150)}`,
+        }),
+      );
     if (!definitive) throw error;
   }
 }
@@ -687,6 +697,12 @@ export async function applyTrackingUpdate(
         where: { id: s.id },
         data: { needsAttention: true, providerStatus: u.label?.slice(0, 80) ?? s.providerStatus },
       });
+      await queueStaffAlert(tx, {
+        kind: "shipment_problem",
+        orderId: s.orderId,
+        dedupeKey: `${s.id}:code:${u.code}`,
+        extra: `Unrecognised courier status ${u.code} (${u.label ?? "no label"})`,
+      });
       logger.warn("Unknown courier status code", {
         shipmentId: s.id,
         code: u.code,
@@ -716,6 +732,13 @@ export async function applyTrackingUpdate(
     });
     if (!s.isReturn) {
       await advanceOrder(tx, s.orderId, status);
+      if (status === "LOST" || status === "DAMAGED" || status === "RTO_INITIATED")
+        await queueStaffAlert(tx, {
+          kind: "shipment_problem",
+          orderId: s.orderId,
+          dedupeKey: `${s.id}:${status}`,
+          extra: `Courier reported: ${u.label ?? status}`,
+        });
       if (status === "LOST" || status === "DAMAGED" || status === "RTO_INITIATED")
         await tx.order.update({
           where: { id: s.orderId },

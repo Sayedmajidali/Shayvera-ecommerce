@@ -3,6 +3,7 @@ import { formatINR } from "@/lib/money";
 import { siteConfig } from "@/lib/site";
 import { escapeHtml, type EmailMessage } from "@/server/modules/notifications/email-service";
 import { orderAccessToken } from "@/server/modules/orders/order-access";
+import { brandedEmail } from "@/server/modules/notifications/email-layout";
 
 export const ORDER_EMAIL_KINDS = [
   "confirmed",
@@ -52,6 +53,7 @@ export async function renderOrderEmail(
     where: { id: orderId },
     include: {
       items: true,
+      invoice: { select: { invoiceNumber: true } },
       shipments: {
         where: { isReturn: false, status: { notIn: ["CANCELLED", "FAILED"] } },
         orderBy: { createdAt: "desc" },
@@ -81,6 +83,11 @@ export async function renderOrderEmail(
     refunded: `A refund has been issued${extra ? ` (${extra})` : ""}. It typically reaches your account in 5–7 business days.`,
   };
   const url = orderUrl(order);
+  const invoiceUrl = order.invoice
+    ? `${siteConfig.url}/invoice/${order.orderNumber}${order.userId ? "" : `?t=${orderAccessToken(order.id)}`}`
+    : null;
+  const showInvoice =
+    invoiceUrl && (kind === "delivered" || kind === "refunded" || kind === "returned");
   const text = [
     `Hi ${(order.shippingAddress as { fullName?: string }).fullName ?? "there"},`,
     "",
@@ -91,6 +98,7 @@ export async function renderOrderEmail(
     `Total: ${formatINR(order.totalPaise)}`,
     "",
     `View your order: ${url}`,
+    ...(showInvoice ? [`Invoice ${order.invoice!.invoiceNumber}: ${invoiceUrl}`] : []),
   ].join("\n");
   const items = order.items
     .map(
@@ -98,11 +106,14 @@ export async function renderOrderEmail(
         `<li>${escapeHtml(i.productName)} (${escapeHtml(i.variantName)}) × ${i.quantity} — ${formatINR(i.lineTotalPaise)}</li>`,
     )
     .join("");
+  const branded = await brandedEmail({
+    text,
+    bodyHtml: `<p>${escapeHtml(intro[kind])}</p><p><strong>Order ${escapeHtml(order.orderNumber)}</strong></p><ul>${items}</ul><p>Total: <strong>${formatINR(order.totalPaise)}</strong></p><p><a href="${escapeHtml(url)}">View your order</a>${showInvoice ? ` · <a href="${escapeHtml(invoiceUrl!)}">Invoice ${escapeHtml(order.invoice!.invoiceNumber)}</a>` : ""}</p>`,
+  });
   return {
     to: order.email,
     subject: SUBJECT[kind](order.orderNumber),
     template: `order-${kind}`,
-    text,
-    html: `<p>${escapeHtml(intro[kind])}</p><p><strong>Order ${escapeHtml(order.orderNumber)}</strong></p><ul>${items}</ul><p>Total: <strong>${formatINR(order.totalPaise)}</strong></p><p><a href="${escapeHtml(url)}">View your order</a></p>`,
+    ...branded,
   };
 }

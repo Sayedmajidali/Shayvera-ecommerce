@@ -236,6 +236,11 @@ To book shipments, add the pickup location in Admin → Settings (its name must 
 set `SHIPROCKET_WEBHOOK_TOKEN` and configure the Shiprocket webhook to `https://<your domain>/api/webhooks/courier` with
 that token. Bookings, pickups, labels and tracking are then managed from the order page and Admin → Shipments.
 
+**Staff alerts and invoices.** In Admin → Settings → Numbering & alerts, add up to five staff email addresses to receive
+new-order, cancellation/return-request, failed-refund and courier-problem emails plus a daily low-stock email, and choose
+whether invoices are issued automatically on delivery. Refunding an invoiced order issues a credit note automatically
+(`CN<FY>/00001`, prefix configurable). In development, all emails land in Admin → Messages & emails (dev outbox).
+
 **Importing the existing catalog.** `npm run catalog:import-woo -- --url https://shayvera.in` reads the public
 WooCommerce Store API and prints what it would do; add `--apply` to write. Imported products are **DRAFT with zero
 stock**, keep their source price (the live site shows ₹64.98 for every product, which the importer flags as a likely

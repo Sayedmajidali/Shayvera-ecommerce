@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import type { InvoiceSnapshot } from "@/server/modules/invoices/invoices";
+import type { CreditNoteSnapshot } from "@/server/modules/invoices/credit-notes";
 import { db } from "@/server/platform/db";
 import { SOLD_STATUSES } from "@/server/modules/orders/order-status";
 import { stateName } from "@/lib/india";
@@ -227,6 +228,34 @@ export async function getSalesReport(r: ReportRange) {
  * accountant's review — the business's own GST filing rules decide how it is used.
  */
 export async function getGstRegister(r: ReportRange) {
+  const creditNotes = await db.creditNote.findMany({
+    where: { issuedAt: { gte: r.start, lt: r.end } },
+    orderBy: { issuedAt: "asc" },
+    select: { number: true, issuedAt: true, snapshot: true },
+  });
+  const creditRows = creditNotes.map((c) => {
+    const s = c.snapshot as unknown as CreditNoteSnapshot;
+    return {
+      number: c.number,
+      issuedAt: c.issuedAt,
+      invoiceNumber: s.invoiceNumber,
+      orderNumber: s.orderNumber,
+      placeOfSupply: `${s.placeOfSupply.stateCode} – ${s.placeOfSupply.stateName}`,
+      supplyType: s.supplyType,
+      ...s.totals,
+    };
+  });
+  const credit = creditRows.reduce(
+    (t, x) => ({
+      taxableValuePaise: t.taxableValuePaise + x.taxableValuePaise,
+      cgstPaise: t.cgstPaise + x.cgstPaise,
+      sgstPaise: t.sgstPaise + x.sgstPaise,
+      igstPaise: t.igstPaise + x.igstPaise,
+      taxPaise: t.taxPaise + x.taxPaise,
+      totalPaise: t.totalPaise + x.totalPaise,
+    }),
+    { taxableValuePaise: 0, cgstPaise: 0, sgstPaise: 0, igstPaise: 0, taxPaise: 0, totalPaise: 0 },
+  );
   const invoices = await db.invoice.findMany({
     where: { issuedAt: { gte: r.start, lt: r.end } },
     orderBy: { issuedAt: "asc" },
@@ -288,7 +317,23 @@ export async function getGstRegister(r: ReportRange) {
       hsn.set(key, cur);
     }
   }
-  return { range: { from: r.from, to: r.to }, rows, totals, hsn: [...hsn.values()] };
+  return {
+    range: { from: r.from, to: r.to },
+    rows,
+    totals,
+    hsn: [...hsn.values()],
+    creditNotes: creditRows,
+    creditTotals: credit,
+    /** Invoices minus credit notes issued in the period. */
+    net: {
+      taxableValuePaise: totals.taxableValuePaise - credit.taxableValuePaise,
+      cgstPaise: totals.cgstPaise - credit.cgstPaise,
+      sgstPaise: totals.sgstPaise - credit.sgstPaise,
+      igstPaise: totals.igstPaise - credit.igstPaise,
+      taxPaise: totals.taxPaise - credit.taxPaise,
+      totalPaise: totals.grandTotalPaise - credit.totalPaise,
+    },
+  };
 }
 
 export const REPORT_EXPORTS = [
@@ -299,6 +344,7 @@ export const REPORT_EXPORTS = [
   "coupons",
   "gst",
   "hsn",
+  "credit-notes",
 ] as const;
 export type ReportExport = (typeof REPORT_EXPORTS)[number];
 
@@ -308,8 +354,42 @@ const istDate = (d: Date) => new Date(d.getTime() + IST_OFFSET_MS).toISOString()
 /** Builds one CSV export. Amounts are rupees with two decimals (exact, from integer paise). */
 export async function buildReportCsv(kind: ReportExport, r: ReportRange) {
   const file = (name: string) => `shayvera-${name}-${r.from}-to-${r.to}.csv`;
-  if (kind === "gst" || kind === "hsn") {
+  if (kind === "gst" || kind === "hsn" || kind === "credit-notes") {
     const g = await getGstRegister(r);
+    if (kind === "credit-notes")
+      return {
+        filename: file("credit-notes"),
+        csv: toCsv(
+          [
+            "Credit note number",
+            "Date",
+            "Against invoice",
+            "Order number",
+            "Place of supply",
+            "Supply type",
+            "Taxable value (INR)",
+            "CGST (INR)",
+            "SGST (INR)",
+            "IGST (INR)",
+            "Total tax (INR)",
+            "Credit note total (INR)",
+          ],
+          g.creditNotes.map((x) => [
+            x.number,
+            istDate(x.issuedAt),
+            x.invoiceNumber,
+            x.orderNumber,
+            x.placeOfSupply,
+            x.supplyType,
+            rupees(x.taxableValuePaise),
+            rupees(x.cgstPaise),
+            rupees(x.sgstPaise),
+            rupees(x.igstPaise),
+            rupees(x.taxPaise),
+            rupees(x.totalPaise),
+          ]),
+        ),
+      };
     if (kind === "hsn")
       return {
         filename: file("hsn-summary"),

@@ -202,6 +202,18 @@ changes are refused (409) while a request is open.
 
 Admin pages added: `/admin/reports` (`REPORTS_VIEW`), `/admin/invoices` (`ORDERS_VIEW`), `/admin/jobs` (`JOBS_MANAGE`).
 
+### Returns, credit notes, alerts (v2 Phase 11)
+
+| Method | Path                                            | Permission                           | Notes                                                                                                                                                                                                          |
+| ------ | ----------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/admin/requests/:id/refund`                | `RETURNS_MANAGE`                     | Quote for a received return → `{ items[{name, quantity, valuePaise}], itemsPaise, shippingPaise, remainingPaise, paid, refund }`.                                                                              |
+| POST   | `/api/admin/requests/:id/refund`                | `RETURNS_MANAGE` + `PAYMENTS_REFUND` | `{ amountPaise, includeShipping?, note? }` → 201 `{ refundId, status }`. 409 before receipt or if already refunded (one live refund per return, DB-enforced); 400 above the received value (+ fees if chosen). |
+| GET    | `/credit-note/:id` (page)                       | admin, order owner, or guest `?t=`   | Printable credit note (same access rule as `/invoice/:orderNumber`).                                                                                                                                           |
+| GET    | `/api/admin/reports/export?report=credit-notes` | `REPORTS_VIEW`                       | Credit-note register CSV (also part of the GST card on `/admin/reports`).                                                                                                                                      |
+
+`PUT /api/admin/settings` also accepts (optional) `alertEmails: string[]` (≤ 5, de-duplicated, lower-cased),
+`autoIssueInvoice: boolean` and `creditNotePrefix` (2–6 letters).
+
 ### Shipping (v2 Phase 9, `SHIPPING_MANAGE` unless noted)
 
 | Method    | Path                                         | Notes                                                                                                                                                                         |

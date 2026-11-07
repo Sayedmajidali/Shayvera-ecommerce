@@ -561,3 +561,31 @@
   invoices list/uninvoiced, request figures, dashboard midnight bucketing), +2 E2E (`reports.spec.ts`) and axe scans
   of the new/updated admin pages. New admin routes are covered by the RBAC sweep.
 - Results: unit 161 · integration 221 · E2E 44 — all passing; lint, typecheck, production build clean.
+
+## v2 Phase 11 — Returns, refunds, credit notes and notifications ✅
+
+- **Return → refund**: after staff record what came back, "Refund return" proposes the value of the received units at
+  the price paid (line total incl. tax, after discounts, per unit); shipping and COD fees can be added; staff may refund
+  less (deduction after inspection), never more. The refund is linked to the return request; one live refund per return
+  is enforced by a row lock plus a partial unique index (concurrent clicks → 201 + 409). Online payments refund through
+  Razorpay with the Phase 8 safeguards; COD refunds are recorded as manual. No automatic refunds or restocking were added.
+- **Credit notes** (`CreditNote`): issued automatically, in the same transaction that marks a refund processed, when the
+  order has an invoice (one per refund, numbered `CN<FY>/00001` per financial year, prefix in Settings). Tax heads are
+  pro-rated from the invoice and the taxable value takes the remainder, so parts always add up. Immutable snapshot,
+  printable page `/credit-note/:id` (invoice access rule), listed on the order (admin and customer), on Admin → Invoices,
+  and netted in the GST register with its own CSV.
+- **Staff alerts** (`alertEmails` in Settings, ≤ 5): new order, cancellation/return requested, refund failed, courier
+  booking failed / unknown status / lost-damaged-RTO, and a once-a-day low-stock digest. Queued in the business
+  transaction (outbox), deduplicated per event and recipient, rendered at send time, no customer contact details.
+- **Customer notifications**: all order emails now use a branded layout with the store's support contact; delivered,
+  returned and refunded emails link the invoice when one exists; refund email amounts use exact integer formatting
+  (previously floating point).
+- **Invoices**: optional automatic issue on delivery (`invoices.issue` job, idempotent, re-checks the order status).
+- **Customer refund tracking**: the order page lists each refund (amount, processing/refunded/not completed, date, where
+  the money goes, Razorpay reference) with its credit note.
+- **Tests**: +11 integration (`returns-notifications.test.ts`: credit-note maths, quote/limits/refund/credit note/GST net,
+  concurrent refunds of one return, refusal before receipt and no credit note without invoice, PAYMENTS_REFUND required,
+  staff alerts per recipient + dedupe + no PII + branded customer email, alerts off when unset, return-request and
+  failed-refund alerts, daily low-stock digest, settings validation, auto-invoice on/off); return E2E extended through
+  invoice → refund → customer sees refund and opens the credit note.
+- Results: unit 161 · integration 232 · E2E 44 — all passing; lint, typecheck, production build clean.

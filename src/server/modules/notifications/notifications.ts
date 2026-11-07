@@ -5,6 +5,11 @@ import type { JobContext } from "@/server/platform/jobs/runner";
 import { logger } from "@/server/platform/logger";
 import { deliverEmail, emailProvider } from "@/server/modules/notifications/email-service";
 import {
+  isStaffAlertPayload,
+  renderStaffAlert,
+  type StaffAlertPayload,
+} from "@/server/modules/notifications/staff-alerts";
+import {
   ORDER_EMAIL_KINDS,
   renderOrderEmail,
   type OrderEmailKind,
@@ -72,13 +77,30 @@ export async function deliverNotification(notificationId: string, ctx: JobContex
   if (n.status === "SENT") return; // idempotent re-run
 
   if (n.channel !== "EMAIL") throw new PermanentJobError(`Channel ${n.channel} is not configured`);
-  if (!n.template.startsWith("order-") || !isOrderEmailPayload(n.payload))
+  const payload = n.payload;
+  const isOrder = n.template.startsWith("order-") && isOrderEmailPayload(payload);
+  const isStaff = n.template.startsWith("staff-") && isStaffAlertPayload(payload);
+  if (!isOrder && !isStaff)
     throw new PermanentJobError(`Unknown notification template ${n.template}`);
 
   const attempt = n.attempts + 1;
   try {
-    const message = await renderOrderEmail(n.payload.orderId, n.payload.kind, n.payload.extra);
-    if (!message) throw new PermanentJobError("Order no longer exists");
+    const message = isOrder
+      ? await renderOrderEmail(
+          (payload as OrderEmailPayload).orderId,
+          (payload as OrderEmailPayload).kind,
+          (payload as OrderEmailPayload).extra,
+        )
+      : await renderStaffAlert(n.recipient, payload as StaffAlertPayload);
+    if (!message && isOrder) throw new PermanentJobError("Order no longer exists");
+    if (!message) {
+      // Staff alert with nothing left to report (e.g. stock replenished): close without sending.
+      await db.notification.update({
+        where: { id: n.id },
+        data: { status: "FAILED", attempts: attempt, lastError: "Skipped: nothing to report" },
+      });
+      return;
+    }
     const result = await deliverEmail(message);
     await db.$transaction([
       db.notification.update({

@@ -4,6 +4,9 @@ import type { Schedule } from "@/server/platform/jobs/scheduler";
 import { logger } from "@/server/platform/logger";
 import { db } from "@/server/platform/db";
 import { deliverNotification } from "@/server/modules/notifications/notifications";
+import { queueLowStockDigest } from "@/server/modules/notifications/staff-alerts";
+import { generateInvoice } from "@/server/modules/invoices/invoices";
+import { INVOICEABLE_STATUSES } from "@/server/modules/orders/order-status";
 import {
   expireStalePendingOrders,
   processWebhookEvent,
@@ -40,6 +43,16 @@ export function registerAllJobs() {
   registerJob("notification.send", (p, ctx) => deliverNotification(p.notificationId, ctx));
 
   registerJob("shipping.create", (p, ctx) => processShipmentCreation(p.shipmentId, ctx));
+  registerJob("invoices.issue", async (p) => {
+    const o = await db.order.findUnique({ where: { id: p.orderId }, select: { status: true } });
+    // Re-checked at run time: the order may have moved on (e.g. refunded) — still invoiceable then.
+    if (o && INVOICEABLE_STATUSES.includes(o.status))
+      await generateInvoice(p.orderId, { id: null });
+  });
+  registerJob("notifications.low-stock-digest", async () => {
+    const queued = await queueLowStockDigest();
+    if (queued) logger.info("Low-stock digest queued", { recipients: queued });
+  });
   registerJob("shipping.cancel", (p) => cancelShipment(p.shipmentId, p.reason, null));
   registerJob("shipping.webhook", (p) => processCourierWebhook(p.webhookEventId));
   registerJob("shipping.sync-tracking", async () => {
@@ -115,4 +128,6 @@ export const SCHEDULES: Schedule[] = [
   { type: "shipping.sync-tracking", everyMs: 30 * 60_000, payload: {} },
   { type: "maintenance.cleanup", everyMs: 60 * 60_000, payload: {} },
   { type: "inventory.reconcile", everyMs: 60 * 60_000, payload: {} },
+  // Hourly check; the digest itself is deduplicated to one email per India day.
+  { type: "notifications.low-stock-digest", everyMs: 60 * 60_000, payload: {} },
 ];

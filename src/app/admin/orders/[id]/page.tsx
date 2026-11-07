@@ -262,6 +262,16 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                     <p className="text-muted-foreground text-xs">
                       {r.reason} · {dt(r.createdAt)}
                     </p>
+                    {r.creditNote && (
+                      <a
+                        href={`/credit-note/${r.creditNote.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs underline underline-offset-4"
+                      >
+                        Credit note {r.creditNote.number}
+                      </a>
+                    )}
                   </div>
                   <StatusBadge status={r.status} />
                 </div>
@@ -313,6 +323,10 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
                     lines: r.lines as { orderItemId: string; quantity: number }[] | null,
                     resolutionNote: r.resolutionNote,
                     createdAt: r.createdAt.toISOString(),
+                    refund: (() => {
+                      const live = r.refunds.find((x) => x.status !== "FAILED");
+                      return live ? { status: live.status, amountPaise: live.amountPaise } : null;
+                    })(),
                   }))}
                 />
               </CardContent>

@@ -24,6 +24,12 @@ import type { Prisma } from "@prisma/client";
 
 type Order = Prisma.OrderGetPayload<{ include: typeof orderDetailInclude }>;
 
+const REFUND_LABEL = {
+  PENDING: "Processing",
+  PROCESSED: "Refunded",
+  FAILED: "Not completed — our team will contact you",
+} as const;
+
 const fmtDate = (d: Date) =>
   d.toLocaleString("en-IN", {
     day: "numeric",
@@ -267,6 +273,54 @@ export async function OrderDetail({
             <h2 className="mb-3 font-semibold">Shipping to</h2>
             <Address a={order.shippingAddress as AddressSnapshot} />
           </div>
+          {order.refunds.length > 0 && (
+            <div className="bg-card rounded-2xl border p-5 text-sm" data-testid="refunds">
+              <h2 className="mb-3 font-semibold">Refunds</h2>
+              <ul className="grid gap-3">
+                {order.refunds.map((r) => (
+                  <li key={r.id} className="grid gap-0.5">
+                    <div className="flex justify-between gap-3">
+                      <span className="font-medium tabular-nums">{formatINR(r.amountPaise)}</span>
+                      <span
+                        className={
+                          r.status === "PROCESSED"
+                            ? "text-success"
+                            : r.status === "FAILED"
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                        }
+                      >
+                        {REFUND_LABEL[r.status]}
+                      </span>
+                    </div>
+                    <span className="text-muted-foreground text-xs">
+                      {(r.processedAt ?? r.createdAt).toLocaleDateString("en-IN", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                        timeZone: "Asia/Kolkata",
+                      })}
+                      {" · "}
+                      {r.method === "RAZORPAY"
+                        ? "to your original payment method (5–7 business days)"
+                        : "by bank transfer/UPI from our team"}
+                      {r.razorpayRefundId ? ` · Ref. ${r.razorpayRefundId}` : ""}
+                    </span>
+                    {r.creditNote && (
+                      <a
+                        href={`/credit-note/${r.creditNote.id}${token ? `?t=${encodeURIComponent(token)}` : ""}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs underline underline-offset-4"
+                      >
+                        Credit note {r.creditNote.number}
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           {order.invoice && (
             <a
               href={`/invoice/${order.orderNumber}${token ? `?t=${encodeURIComponent(token)}` : ""}`}

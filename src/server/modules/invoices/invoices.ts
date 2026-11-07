@@ -10,6 +10,12 @@ import { splitGst } from "@/server/modules/pricing/pricing";
 import { financialYear, nextSequence } from "@/server/platform/sequence";
 import { INVOICEABLE_STATUSES } from "@/server/modules/orders/order-status";
 
+declare module "@/server/platform/jobs/queue" {
+  interface JobPayloads {
+    "invoices.issue": { orderId: string };
+  }
+}
+
 export type InvoiceLine = {
   description: string;
   sku: string;
@@ -243,7 +249,7 @@ export async function listInvoices(f: z.infer<typeof invoiceListSchema>, pageSiz
         }
       : {}),
   };
-  const [total, invoices, years, uninvoiced] = await Promise.all([
+  const [total, invoices, years, uninvoiced, creditNotes] = await Promise.all([
     db.invoice.count({ where }),
     db.invoice.findMany({
       where,
@@ -270,6 +276,18 @@ export async function listInvoices(f: z.infer<typeof invoiceListSchema>, pageSiz
       take: 20,
       select: { id: true, orderNumber: true, deliveredAt: true, totalPaise: true },
     }),
+    db.creditNote.findMany({
+      orderBy: { issuedAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        number: true,
+        issuedAt: true,
+        amountPaise: true,
+        invoice: { select: { invoiceNumber: true } },
+        order: { select: { id: true, orderNumber: true } },
+      },
+    }),
   ]);
   return {
     total,
@@ -291,5 +309,6 @@ export async function listInvoices(f: z.infer<typeof invoiceListSchema>, pageSiz
     }),
     years: years.map((y) => y.financialYear),
     uninvoiced,
+    creditNotes,
   };
 }

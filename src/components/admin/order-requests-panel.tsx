@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, PackageCheck, Truck, X } from "lucide-react";
+import { Check, IndianRupee, Loader2, PackageCheck, Truck, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { formatINR, paiseToRupeesString, rupeesToPaise } from "@/lib/money";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,16 @@ export type AdminOrderRequest = {
   lines: { orderItemId: string; quantity: number }[] | null;
   resolutionNote: string | null;
   createdAt: string;
+  /** The live (not failed) refund that settles this return, if any. */
+  refund?: { status: string; amountPaise: number } | null;
+};
+
+type RefundQuote = {
+  items: { orderItemId: string; name: string; quantity: number; valuePaise: number }[];
+  itemsPaise: number;
+  shippingPaise: number;
+  remainingPaise: number;
+  paid: boolean;
 };
 
 type Item = { id: string; name: string; variant: string };
@@ -53,6 +65,10 @@ export function OrderRequestsPanel({
   const [busy, setBusy] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<AdminOrderRequest | null>(null);
   const [receiving, setReceiving] = useState<AdminOrderRequest | null>(null);
+  const [refunding, setRefunding] = useState<AdminOrderRequest | null>(null);
+  const [quote, setQuote] = useState<RefundQuote | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [withShipping, setWithShipping] = useState(false);
   const [note, setNote] = useState("");
   const [receipt, setReceipt] = useState<Record<string, { received: string; restock: string }>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -74,6 +90,7 @@ export function OrderRequestsPanel({
         toast.warning("This order has a shipment record — cancel it with the courier.");
       setRejecting(null);
       setReceiving(null);
+      setRefunding(null);
       setNote("");
       router.refresh();
     } catch (err) {
@@ -144,6 +161,41 @@ export function OrderRequestsPanel({
               >
                 <X /> Reject
               </Button>
+            </div>
+          )}
+          {r.type === "RETURN" && r.status === "COMPLETED" && (
+            <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="return-refund">
+              {r.refund ? (
+                <p className="text-sm">
+                  Refund {formatINR(r.refund.amountPaise)} ·{" "}
+                  <StatusBadge status={r.refund.status} />
+                </p>
+              ) : (
+                canDecide &&
+                can("PAYMENTS_REFUND") && (
+                  <Button
+                    size="sm"
+                    disabled={busy !== null}
+                    onClick={async () => {
+                      setRefunding(r);
+                      setQuote(null);
+                      setWithShipping(false);
+                      try {
+                        const q = await apiFetch<RefundQuote>(`/api/admin/requests/${r.id}/refund`);
+                        setQuote(q);
+                        setRefundAmount(
+                          paiseToRupeesString(Math.min(q.itemsPaise, q.remainingPaise)),
+                        );
+                      } catch {
+                        toast.error("Could not load the return value");
+                        setRefunding(null);
+                      }
+                    }}
+                  >
+                    <IndianRupee /> Refund return
+                  </Button>
+                )
+              )}
             </div>
           )}
           {canDecide && r.type === "RETURN" && r.status === "APPROVED" && (
@@ -229,6 +281,114 @@ export function OrderRequestsPanel({
               }
             >
               Reject request
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={refunding !== null} onOpenChange={(o) => !o && setRefunding(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Refund return</DialogTitle>
+            <DialogDescription>
+              Received items at the price paid. Refund less after a deduction if needed — never
+              more. Online payments go back through Razorpay; COD refunds are recorded as paid
+              manually (bank/UPI). A credit note is issued if the order has an invoice.
+            </DialogDescription>
+          </DialogHeader>
+          {!quote ? (
+            <p className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Loader2 className="size-4 animate-spin" /> Loading…
+            </p>
+          ) : !quote.paid ? (
+            <p className="text-sm">
+              This order has no recorded payment, so there is nothing to refund.
+            </p>
+          ) : (
+            <div className="grid gap-4 text-sm">
+              <ul className="grid gap-1">
+                {quote.items.map((i) => (
+                  <li key={i.orderItemId} className="flex justify-between gap-3">
+                    <span>
+                      {i.name} × {i.quantity}
+                    </span>
+                    <span className="tabular-nums">{formatINR(i.valuePaise)}</span>
+                  </li>
+                ))}
+              </ul>
+              {quote.shippingPaise > 0 && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="refund-shipping"
+                    checked={withShipping}
+                    onCheckedChange={(v) => {
+                      const on = v === true;
+                      setWithShipping(on);
+                      setRefundAmount(
+                        paiseToRupeesString(
+                          Math.min(
+                            quote.itemsPaise + (on ? quote.shippingPaise : 0),
+                            quote.remainingPaise,
+                          ),
+                        ),
+                      );
+                    }}
+                  />
+                  <Label htmlFor="refund-shipping" className="font-normal">
+                    Also refund shipping & COD fees ({formatINR(quote.shippingPaise)})
+                  </Label>
+                </div>
+              )}
+              <div className="grid gap-1.5">
+                <Label htmlFor="refund-amount">Amount (₹)</Label>
+                <Input
+                  id="refund-amount"
+                  inputMode="decimal"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  aria-invalid={!!errors.amountPaise}
+                />
+                <FieldError message={errors.amountPaise} />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="refund-note">Note (optional)</Label>
+                <Textarea
+                  id="refund-note"
+                  rows={2}
+                  maxLength={300}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="e.g. one pouch deducted: opened"
+                />
+              </div>
+            </div>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setRefunding(null)}>
+              Back
+            </Button>
+            <Button
+              disabled={busy !== null || !quote?.paid}
+              onClick={() => {
+                if (!refunding) return;
+                let amountPaise: number;
+                try {
+                  amountPaise = rupeesToPaise(refundAmount);
+                } catch {
+                  setErrors({ amountPaise: "Enter an amount like 499.50" });
+                  return;
+                }
+                void run(
+                  `refund-${refunding.id}`,
+                  () =>
+                    apiFetch(`/api/admin/requests/${refunding.id}/refund`, {
+                      body: { amountPaise, includeShipping: withShipping, note },
+                    }),
+                  "Refund started",
+                );
+              }}
+            >
+              Refund {refundAmount ? `₹${refundAmount}` : ""}
             </Button>
           </div>
         </DialogContent>

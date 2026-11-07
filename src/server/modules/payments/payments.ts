@@ -4,6 +4,9 @@ import { db, type Tx } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/server/platform/logger";
 import { queueOrderEmail } from "@/server/modules/notifications/notifications";
+import { issueCreditNoteForRefund } from "@/server/modules/invoices/credit-notes";
+import { queueStaffAlert } from "@/server/modules/notifications/staff-alerts";
+import { formatINRExact } from "@/lib/money";
 import {
   GatewayError,
   paymentGateway,
@@ -694,6 +697,8 @@ export async function createRefund(p: {
   reason: string;
   actor: Actor;
   razorpayPaymentId?: string;
+  /** Return request this refund settles (one live refund per request, enforced by the database). */
+  requestId?: string;
 }) {
   if (!Number.isInteger(p.amountPaise) || p.amountPaise <= 0)
     throw new AppError("VALIDATION_ERROR", "Refund amount must be positive");
@@ -710,32 +715,49 @@ export async function createRefund(p: {
     : (order.payments.find((x) => x.method === "RAZORPAY" && x.status === "CAPTURED") ?? null);
   const method = order.paymentMethod === "RAZORPAY" && captured ? "RAZORPAY" : "MANUAL";
 
-  const refund = await db.$transaction(async (tx) => {
-    const reserved = await tx.$executeRaw`
+  const refund = await db
+    .$transaction(async (tx) => {
+      if (p.requestId) {
+        // Serialise refunds of the same return: the second waits here, then sees the first.
+        await tx.$queryRaw`SELECT id FROM "OrderRequest" WHERE id = ${p.requestId} FOR UPDATE`;
+        const live = await tx.refund.findFirst({
+          where: { requestId: p.requestId, status: { not: "FAILED" } },
+          select: { id: true },
+        });
+        if (live) throw new AppError("CONFLICT", "This return has already been refunded");
+      }
+      const reserved = await tx.$executeRaw`
       UPDATE "Order" SET "refundedPaise" = "refundedPaise" + ${p.amountPaise}
       WHERE id = ${order.id} AND "refundedPaise" + ${p.amountPaise} <= "totalPaise"`;
-    if (reserved === 0) throw new AppError("BUSINESS_RULE", "Refund exceeds the refundable amount");
-    // A full refund of a cancelled/returned/delivered order puts it in REFUND_PENDING until settled.
-    const after = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
-    if (after.refundedPaise >= after.totalPaise && REFUND_STARTABLE.includes(after.status))
-      await transitionOrder(tx, {
-        orderId: order.id,
-        to: "REFUND_PENDING",
-        actor: p.actor,
-        note: p.reason.slice(0, 200),
+      if (reserved === 0)
+        throw new AppError("BUSINESS_RULE", "Refund exceeds the refundable amount");
+      // A full refund of a cancelled/returned/delivered order puts it in REFUND_PENDING until settled.
+      const after = await tx.order.findUniqueOrThrow({ where: { id: order.id } });
+      if (after.refundedPaise >= after.totalPaise && REFUND_STARTABLE.includes(after.status))
+        await transitionOrder(tx, {
+          orderId: order.id,
+          to: "REFUND_PENDING",
+          actor: p.actor,
+          note: p.reason.slice(0, 200),
+        });
+      return tx.refund.create({
+        data: {
+          orderId: order.id,
+          paymentId: captured?.id ?? null,
+          amountPaise: p.amountPaise,
+          reason: p.reason,
+          method,
+          status: "PENDING",
+          createdById: p.actor.id ?? null,
+          requestId: p.requestId ?? null,
+        },
       });
-    return tx.refund.create({
-      data: {
-        orderId: order.id,
-        paymentId: captured?.id ?? null,
-        amountPaise: p.amountPaise,
-        reason: p.reason,
-        method,
-        status: "PENDING",
-        createdById: p.actor.id ?? null,
-      },
+    })
+    .catch((e: unknown) => {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")
+        throw new AppError("CONFLICT", "This return has already been refunded");
+      throw e;
     });
-  });
 
   if (method === "MANUAL") {
     await settleRefund(refund.id, true, null);
@@ -890,6 +912,12 @@ async function settleRefund(refundId: string, success: boolean, failureReason: s
           where: { id: o.id },
           data: { requiresAttention: true, attentionReason: "Refund failed — retry the refund" },
         });
+      await queueStaffAlert(tx, {
+        kind: "refund_failed",
+        orderId: o.id,
+        dedupeKey: refundId,
+        extra: `${formatINRExact(r.amountPaise)}${failureReason ? ` — ${failureReason.slice(0, 150)}` : ""}`,
+      });
       return;
     }
     const order = await tx.order.findUniqueOrThrow({ where: { id: r.orderId } });
@@ -904,6 +932,8 @@ async function settleRefund(refundId: string, success: boolean, failureReason: s
         data: { status: full ? "REFUNDED" : "PARTIALLY_REFUNDED" },
       });
     }
+    // GST: money returned on an invoiced order is documented by a credit note.
+    await issueCreditNoteForRefund(tx, refundId);
     if (full && REFUND_COMPLETABLE.includes(order.status)) {
       await transitionOrder(tx, {
         orderId: order.id,
@@ -915,7 +945,7 @@ async function settleRefund(refundId: string, success: boolean, failureReason: s
     await queueOrderEmail(tx, {
       orderId: order.id,
       kind: "refunded",
-      extra: `₹${(r.amountPaise / 100).toFixed(2)}`,
+      extra: formatINRExact(r.amountPaise),
       dedupeKey: refundId,
     });
   });

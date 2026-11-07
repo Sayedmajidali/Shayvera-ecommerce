@@ -51,6 +51,9 @@ export default async function SettingsPage() {
           defaultPackageBreadthMm: s.defaultPackageBreadthMm,
           defaultPackageHeightMm: s.defaultPackageHeightMm,
           returnWindowDays: s.returnWindowDays,
+          creditNotePrefix: s.creditNotePrefix,
+          autoIssueInvoice: s.autoIssueInvoice,
+          alertEmails: s.alertEmails,
         }}
       />
       <div className="mt-6">

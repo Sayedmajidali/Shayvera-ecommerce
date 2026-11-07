@@ -55,6 +55,9 @@ export type SettingsValues = {
   defaultPackageBreadthMm: number;
   defaultPackageHeightMm: number;
   returnWindowDays: number;
+  creditNotePrefix: string;
+  autoIssueInvoice: boolean;
+  alertEmails: string[];
 };
 
 const r = (p: number | null) => (p === null ? "" : paiseToRupeesString(p));
@@ -71,6 +74,7 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
     minOrder: r(initial.minOrderPaise),
   });
   const [pins, setPins] = useState(initial.codBlockedPincodes.join(", "));
+  const [alerts, setAlerts] = useState(initial.alertEmails.join(", "));
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -130,6 +134,10 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         codBlockedPincodes: pins
           .split(/[\s,]+/)
           .map((p) => p.trim())
+          .filter(Boolean),
+        alertEmails: alerts
+          .split(/[\s,;]+/)
+          .map((a) => a.trim())
           .filter(Boolean),
       };
     } catch {
@@ -367,12 +375,47 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
         <CardContent className="grid gap-5 sm:grid-cols-3">
           {field("orderPrefix", "Order number prefix", { maxLength: 6, className: "uppercase" })}
           {field("invoicePrefix", "Invoice prefix", { maxLength: 6, className: "uppercase" })}
+          {field("creditNotePrefix", "Credit note prefix", {
+            maxLength: 6,
+            className: "uppercase",
+          })}
           {field("lowStockThreshold", "Default low-stock alert", { type: "number", min: 0 })}
           {field("returnWindowDays", "Return window after delivery (days)", {
             type: "number",
             min: 0,
             max: 60,
           })}
+          <div className="flex items-center justify-between gap-3 rounded-lg border p-3 sm:col-span-2">
+            <div>
+              <Label htmlFor="s-autoIssueInvoice">Issue invoices automatically on delivery</Label>
+              <p className="text-muted-foreground text-xs">
+                Otherwise staff issue each invoice from the order page.
+              </p>
+            </div>
+            <Switch
+              id="s-autoIssueInvoice"
+              checked={v.autoIssueInvoice}
+              onCheckedChange={(c) => set("autoIssueInvoice", c)}
+            />
+          </div>
+          <div className="grid gap-2 sm:col-span-3">
+            <Label htmlFor="s-alertEmails">Staff alert emails</Label>
+            <Input
+              id="s-alertEmails"
+              value={alerts}
+              onChange={(e) => setAlerts(e.target.value)}
+              placeholder="orders@yourstore.in, owner@yourstore.in"
+              aria-invalid={Object.keys(errors).some((k) => k.startsWith("alertEmails"))}
+            />
+            <p className="text-muted-foreground text-xs">
+              Up to 5, comma-separated. They get new orders, cancellation and return requests,
+              failed refunds, courier problems and a daily low-stock email. Leave empty to turn
+              alerts off.
+            </p>
+            <FieldError
+              message={Object.entries(errors).find(([k]) => k.startsWith("alertEmails"))?.[1]}
+            />
+          </div>
         </CardContent>
       </Card>
 

@@ -405,30 +405,31 @@ export default async function ReportsPage({ searchParams }: PageProps<"/admin/re
           <div>
             <CardTitle>GST register (invoices issued)</CardTitle>
             <p className="text-muted-foreground mt-1 text-xs">
-              From the invoices&apos; stored snapshots, by invoice date. For your accountant&apos;s
-              review before filing.
+              From the stored invoice and credit-note snapshots, by document date. For your
+              accountant&apos;s review before filing.
             </p>
           </div>
           <div className="flex gap-2">
             <ExportLink report="gst" from={from} to={to} label="Invoices CSV" />
             <ExportLink report="hsn" from={from} to={to} label="HSN CSV" />
+            <ExportLink report="credit-notes" from={from} to={to} label="Credit notes CSV" />
           </div>
         </CardHeader>
         <CardContent className="px-0">
           <Table data-testid="gst-summary">
             <TableHeader>
               <TableRow>
-                <TableHead className="pl-5">Invoices</TableHead>
+                <TableHead className="pl-5">Documents</TableHead>
                 <TableHead className="text-right">Taxable value</TableHead>
                 <TableHead className="text-right">CGST</TableHead>
                 <TableHead className="text-right">SGST</TableHead>
                 <TableHead className="text-right">IGST</TableHead>
-                <TableHead className="pr-5 text-right">Invoice total</TableHead>
+                <TableHead className="pr-5 text-right">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               <TableRow>
-                <TableCell className="pl-5 tabular-nums">{gst.rows.length}</TableCell>
+                <TableCell className="pl-5">{gst.rows.length} invoices</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {formatINR(gst.totals.taxableValuePaise)}
                 </TableCell>
@@ -443,6 +444,42 @@ export default async function ReportsPage({ searchParams }: PageProps<"/admin/re
                 </TableCell>
                 <TableCell className="pr-5 text-right tabular-nums">
                   {formatINR(gst.totals.grandTotalPaise)}
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="pl-5">Less {gst.creditNotes.length} credit notes</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatINR(gst.creditTotals.taxableValuePaise)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatINR(gst.creditTotals.cgstPaise)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatINR(gst.creditTotals.sgstPaise)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatINR(gst.creditTotals.igstPaise)}
+                </TableCell>
+                <TableCell className="pr-5 text-right tabular-nums">
+                  {formatINR(gst.creditTotals.totalPaise)}
+                </TableCell>
+              </TableRow>
+              <TableRow className="font-semibold">
+                <TableCell className="pl-5">Net</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatINR(gst.net.taxableValuePaise)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatINR(gst.net.cgstPaise)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatINR(gst.net.sgstPaise)}
+                </TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {formatINR(gst.net.igstPaise)}
+                </TableCell>
+                <TableCell className="pr-5 text-right tabular-nums">
+                  {formatINR(gst.net.totalPaise)}
                 </TableCell>
               </TableRow>
             </TableBody>

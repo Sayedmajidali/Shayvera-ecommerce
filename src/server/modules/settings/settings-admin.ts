@@ -91,6 +91,19 @@ export const settingsSchema = z
       .max(2000)
       .optional(),
     returnWindowDays: z.coerce.number().int().min(0).max(60).optional(),
+    // Phase 11 (optional: omitted keeps the current value).
+    creditNotePrefix: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z]{2,6}$/, "2–6 letters")
+      .optional(),
+    autoIssueInvoice: z.boolean().optional(),
+    alertEmails: z
+      .array(emailSchema)
+      .max(5, "Up to 5 addresses")
+      .transform((a) => [...new Set(a.map((e) => e.toLowerCase()))])
+      .optional(),
     defaultPackageHeightMm: z.coerce.number().int().min(1, "Must be positive").max(2000).optional(),
   })
   .superRefine((s, ctx) => {

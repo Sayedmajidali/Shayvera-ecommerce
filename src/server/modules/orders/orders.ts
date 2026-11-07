@@ -16,6 +16,7 @@ import {
   STOCK_HOLDING_STATUSES,
 } from "@/server/modules/orders/order-status";
 import { queueOrderEmail } from "@/server/modules/notifications/notifications";
+import { queueStaffAlert } from "@/server/modules/notifications/staff-alerts";
 import type { OrderEmailKind } from "@/server/modules/notifications/order-emails";
 
 const STATUS_EMAIL: Partial<Record<OrderStatus, OrderEmailKind>> = {
@@ -94,6 +95,33 @@ export async function transitionOrder(
   const emailKind = restoring ? undefined : STATUS_EMAIL[p.to];
   if (emailKind)
     await queueOrderEmail(tx, { orderId: order.id, kind: emailKind, dedupeKey: history.id });
+
+  // Staff alerts (outbox, only when alert emails are configured). A new order alerts once per order.
+  if (!restoring) {
+    if (p.to === "CONFIRMED")
+      await queueStaffAlert(tx, { kind: "new_order", orderId: order.id, dedupeKey: order.id });
+    if (p.to === "CANCELLATION_REQUESTED" || p.to === "RETURN_REQUESTED")
+      await queueStaffAlert(tx, {
+        kind: p.to === "CANCELLATION_REQUESTED" ? "cancellation_requested" : "return_requested",
+        orderId: order.id,
+        dedupeKey: history.id,
+        extra: p.note ? `Reason: ${p.note.slice(0, 200)}` : null,
+      });
+  }
+
+  // Optional automatic invoice on delivery (Settings). Issued by a job: idempotent, retried on failure.
+  if (p.to === "DELIVERED" && !restoring) {
+    const s = await tx.storeSettings.findUnique({
+      where: { id: "default" },
+      select: { autoIssueInvoice: true },
+    });
+    if (s?.autoIssueInvoice)
+      await enqueue(
+        "invoices.issue",
+        { orderId: order.id },
+        { tx, dedupeKey: `invoice:${order.id}` },
+      );
+  }
 
   if (p.to === "CONFIRMED") await clearReservationExpiry(tx, order.id);
 
@@ -244,7 +272,10 @@ export const orderDetailInclude = {
       },
     },
   },
-  refunds: { orderBy: { createdAt: "desc" } },
+  refunds: {
+    orderBy: { createdAt: "desc" },
+    include: { creditNote: { select: { id: true, number: true } } },
+  },
   invoice: { select: { invoiceNumber: true, issuedAt: true } },
   requests: { orderBy: { createdAt: "desc" }, take: 5 },
 } satisfies Prisma.OrderInclude;
