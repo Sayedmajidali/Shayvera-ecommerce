@@ -14,6 +14,8 @@ const schema = z
     RAZORPAY_KEY_ID: z.string().default(""),
     RAZORPAY_KEY_SECRET: z.string().default(""),
     RAZORPAY_WEBHOOK_SECRET: z.string().default(""),
+    /** Previous webhook secret, accepted during rotation (remove once Razorpay retries have drained). */
+    RAZORPAY_WEBHOOK_SECRET_PREVIOUS: z.string().default(""),
     PAYMENT_EXPIRY_MINUTES: z.coerce
       .number()
       .int()

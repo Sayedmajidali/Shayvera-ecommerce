@@ -479,3 +479,32 @@
   tests updated where behaviour changed by design (failed payment status, cancellation now via approval, per-event email
   dedupe).
 - Results: unit 134 · integration 183 · E2E 39 — all passing; lint, typecheck, build clean.
+
+## v2 Phase 8 — Razorpay hardening ✅
+
+- **Fast-acknowledged webhooks**: `/api/webhooks/razorpay` verifies the signature, stores the event and enqueues a
+  `payments.webhook` job in one transaction, then answers 200 — processing (including any gateway calls) no longer runs
+  inside Razorpay's 5-second window. Concurrent duplicate deliveries store one event and one job; a redelivered event
+  whose job died is revived; staff can retry unprocessed events from Admin → Payments (audit-logged). Malformed or
+  unsigned payloads store nothing.
+- **Secret rotation**: `RAZORPAY_WEBHOOK_SECRET_PREVIOUS` is accepted alongside the current secret.
+- **No double refunds**: gateway errors are classified as definite (4xx except 408/429 → refund failed, amount
+  released, reason shown to staff) or unknown (timeout/network/5xx/429 → refund stays `PENDING`, amount stays reserved,
+  reconciled against Razorpay's refund list by `notes.refundId`; released only if Razorpay has no such refund after 10
+  minutes). Duplicate-payment refunds check Razorpay's existing refunds before issuing one.
+- **Capture follow-ups as jobs**: reinstating an expired order or refunding an unfulfillable/duplicate capture is
+  enqueued inside the transaction that detects it (never lost, retried on failure).
+- **Scheduled reconciliation** (`payments.reconcile`, every 15 min): unconfirmed online attempts older than 10 minutes
+  (lost callback + missed webhook) and refunds pending for more than 15 minutes.
+- **Payments dashboard** (`/admin/payments`, `PAYMENTS_VIEW`): captured today / 7 days, failed attempts, refunds in
+  progress and refunded in 30 days, webhooks not processed (with Retry), refunds needing a look, recent payments with
+  status/method/search filters.
+- **Verification status**: everything above is tested with the mock gateway and a failure-injecting gateway; a real
+  Razorpay **test-mode** round trip is still unverified (needs `rzp_test_` keys).
+- **Tests**: +10 integration (`payments-hardening.test.ts`: fast ack then worker apply; concurrent duplicates; dead job
+  revived by redelivery and by staff retry, second retry refused; bad signature/malformed store nothing; rotation;
+  timeout after Razorpay created the refund → settled from Razorpay, no second refund, no second refund can slip in;
+  timeout before creation → released only after grace, then refundable; definite rejection → 502 + released;
+  duplicate-refund job re-run refunds once; lost callback + webhook confirmed by reconciliation), +1 E2E (payments
+  dashboard). Existing webhook tests deliver then run the queue as the worker would; the E2E server runs the job loop.
+- Results: unit 134 · integration 193 · E2E 40 — all passing; lint, typecheck clean.

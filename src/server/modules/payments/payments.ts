@@ -4,7 +4,26 @@ import { db, type Tx } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/server/platform/logger";
 import { queueOrderEmail } from "@/server/modules/notifications/notifications";
-import { paymentGateway, type GatewayPayment } from "@/server/modules/payments/gateway";
+import {
+  GatewayError,
+  paymentGateway,
+  type GatewayPayment,
+} from "@/server/modules/payments/gateway";
+import { enqueue, retryJob } from "@/server/platform/jobs/queue";
+import type { JobContext } from "@/server/platform/jobs/runner";
+
+declare module "@/server/platform/jobs/queue" {
+  interface JobPayloads {
+    "payments.webhook": { eventId: string };
+    "payments.capture-followup": {
+      orderId: string;
+      razorpayPaymentId: string;
+      needsReinstate: boolean;
+    };
+    "payments.reconcile-refund": { refundId: string };
+    "payments.reconcile": Record<string, never>;
+  }
+}
 import {
   verifyCheckoutSignature,
   verifyWebhookSignature,
@@ -169,6 +188,19 @@ export async function applyCapturedPayment(
 ): Promise<CaptureOutcome> {
   type Result = { outcome: CaptureOutcome; orderId?: string; needsReinstate?: boolean };
   const result: Result = await db.$transaction(async (tx) => {
+    const r = await decideCapture(tx);
+    // Follow-ups that call the gateway (reinstate or refund) run as a job, enqueued atomically.
+    if (r.outcome === "refund_required" && r.orderId)
+      await enqueue(
+        "payments.capture-followup",
+        { orderId: r.orderId, razorpayPaymentId: gp.id, needsReinstate: Boolean(r.needsReinstate) },
+        { tx, dedupeKey: `capture-followup:${gp.id}` },
+      );
+    return r;
+  });
+  return result.outcome;
+
+  async function decideCapture(tx: Tx): Promise<Result> {
     const payment = await lockPayment(tx, gp.orderId);
     if (!payment) return { outcome: "unknown_order" };
     const order = payment.order;
@@ -240,18 +272,25 @@ export async function applyCapturedPayment(
       },
     });
     return { outcome: "refund_required", orderId: order.id };
-  });
-
-  if (result.outcome === "refund_required" && result.orderId) {
-    if (result.needsReinstate && (await tryReinstateCancelledOrder(result.orderId, gp.id)))
-      return "reinstated";
-    await refundCapturedPayment(
-      result.orderId,
-      gp.id,
-      "Payment received for an order that could not be fulfilled",
-    );
   }
-  return result.outcome;
+}
+
+/**
+ * Job: a capture arrived for an order that cannot simply be confirmed. Expired orders are reinstated
+ * when stock allows; otherwise (or for duplicate payments) the payment is refunded in full.
+ */
+export async function runCaptureFollowUp(p: {
+  orderId: string;
+  razorpayPaymentId: string;
+  needsReinstate: boolean;
+}) {
+  if (p.needsReinstate && (await tryReinstateCancelledOrder(p.orderId, p.razorpayPaymentId)))
+    return;
+  await refundCapturedPayment(
+    p.orderId,
+    p.razorpayPaymentId,
+    "Payment received for an order that could not be fulfilled",
+  );
 }
 
 /**
@@ -449,45 +488,97 @@ function toGatewayPayment(e: Record<string, unknown>): GatewayPayment {
   };
 }
 
+/** Current secret plus, during rotation, the previous one (Razorpay may sign retries with it). */
+function webhookSecrets() {
+  return [process.env.RAZORPAY_WEBHOOK_SECRET, process.env.RAZORPAY_WEBHOOK_SECRET_PREVIOUS].filter(
+    (s): s is string => Boolean(s),
+  );
+}
+
 /**
- * Processes a Razorpay webhook. Signature is verified over the exact raw body.
- * Duplicate deliveries (same x-razorpay-event-id) are acknowledged without reprocessing.
+ * Receives a Razorpay webhook and acknowledges it fast (Razorpay times out after 5 s and resends).
+ * Only verification and storage happen here: the signature is checked over the exact raw body, the
+ * event is stored once (x-razorpay-event-id) and a processing job is enqueued in the same transaction.
+ * A redelivered event that was never processed successfully gets its job revived.
  */
 export async function handleRazorpayWebhook(
   rawBody: string,
   signature: string | null,
   eventIdHeader: string | null,
 ) {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET ?? "";
-  if (!verifyWebhookSignature({ rawBody, signature, secret })) {
+  const secrets = webhookSecrets();
+  if (!secrets.some((secret) => verifyWebhookSignature({ rawBody, signature, secret }))) {
     logger.warn("Rejected webhook with invalid signature");
     throw new AppError("FORBIDDEN", "Invalid webhook signature");
   }
   let body: WebhookBody;
   try {
     body = JSON.parse(rawBody) as WebhookBody;
+    if (typeof body.event !== "string" || typeof body.payload !== "object" || !body.payload)
+      throw new Error("shape");
   } catch {
     throw new AppError("VALIDATION_ERROR", "Malformed webhook payload");
   }
   const eventId =
     eventIdHeader?.slice(0, 100) || `body:${createHash("sha256").update(rawBody).digest("hex")}`;
-  const paymentEntity = body.payload.payment?.entity;
-  const refundEntity = body.payload.refund?.entity;
   const razorpayOrderId =
-    (paymentEntity?.order_id as string | undefined) ??
-    (body.payload.order?.entity.id as string | undefined) ??
+    (body.payload.payment?.entity?.order_id as string | undefined) ??
+    (body.payload.order?.entity?.id as string | undefined) ??
     null;
 
-  const ev = await recordEvent({
-    eventId,
-    eventType: body.event,
-    source: "webhook",
-    signatureValid: true,
-    payload: body,
-    razorpayOrderId,
-  });
-  if (!ev.fresh) return { duplicate: true, event: body.event };
+  const seen = await db.paymentEvent.findUnique({ where: { eventId } });
+  if (seen) {
+    if (!seen.processedAt) {
+      // Earlier processing failed and may have exhausted its retries: give it a fresh set.
+      const job = await db.job.findUnique({ where: { dedupeKey: `rzp-event:${seen.id}` } });
+      if (job && (job.status === "DEAD" || job.status === "SUCCEEDED")) await retryJob(job.id);
+      else if (!job)
+        await enqueue(
+          "payments.webhook",
+          { eventId: seen.id },
+          { dedupeKey: `rzp-event:${seen.id}` },
+        );
+    }
+    return { duplicate: true, event: body.event };
+  }
+  const payment = razorpayOrderId
+    ? await db.payment.findUnique({ where: { razorpayOrderId } })
+    : null;
+  try {
+    await db.$transaction(async (tx) => {
+      const ev = await tx.paymentEvent.create({
+        data: {
+          eventId,
+          eventType: body.event,
+          source: "webhook",
+          signatureValid: true,
+          payload: body as unknown as Prisma.InputJsonValue,
+          paymentId: payment?.id ?? null,
+          orderId: payment?.orderId ?? null,
+        },
+      });
+      await enqueue(
+        "payments.webhook",
+        { eventId: ev.id },
+        { tx, dedupeKey: `rzp-event:${ev.id}`, priority: 10 },
+      );
+    });
+  } catch (error) {
+    // Concurrent delivery of the same event: the other request stored it.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002")
+      return { duplicate: true, event: body.event };
+    throw error;
+  }
+  return { duplicate: false, event: body.event };
+}
 
+/** Job: applies a stored, signature-verified webhook event. Idempotent; failures retry with backoff. */
+export async function processWebhookEvent(id: string, ctx?: JobContext) {
+  const ev = await db.paymentEvent.findUnique({ where: { id } });
+  if (!ev || ev.processedAt) return;
+  const body = ev.payload as unknown as WebhookBody;
+  const paymentEntity = body.payload.payment?.entity;
+  const refundEntity = body.payload.refund?.entity;
   try {
     switch (body.event) {
       case "payment.captured":
@@ -509,11 +600,28 @@ export async function handleRazorpayWebhook(
         logger.info("Ignoring unhandled webhook event", { event: body.event });
     }
     await finishEvent(ev.id);
-    return { duplicate: false, event: body.event };
   } catch (error) {
     await finishEvent(ev.id, error);
+    if (ctx?.isLastAttempt)
+      logger.error("Webhook event could not be processed; retry it from Admin → Payments", {
+        event: body.event,
+        eventId: ev.eventId,
+      });
     throw error;
   }
+}
+
+/** Operator action: process a stored event again (e.g. after fixing data). */
+export async function retryWebhookEvent(id: string) {
+  const ev = await db.paymentEvent.findUnique({ where: { id } });
+  if (!ev) throw new AppError("NOT_FOUND", "Event not found");
+  if (ev.source !== "webhook" || !ev.signatureValid)
+    throw new AppError("INVALID_STATE", "Only verified webhook events can be retried");
+  if (ev.processedAt) throw new AppError("INVALID_STATE", "This event was already processed");
+  const job = await db.job.findUnique({ where: { dedupeKey: `rzp-event:${id}` } });
+  if (job && !(await retryJob(job.id)) && job.status !== "QUEUED" && job.status !== "RUNNING")
+    throw new AppError("CONFLICT", "Could not retry this event");
+  if (!job) await enqueue("payments.webhook", { eventId: id }, { dedupeKey: `rzp-event:${id}` });
 }
 
 // ───────────────────────────── Reconciliation ─────────────────────────────
@@ -644,10 +752,111 @@ export async function createRefund(p: {
     else if (r.status === "failed")
       await settleRefund(refund.id, false, "Gateway reported failure");
   } catch (error) {
-    await settleRefund(refund.id, false, error instanceof Error ? error.message : "Gateway error");
-    throw error;
+    if (error instanceof GatewayError && error.definitive) {
+      // Razorpay refused: nothing was refunded, so the reserved amount is released.
+      await settleRefund(refund.id, false, error.message);
+      throw error;
+    }
+    // Timeout / network / 5xx: the refund may or may not exist at Razorpay. Keep the amount reserved
+    // and the refund PENDING; reconciliation (matched by notes.refundId) decides before any retry.
+    logger.warn("Refund outcome unknown; will reconcile with Razorpay", {
+      refundId: refund.id,
+      error,
+    });
+    await enqueue(
+      "payments.reconcile-refund",
+      { refundId: refund.id },
+      { delayMs: 60_000, dedupeKey: `reconcile-refund:${refund.id}` },
+    );
   }
   return db.refund.findUniqueOrThrow({ where: { id: refund.id } });
+}
+
+const UNKNOWN_REFUND_GRACE_MS = 10 * 60_000;
+
+/**
+ * Settles a PENDING Razorpay refund from Razorpay's own records. A refund whose creation outcome was
+ * unknown is matched by `notes.refundId`; if Razorpay has no such refund after a grace period it was
+ * never created, and the reserved amount is released (so it can be refunded again safely).
+ * Gateway errors propagate so the job retries.
+ */
+export async function reconcileRefund(refundId: string) {
+  const r = await db.refund.findUnique({ where: { id: refundId }, include: { payment: true } });
+  if (!r || r.status !== "PENDING" || r.method !== "RAZORPAY") return "settled" as const;
+  const paymentId = r.payment?.razorpayPaymentId;
+  if (!paymentId) return "pending" as const;
+  const list = await paymentGateway().fetchRefunds(paymentId);
+  const match = r.razorpayRefundId
+    ? list.find((x) => x.id === r.razorpayRefundId)
+    : list.find((x) => x.notes?.refundId === r.id);
+  if (match) {
+    if (!r.razorpayRefundId)
+      await db.refund.update({ where: { id: r.id }, data: { razorpayRefundId: match.id } });
+    if (match.status === "processed") {
+      await settleRefund(r.id, true, null);
+      return "processed" as const;
+    }
+    if (match.status === "failed") {
+      await settleRefund(r.id, false, "Refund failed at Razorpay");
+      return "failed" as const;
+    }
+    return "pending" as const;
+  }
+  if (!r.razorpayRefundId && Date.now() - r.createdAt.getTime() > UNKNOWN_REFUND_GRACE_MS) {
+    await settleRefund(r.id, false, "Refund was not created at Razorpay");
+    return "failed" as const;
+  }
+  return "pending" as const;
+}
+
+/**
+ * Scheduled safety net: confirms online-payment attempts that never reported back (closed tab plus a
+ * missed webhook) and settles refunds still pending at Razorpay.
+ */
+export async function reconcilePayments(limit = 50) {
+  const staleAttemptCutoff = new Date(Date.now() - 10 * 60_000);
+  const attempts = await db.payment.findMany({
+    where: {
+      method: "RAZORPAY",
+      status: { in: ["CREATED", "AUTHORIZED"] },
+      createdAt: { lt: staleAttemptCutoff },
+      order: { status: { in: [...AWAITING_PAYMENT] }, paymentMethod: "RAZORPAY" },
+    },
+    select: { orderId: true },
+    distinct: ["orderId"],
+    take: limit,
+  });
+  let confirmed = 0;
+  for (const a of attempts) {
+    try {
+      if ((await reconcileOrderPayments(a.orderId)) === "paid") confirmed++;
+    } catch (error) {
+      logger.warn("Payment reconciliation failed for an order", { orderId: a.orderId, error });
+    }
+  }
+  const refunds = await db.refund.findMany({
+    where: {
+      status: "PENDING",
+      method: "RAZORPAY",
+      createdAt: { lt: new Date(Date.now() - 15 * 60_000) },
+    },
+    select: { id: true },
+    take: limit,
+  });
+  let settled = 0;
+  for (const r of refunds) {
+    try {
+      if ((await reconcileRefund(r.id)) !== "pending") settled++;
+    } catch (error) {
+      logger.warn("Refund reconciliation failed", { refundId: r.id, error });
+    }
+  }
+  return {
+    attemptsChecked: attempts.length,
+    confirmed,
+    refundsChecked: refunds.length,
+    refundsSettled: settled,
+  };
 }
 
 /** Finalises a refund (idempotent). Failure returns the reserved amount. */
@@ -728,12 +937,21 @@ async function refundCapturedPayment(orderId: string, razorpayPaymentId: string,
       where: { orderId, status: "CAPTURED", NOT: { id: payment.id } },
     });
     if (otherCapture) {
-      // Duplicate payment: refund it outside the order's own accounting.
-      const r = await paymentGateway().refund({
-        paymentId: razorpayPaymentId,
-        amountPaise: payment.amountPaise,
-        notes: { orderNumber: order.orderNumber, reason: "duplicate" },
-      });
+      // Duplicate payment: refund it outside the order's own accounting. This runs as a retryable
+      // job, so first check Razorpay for a refund we already issued for this payment.
+      const gateway = paymentGateway();
+      const existing = (await gateway.fetchRefunds(razorpayPaymentId)).find(
+        (x) => x.notes?.reason === "duplicate",
+      );
+      if (existing && (await db.refund.findUnique({ where: { razorpayRefundId: existing.id } })))
+        return; // already recorded by an earlier run
+      const r =
+        existing ??
+        (await gateway.refund({
+          paymentId: razorpayPaymentId,
+          amountPaise: payment.amountPaise,
+          notes: { orderNumber: order.orderNumber, reason: "duplicate" },
+        }));
       await db.$transaction([
         db.refund.create({
           data: {

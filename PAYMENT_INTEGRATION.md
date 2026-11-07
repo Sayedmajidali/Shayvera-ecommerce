@@ -40,8 +40,10 @@ official `razorpay` Node SDK 2.9.x. Module: `src/server/modules/payments`.
 - Deduplication: `x-razorpay-event-id` stored in `PaymentEvent.eventId` (unique). Razorpay delivers
   _at least once_ and retries non-2xx responses with exponential backoff for 24 h; a duplicate returns 200
   without reprocessing; an event that previously failed mid-processing is retried.
-- Speed: Razorpay treats > 5 s as a timeout and resends. The handler does DB-only work and enqueues anything
-  slow.
+- Speed: Razorpay treats > 5 s as a timeout and resends. **Implemented (Phase 8):** the endpoint only verifies the
+  signature, stores the event and enqueues a `payments.webhook` job in the same transaction, then answers 200.
+  The job applies the event (idempotent: `processedAt` + payment row lock); failures retry with backoff, and a dead
+  job is revived when Razorpay redelivers the event or when staff press "Retry" in Admin → Payments.
 - Ordering: events may arrive out of order (`payment.captured` before `payment.authorized`, `payment.failed`
   for an earlier attempt after a capture). State only moves forward; a captured payment is never downgraded.
 - Handled events: `payment.authorized` (recorded), `payment.captured`, `order.paid`, `payment.failed`,
@@ -66,8 +68,14 @@ official `razorpay` Node SDK 2.9.x. Module: `src/server/modules/payments`.
 2. Call `payments.refund(paymentId, { amount, notes: { refundId } })`.
 3. Settle from the response or later from `refund.processed` / `refund.failed` webhooks; failure releases the
    reserved amount.
-4. If the call's outcome is unknown (timeout), the reconciliation job lists the payment's refunds and matches
-   `notes.refundId` **before** any retry, so a refund is never issued twice.
+4. If the call's outcome is unknown (timeout, network, 5xx, 429) the refund stays `PENDING` with the amount still
+   reserved, and a `payments.reconcile-refund` job lists the payment's refunds (`payments.fetchMultipleRefund`) and
+   matches `notes.refundId` **before** any retry, so a refund is never issued twice. If Razorpay has no such refund
+   10 minutes later it was never created: the refund is marked failed and the amount released. A definite rejection
+   (4xx other than 408/429) fails immediately and releases the amount. Duplicate-payment refunds (run as a retryable
+   job) first check Razorpay's refund list for an existing duplicate refund.
+5. Scheduled `payments.reconcile` (every 15 min): online attempts still unconfirmed after 10 minutes are checked with
+   Razorpay (lost callback + missed webhook), and refunds pending for more than 15 minutes are reconciled.
    COD refunds are recorded as `MANUAL` (bank/UPI transfer done outside the system).
 
 ## 6. Data stored / never stored
@@ -94,6 +102,8 @@ Keep **auto-capture enabled** (Settings → Payment Capture) — the system conf
 | ------------------------------------------------------ | -------------------------------------------------------------------- |
 | Signature algorithms                                   | unit-tested (tamper, wrong secret, raw-body sensitivity)             |
 | Full workflow incl. duplicates, races, delays, refunds | integration-tested with `MockGateway` (signed payloads)              |
+| Fast-ack webhooks, rotation, redelivery, retries       | integration-tested (Phase 8)                                         |
+| Refund timeouts (after/before creation), rejections    | integration-tested with a failure-injecting gateway (Phase 8)        |
 | Browser flow                                           | Playwright with the mock checkout modal                              |
 | Real Razorpay **test mode** round trip                 | **not yet verified** — needs `rzp_test_` keys (see README checklist) |
 | Live mode                                              | not in scope until launch                                            |

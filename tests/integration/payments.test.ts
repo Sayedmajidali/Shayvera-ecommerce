@@ -57,10 +57,11 @@ const verify = (body: unknown) =>
     undefined,
   );
 
-function webhook(
+/** Delivers a signed webhook and (by default) lets the job worker process it, as in production. */
+async function webhook(
   event: string,
   entity: Record<string, unknown>,
-  opts: { eventId?: string; secret?: string; key?: "payment" | "refund" } = {},
+  opts: { eventId?: string; secret?: string; key?: "payment" | "refund"; process?: boolean } = {},
 ) {
   const raw = JSON.stringify({
     entity: "event",
@@ -71,7 +72,7 @@ function webhook(
   const signature = createHmac("sha256", opts.secret ?? "test_webhook_secret")
     .update(raw)
     .digest("hex");
-  return webhookRoute.POST(
+  const res = await webhookRoute.POST(
     new Request("http://localhost:3000/api/webhooks/razorpay", {
       method: "POST",
       headers: {
@@ -82,6 +83,8 @@ function webhook(
       body: raw,
     }),
   );
+  if (opts.process !== false) await drainJobs();
+  return res;
 }
 
 const capturedEntity = (o: { razorpayOrderId: string; amount: number; id?: string }) => ({

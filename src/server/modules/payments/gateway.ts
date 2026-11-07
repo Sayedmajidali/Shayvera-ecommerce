@@ -20,7 +20,24 @@ export type GatewayRefund = {
   id: string;
   amount: number;
   status: "pending" | "processed" | "failed";
+  /** Our notes, echoed back (we send `refundId`). */
+  notes?: Record<string, string>;
 };
+
+/**
+ * A gateway call failed. `definitive` = the provider answered and refused (4xx other than 408/429):
+ * nothing happened and the action may be retried or corrected. Otherwise (timeout, network, 5xx,
+ * rate limit) the outcome is unknown and must be reconciled before any retry of a non-idempotent call.
+ */
+export class GatewayError extends AppError {
+  constructor(
+    message: string,
+    readonly definitive: boolean,
+    readonly providerCode: string | null = null,
+  ) {
+    super("PAYMENT_ERROR", message);
+  }
+}
 
 export interface PaymentGateway {
   readonly name: "razorpay" | "mock";
@@ -37,6 +54,8 @@ export interface PaymentGateway {
     amountPaise: number;
     notes: Record<string, string>;
   }): Promise<GatewayRefund>;
+  /** All refunds of a payment (used to reconcile refunds whose creation outcome was unknown). */
+  fetchRefunds(paymentId: string): Promise<GatewayRefund[]>;
 }
 
 type RzpPayment = {
@@ -87,7 +106,15 @@ class RazorpayGateway implements PaymentGateway {
         code: e.error?.code,
         description: e.error?.description,
       });
-      throw new AppError("PAYMENT_ERROR", "The payment provider is unavailable. Please try again.");
+      const s = e.statusCode ?? 0;
+      const definitive = s >= 400 && s < 500 && s !== 408 && s !== 429;
+      throw new GatewayError(
+        definitive && e.error?.description
+          ? `Razorpay: ${e.error.description}`
+          : "The payment provider is unavailable. Please try again.",
+        definitive,
+        e.error?.code ?? null,
+      );
     }
   }
 
@@ -125,9 +152,34 @@ class RazorpayGateway implements PaymentGateway {
     const rzp = await this.client();
     const r = (await this.call("payments.refund", () =>
       rzp.payments.refund(p.paymentId, { amount: p.amountPaise, speed: "normal", notes: p.notes }),
-    )) as unknown as { id: string; amount: number; status: GatewayRefund["status"] };
-    return { id: r.id, amount: Number(r.amount), status: r.status };
+    )) as unknown as RzpRefund;
+    return mapRefund(r);
   }
+
+  async fetchRefunds(paymentId: string) {
+    const rzp = await this.client();
+    const res = (await this.call("payments.fetchMultipleRefund", () =>
+      rzp.payments.fetchMultipleRefund(paymentId, { count: 100 }),
+    )) as unknown as { items: RzpRefund[] };
+    return res.items.map(mapRefund);
+  }
+}
+
+type RzpRefund = {
+  id: string;
+  amount: number | string;
+  status: GatewayRefund["status"];
+  notes?: Record<string, string> | unknown[];
+};
+
+function mapRefund(r: RzpRefund): GatewayRefund {
+  return {
+    id: r.id,
+    amount: Number(r.amount),
+    status: r.status,
+    // Razorpay returns notes as [] when empty.
+    notes: Array.isArray(r.notes) ? {} : (r.notes ?? {}),
+  };
 }
 
 /**
@@ -189,12 +241,22 @@ export class MockGateway implements PaymentGateway {
     return Promise.all(payments.map((p) => this.fetchPayment(p.razorpayPaymentId!)));
   }
 
-  async refund(p: { paymentId: string; amountPaise: number }) {
-    return {
+  /** Refunds issued by this simulator, per payment (in-memory, like Razorpay's own list). */
+  private refunds = new Map<string, GatewayRefund[]>();
+
+  async refund(p: { paymentId: string; amountPaise: number; notes?: Record<string, string> }) {
+    const r: GatewayRefund = {
       id: `rfnd_mock${randomBytes(8).toString("hex")}`,
       amount: p.amountPaise,
-      status: "processed" as const,
+      status: "processed",
+      notes: p.notes ?? {},
     };
+    this.refunds.set(p.paymentId, [...(this.refunds.get(p.paymentId) ?? []), r]);
+    return r;
+  }
+
+  async fetchRefunds(paymentId: string) {
+    return this.refunds.get(paymentId) ?? [];
   }
 }
 
@@ -226,4 +288,9 @@ export function isOnlinePaymentConfigured(): boolean {
 /** Test hook: reset the cached gateway after changing env. */
 export function resetPaymentGateway() {
   instance = null;
+}
+
+/** Test hook: install a specific gateway (e.g. one that simulates timeouts). */
+export function setPaymentGateway(g: PaymentGateway | null) {
+  instance = g;
 }

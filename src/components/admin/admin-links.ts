@@ -11,6 +11,7 @@ import {
   TicketPercent,
   Users,
   Undo2,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/server/modules/auth/permissions";
@@ -25,6 +26,7 @@ export const ADMIN_LINKS = [
     icon: Undo2,
     permission: "RETURNS_MANAGE",
   },
+  { href: "/admin/payments", label: "Payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
   { href: "/admin/products", label: "Products", icon: Package, permission: "CATALOG_MANAGE" },
   {
     href: "/admin/categories",

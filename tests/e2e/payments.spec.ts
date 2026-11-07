@@ -77,6 +77,12 @@ test.describe("Razorpay payments (test-mode simulator)", () => {
     const dup = await sendWebhook(request, "payment.captured", entity, "evt_e2e_dup");
     expect(await dup.json()).toMatchObject({ duplicate: true });
 
+    // The webhook is acknowledged at once and applied by the background worker.
+    await expect
+      .poll(async () => (await db.order.findUniqueOrThrow({ where: { id: order.id } })).status, {
+        timeout: 20_000,
+      })
+      .toBe("CONFIRMED");
     await page.reload();
     await expect(page.getByTestId("order-status")).toHaveText("Confirmed");
     const history = await db.orderStatusHistory.count({

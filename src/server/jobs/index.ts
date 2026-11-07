@@ -4,7 +4,13 @@ import type { Schedule } from "@/server/platform/jobs/scheduler";
 import { logger } from "@/server/platform/logger";
 import { db } from "@/server/platform/db";
 import { deliverNotification } from "@/server/modules/notifications/notifications";
-import { expireStalePendingOrders } from "@/server/modules/payments/payments";
+import {
+  expireStalePendingOrders,
+  processWebhookEvent,
+  reconcilePayments,
+  reconcileRefund,
+  runCaptureFollowUp,
+} from "@/server/modules/payments/payments";
 import { findInventoryDrift } from "@/server/modules/inventory/inventory";
 
 /**
@@ -26,6 +32,16 @@ export function registerAllJobs() {
   registered = true;
 
   registerJob("notification.send", (p, ctx) => deliverNotification(p.notificationId, ctx));
+
+  registerJob("payments.webhook", (p, ctx) => processWebhookEvent(p.eventId, ctx));
+  registerJob("payments.capture-followup", (p) => runCaptureFollowUp(p));
+  registerJob("payments.reconcile-refund", async (p) => {
+    await reconcileRefund(p.refundId);
+  });
+  registerJob("payments.reconcile", async () => {
+    const r = await reconcilePayments();
+    if (r.attemptsChecked || r.refundsChecked) logger.info("Payment reconciliation", r);
+  });
 
   registerJob("payments.expire-unpaid", async () => {
     const r = await expireStalePendingOrders(200);
@@ -81,6 +97,7 @@ export function registerAllJobs() {
 
 export const SCHEDULES: Schedule[] = [
   { type: "payments.expire-unpaid", everyMs: 2 * 60_000, payload: {} },
+  { type: "payments.reconcile", everyMs: 15 * 60_000, payload: {} },
   { type: "maintenance.cleanup", everyMs: 60 * 60_000, payload: {} },
   { type: "inventory.reconcile", everyMs: 60 * 60_000, payload: {} },
 ];

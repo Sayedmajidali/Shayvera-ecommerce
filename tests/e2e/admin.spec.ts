@@ -188,3 +188,17 @@ test.describe("specifications and packages", () => {
     await expect(specs.getByRole("row", { name: /Grade\s+W320 whole/ })).toBeVisible();
   });
 });
+
+test.describe("payments dashboard", () => {
+  test("shows payment figures and recent payments", async ({ page }) => {
+    await login(page, ADMIN, "/admin/payments");
+    await expect(page.getByRole("heading", { name: "Payments" })).toBeVisible();
+    await expect(page.getByTestId("payment-tiles")).toContainText("Captured today");
+    await expect(
+      page
+        .getByRole("navigation", { name: "Admin" })
+        .first()
+        .getByRole("link", { name: "Payments" }),
+    ).toBeVisible();
+  });
+});

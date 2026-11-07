@@ -16,6 +16,8 @@ export const e2eEnv = {
   BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "e2e-secret-e2e-secret-e2e-secret-1234",
   PAYMENT_GATEWAY: "mock",
   SHIPPING_PROVIDER: "mock",
+  // Webhooks and emails are processed by background jobs; run them inside the test server.
+  JOB_RUNNER: "inline",
   E2E_TEST_MODE: "true",
   RAZORPAY_KEY_ID: "rzp_test_e2e",
   RAZORPAY_KEY_SECRET: "e2e_key_secret",
