@@ -57,4 +57,19 @@ test.describe("accessibility (axe, WCAG 2.1 AA)", () => {
     await page.goto("/admin/products");
     expect(await scan(page)).toEqual([]);
   });
+
+  test("admin reports and operations pages", async ({ page }) => {
+    await login(page, ADMIN, "/admin/reports");
+    for (const path of [
+      "/admin/reports",
+      "/admin/invoices",
+      "/admin/jobs",
+      "/admin/shipments",
+      "/admin/requests",
+      "/admin/staff",
+    ]) {
+      await page.goto(path);
+      expect(await scan(page), path).toEqual([]);
+    }
+  });
 });

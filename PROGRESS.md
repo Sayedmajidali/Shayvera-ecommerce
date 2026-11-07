@@ -532,3 +532,32 @@
   order mapping), +17 integration (`shipping.test.ts`), +1 E2E (`shipping.spec.ts`: pickup location → book → AWB →
   pickup → webhook → customer sees "Out for delivery"; wrong token 401). The admin route sweep covers the new routes.
 - Results: unit 158 · integration 210 · E2E 41 — all passing; lint, typecheck, production build clean.
+
+## v2 Phase 10 — Admin dashboards and reports ✅
+
+- **Reports** (`/admin/reports`, `REPORTS_VIEW`): any period up to 366 days in India-time days (presets: 7/30 days,
+  this/last month, financial year from 1 April). Gross sales, net of refunds, AOV, tax (CGST/SGST/IGST), discounts,
+  shipping and COD fees, cancellation and return rates, daily chart, orders by status, payment methods, products,
+  categories, coupons, sales by state, and a **GST register** built from issued invoices' immutable snapshots (by
+  invoice date) with an HSN summary — labelled for the accountant's review, not as a filing.
+- **CSV exports** (daily, products, categories, states, coupons, GST register, HSN): exact rupee amounts from integer
+  paise, UTF-8 BOM, formula-injection protection (cells starting with `= + - @` are prefixed), audit-logged.
+- **Invoices** (`/admin/invoices`): searchable, by financial year, with delivered orders still lacking an invoice.
+- **Dashboard**: "Needs attention" panel limited to the viewer's permissions — orders flagged, Razorpay webhooks not
+  processed, refunds pending/failed, shipment failures, requests to decide, approved returns awaiting the parcel, dead
+  jobs, delivered orders without an invoice; new Cancelled and Open requests tiles.
+- **Background jobs** (`/admin/jobs`, `JOBS_MANAGE`): worker heartbeat, waiting/overdue, done in 24 h, dead; failing
+  job types; failed/dead list (payloads never shown) with an audit-logged Retry.
+- **Existing dashboards completed**: Shipments — stage counts (booking, failed, AWB, pickup, in transit, out for
+  delivery, delivery failed, delivered, RTO, lost/damaged) and open return pickups; Cancellations & returns — open
+  counts, awaiting receipt, median decision time, refunds in 30 days; Staff — active/pending/disabled, actions per
+  person and per area from the audit log. Navigation gains Invoices, Reports and Background jobs.
+- **Bug fixed**: the dashboard's daily chart bucketed orders with `"placedAt" AT TIME ZONE 'Asia/Kolkata'`, but Prisma
+  stores UTC in `timestamp without time zone`, so orders placed between 00:00 and 05:30 IST were counted on the
+  previous day. Both queries now convert UTC → IST first; regression-tested.
+- **Tests**: +3 unit (`csv.test.ts`), +11 integration (`reports.test.ts`: IST period boundaries, 366-day cap and
+  fallbacks, sales maths incl. state tax split/refunds/coupons, empty period, GST register vs invoice snapshot, CSV
+  amounts and formula escaping, export route permission/audit/400, alerts filtered by permission, job retry + 409,
+  invoices list/uninvoiced, request figures, dashboard midnight bucketing), +2 E2E (`reports.spec.ts`) and axe scans
+  of the new/updated admin pages. New admin routes are covered by the RBAC sweep.
+- Results: unit 161 · integration 221 · E2E 44 — all passing; lint, typecheck, production build clean.

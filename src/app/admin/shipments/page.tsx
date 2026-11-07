@@ -75,6 +75,26 @@ export default async function ShipmentsPage({ searchParams }: PageProps<"/admin/
         />
       </div>
 
+      <nav
+        aria-label="Shipment stages"
+        className="mt-4 flex flex-wrap gap-2 text-sm"
+        data-testid="shipment-groups"
+      >
+        {d.groups.map((g) => (
+          <Link
+            key={g.label}
+            href={`/admin/shipments?status=${g.statuses}`}
+            className="hover:bg-accent rounded-full border px-3 py-1"
+          >
+            {g.label} <span className="font-semibold tabular-nums">{g.count}</span>
+          </Link>
+        ))}
+        <span className="rounded-full border border-dashed px-3 py-1">
+          Return pickups open{" "}
+          <span className="font-semibold tabular-nums">{d.openReturnPickups}</span>
+        </span>
+      </nav>
+
       {d.attention.length > 0 && (
         <Card className="border-destructive/40 mt-6">
           <CardHeader>

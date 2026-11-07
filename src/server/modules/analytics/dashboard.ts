@@ -1,3 +1,4 @@
+import { hasPermission, type Permission } from "@/server/modules/auth/permissions";
 import { db } from "@/server/platform/db";
 import { listLowStock } from "@/server/modules/inventory/inventory";
 import {
@@ -31,7 +32,8 @@ export async function getDashboardStats(range: RangeKey = "30d") {
     pending,
     toShip,
     delivered,
-    attention,
+    cancelled,
+    openRequests,
     lowStock,
     recentOrders,
     trend,
@@ -56,7 +58,8 @@ export async function getDashboardStats(range: RangeKey = "30d") {
     db.order.count({ where: { status: { in: [...AWAITING_PAYMENT] } } }),
     db.order.count({ where: { status: { in: [...BEFORE_HANDOVER, "CANCELLATION_REQUESTED"] } } }),
     db.order.count({ where: { status: "DELIVERED", placedAt: { gte: since } } }),
-    db.order.count({ where: { requiresAttention: true } }),
+    db.order.count({ where: { status: "CANCELLED", placedAt: { gte: since } } }),
+    db.orderRequest.count({ where: { status: "PENDING" } }),
     listLowStock(8),
     db.order.findMany({
       orderBy: { createdAt: "desc" },
@@ -73,7 +76,7 @@ export async function getDashboardStats(range: RangeKey = "30d") {
       },
     }),
     db.$queryRaw<{ day: Date; orders: number; sales: bigint }[]>`
-        SELECT date_trunc('day', "placedAt" AT TIME ZONE 'Asia/Kolkata') AS day,
+        SELECT date_trunc('day', ("placedAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Kolkata') AS day,
                COUNT(*)::int AS orders,
                COALESCE(SUM("totalPaise"), 0)::bigint AS sales
         FROM "Order"
@@ -114,10 +117,150 @@ export async function getDashboardStats(range: RangeKey = "30d") {
     pending,
     toShip,
     delivered,
-    attention,
+    cancelled,
+    openRequests,
     lowStock,
     recentOrders,
     series,
     bestsellers: best.map((b) => ({ ...b, sales: Number(b.sales) })),
   };
+}
+
+export type OperationalAlert = {
+  key: string;
+  count: number;
+  label: string;
+  href: string;
+  severity: "critical" | "warning";
+};
+
+/**
+ * Work that needs a person: payment and courier failures, dead jobs, open customer requests. Only the
+ * queues the viewer may act on are counted (each query runs only when permitted).
+ */
+export async function getOperationalAlerts(permissions: readonly string[]) {
+  const can = (p: Permission) => hasPermission(permissions, p);
+  const now = Date.now();
+  const count = (enabled: boolean, q: () => Promise<number>) =>
+    enabled ? q() : Promise.resolve(0);
+  const [
+    attention,
+    stuckWebhooks,
+    refundsPending,
+    refundsFailed,
+    shipmentIssues,
+    pendingRequests,
+    awaitingReceipt,
+    deadJobs,
+    uninvoiced,
+  ] = await Promise.all([
+    count(can("ORDERS_VIEW"), () => db.order.count({ where: { requiresAttention: true } })),
+    count(can("PAYMENTS_VIEW"), () =>
+      db.paymentEvent.count({
+        where: {
+          source: "webhook",
+          processedAt: null,
+          receivedAt: { lt: new Date(now - 2 * 60_000) },
+        },
+      }),
+    ),
+    count(can("PAYMENTS_VIEW"), () =>
+      db.refund.count({
+        where: { status: "PENDING", createdAt: { lt: new Date(now - 15 * 60_000) } },
+      }),
+    ),
+    count(can("PAYMENTS_VIEW"), () =>
+      db.refund.count({
+        where: { status: "FAILED", createdAt: { gte: new Date(now - 30 * 86_400_000) } },
+      }),
+    ),
+    count(can("SHIPPING_MANAGE"), () =>
+      db.shipment.count({
+        where: {
+          OR: [
+            { needsAttention: true },
+            {
+              status: "FAILED",
+              order: { status: { notIn: ["CANCELLED", "RETURNED", "REFUNDED"] } },
+            },
+          ],
+        },
+      }),
+    ),
+    count(can("RETURNS_MANAGE"), () => db.orderRequest.count({ where: { status: "PENDING" } })),
+    count(can("RETURNS_MANAGE"), () =>
+      db.orderRequest.count({ where: { type: "RETURN", status: "APPROVED" } }),
+    ),
+    count(can("JOBS_MANAGE"), () => db.job.count({ where: { status: "DEAD" } })),
+    count(can("ORDERS_VIEW"), () =>
+      db.order.count({ where: { status: "DELIVERED", invoice: null } }),
+    ),
+  ]);
+  const alerts: OperationalAlert[] = [
+    {
+      key: "attention",
+      count: attention,
+      severity: "critical",
+      href: "/admin/orders?attention=1",
+      label:
+        "orders need attention (payment mismatch, failed refund, late capture or unverified delivery)",
+    },
+    {
+      key: "webhooks",
+      count: stuckWebhooks,
+      severity: "critical",
+      href: "/admin/payments",
+      label: "Razorpay webhooks not processed",
+    },
+    {
+      key: "refunds-pending",
+      count: refundsPending,
+      severity: "warning",
+      href: "/admin/payments",
+      label: "refunds still being confirmed with Razorpay",
+    },
+    {
+      key: "refunds-failed",
+      count: refundsFailed,
+      severity: "critical",
+      href: "/admin/payments",
+      label: "refunds failed in the last 30 days",
+    },
+    {
+      key: "shipments",
+      count: shipmentIssues,
+      severity: "critical",
+      href: "/admin/shipments",
+      label: "shipments failed or need attention",
+    },
+    {
+      key: "requests",
+      count: pendingRequests,
+      severity: "warning",
+      href: "/admin/requests",
+      label: "cancellation or return requests waiting for a decision",
+    },
+    {
+      key: "returns",
+      count: awaitingReceipt,
+      severity: "warning",
+      href: "/admin/requests?status=APPROVED",
+      label: "approved returns waiting to be received",
+    },
+    {
+      key: "jobs",
+      count: deadJobs,
+      severity: "critical",
+      href: "/admin/jobs?status=DEAD",
+      label: "background jobs out of retries",
+    },
+    {
+      key: "invoices",
+      count: uninvoiced,
+      severity: "warning",
+      href: "/admin/invoices",
+      label: "delivered orders without an invoice",
+    },
+  ];
+  return alerts.filter((a) => a.count > 0);
 }

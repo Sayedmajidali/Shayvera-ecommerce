@@ -22,9 +22,12 @@ export type FilterSelect = {
 export function FilterBar({
   placeholder = "Search…",
   selects = [],
+  search = true,
 }: {
   placeholder?: string;
   selects?: FilterSelect[];
+  /** Show the free-text search box (`q`). */
+  search?: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -41,25 +44,27 @@ export function FilterBar({
   };
   return (
     <div className="flex flex-wrap items-center gap-3 border-b p-4">
-      <form
-        className="relative min-w-56 flex-1"
-        onSubmit={(e) => {
-          e.preventDefault();
-          push({ q: String(new FormData(e.currentTarget).get("q") ?? "").trim() || null });
-        }}
-      >
-        <Search
-          className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
-          aria-hidden
-        />
-        <Input
-          name="q"
-          defaultValue={params.get("q") ?? ""}
-          placeholder={placeholder}
-          className="h-9 pl-9"
-          aria-label={placeholder}
-        />
-      </form>
+      {search && (
+        <form
+          className="relative min-w-56 flex-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            push({ q: String(new FormData(e.currentTarget).get("q") ?? "").trim() || null });
+          }}
+        >
+          <Search
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            aria-hidden
+          />
+          <Input
+            name="q"
+            defaultValue={params.get("q") ?? ""}
+            placeholder={placeholder}
+            className="h-9 pl-9"
+            aria-label={placeholder}
+          />
+        </form>
+      )}
       {selects.map((s) => (
         <Select
           key={s.name}

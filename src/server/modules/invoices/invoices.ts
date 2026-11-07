@@ -1,3 +1,5 @@
+import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/server/platform/db";
 import { AppError } from "@/lib/errors";
 import { stateName } from "@/lib/india";
@@ -216,4 +218,78 @@ export async function generateInvoice(
       );
     return invoice;
   });
+}
+
+export const invoiceListSchema = z.object({
+  q: z.string().trim().max(60).optional().catch(undefined),
+  fy: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional()
+    .catch(undefined),
+  page: z.coerce.number().int().min(1).max(10_000).catch(1),
+});
+
+/** Admin → Invoices: issued invoices (newest first) plus delivered orders still without one. */
+export async function listInvoices(f: z.infer<typeof invoiceListSchema>, pageSize = 25) {
+  const where: Prisma.InvoiceWhereInput = {
+    ...(f.fy ? { financialYear: f.fy } : {}),
+    ...(f.q
+      ? {
+          OR: [
+            { invoiceNumber: { contains: f.q, mode: "insensitive" } },
+            { order: { orderNumber: { contains: f.q, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+  const [total, invoices, years, uninvoiced] = await Promise.all([
+    db.invoice.count({ where }),
+    db.invoice.findMany({
+      where,
+      orderBy: { issuedAt: "desc" },
+      skip: (f.page - 1) * pageSize,
+      take: pageSize,
+      select: {
+        id: true,
+        invoiceNumber: true,
+        financialYear: true,
+        issuedAt: true,
+        snapshot: true,
+        order: { select: { id: true, orderNumber: true, status: true } },
+      },
+    }),
+    db.invoice.findMany({
+      distinct: ["financialYear"],
+      select: { financialYear: true },
+      orderBy: { financialYear: "desc" },
+    }),
+    db.order.findMany({
+      where: { status: "DELIVERED", invoice: null },
+      orderBy: { deliveredAt: "asc" },
+      take: 20,
+      select: { id: true, orderNumber: true, deliveredAt: true, totalPaise: true },
+    }),
+  ]);
+  return {
+    total,
+    pageCount: Math.max(1, Math.ceil(total / pageSize)),
+    invoices: invoices.map((i) => {
+      const s = i.snapshot as unknown as InvoiceSnapshot;
+      return {
+        id: i.id,
+        invoiceNumber: i.invoiceNumber,
+        financialYear: i.financialYear,
+        issuedAt: i.issuedAt,
+        order: i.order,
+        buyerName: s.buyer.name,
+        placeOfSupply: s.placeOfSupply.stateName,
+        documentTitle: s.documentTitle,
+        taxPaise: s.totals.taxPaise,
+        grandTotalPaise: s.totals.grandTotalPaise,
+      };
+    }),
+    years: years.map((y) => y.financialYear),
+    uninvoiced,
+  };
 }

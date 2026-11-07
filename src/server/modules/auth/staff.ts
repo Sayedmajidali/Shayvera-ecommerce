@@ -367,3 +367,29 @@ export async function deleteRole(roleId: string, actor: StaffActor) {
     );
   });
 }
+
+/** Admin activity over the last 30 days from the audit log: actions per staff member and by area. */
+export async function staffActivity() {
+  const since = new Date(Date.now() - 30 * 86_400_000);
+  const [perActor, perArea] = await Promise.all([
+    db.adminAuditLog.groupBy({
+      by: ["actorId"],
+      where: { createdAt: { gte: since }, actorId: { not: null } },
+      _count: { _all: true },
+      _max: { createdAt: true },
+    }),
+    db.adminAuditLog.groupBy({
+      by: ["entityType"],
+      where: { createdAt: { gte: since } },
+      _count: { _all: true },
+      orderBy: { _count: { entityType: "desc" } },
+      take: 8,
+    }),
+  ]);
+  return {
+    byActor: Object.fromEntries(
+      perActor.map((a) => [a.actorId!, { actions: a._count._all, lastActionAt: a._max.createdAt }]),
+    ) as Record<string, { actions: number; lastActionAt: Date | null }>,
+    byArea: perArea.map((a) => ({ area: a.entityType, actions: a._count._all })),
+  };
+}

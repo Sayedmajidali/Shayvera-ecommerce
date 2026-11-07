@@ -13,6 +13,9 @@ import {
   Undo2,
   CreditCard,
   Truck,
+  FileText,
+  BarChart3,
+  Cog,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/server/modules/auth/permissions";
@@ -29,6 +32,8 @@ export const ADMIN_LINKS = [
   },
   { href: "/admin/payments", label: "Payments", icon: CreditCard, permission: "PAYMENTS_VIEW" },
   { href: "/admin/shipments", label: "Shipments", icon: Truck, permission: "SHIPPING_MANAGE" },
+  { href: "/admin/invoices", label: "Invoices", icon: FileText, permission: "ORDERS_VIEW" },
+  { href: "/admin/reports", label: "Reports", icon: BarChart3, permission: "REPORTS_VIEW" },
   { href: "/admin/products", label: "Products", icon: Package, permission: "CATALOG_MANAGE" },
   {
     href: "/admin/categories",
@@ -43,6 +48,7 @@ export const ADMIN_LINKS = [
   { href: "/admin/staff", label: "Staff & roles", icon: ShieldCheck, permission: "ADMINS_MANAGE" },
   { href: "/admin/audit-log", label: "Audit log", icon: ScrollText, permission: "AUDIT_VIEW" },
   { href: "/admin/emails", label: "Messages & emails", icon: Mail, permission: "MESSAGES_VIEW" },
+  { href: "/admin/jobs", label: "Background jobs", icon: Cog, permission: "JOBS_MANAGE" },
 ] as const satisfies readonly {
   href: string;
   label: string;

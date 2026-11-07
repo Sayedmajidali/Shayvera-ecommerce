@@ -439,3 +439,42 @@ export async function listRequests(f: z.infer<typeof requestListSchema>, pageSiz
   ]);
   return { total, requests, page: f.page, pageCount: Math.max(1, Math.ceil(total / pageSize)) };
 }
+
+/** Figures for Admin → Cancellations & returns (last 30 days unless stated). */
+export async function requestStats() {
+  const monthAgo = new Date(Date.now() - 30 * 86_400_000);
+  const [open, awaitingReceipt, decided, refunds] = await Promise.all([
+    db.orderRequest.groupBy({ by: ["type"], where: { status: "PENDING" }, _count: { _all: true } }),
+    db.orderRequest.count({ where: { type: "RETURN", status: "APPROVED" } }),
+    db.orderRequest.findMany({
+      where: {
+        resolvedAt: { gte: monthAgo },
+        status: { in: ["APPROVED", "REJECTED", "COMPLETED"] },
+      },
+      select: { status: true, createdAt: true, resolvedAt: true },
+    }),
+    db.refund.aggregate({
+      where: { status: "PROCESSED", processedAt: { gte: monthAgo } },
+      _count: true,
+      _sum: { amountPaise: true },
+    }),
+  ]);
+  const openBy = Object.fromEntries(open.map((o) => [o.type, o._count._all]));
+  const rejected = decided.filter((d) => d.status === "REJECTED").length;
+  const hours = decided
+    .filter((d) => d.resolvedAt)
+    .map((d) => (d.resolvedAt!.getTime() - d.createdAt.getTime()) / 3_600_000)
+    .sort((a, b) => a - b);
+  return {
+    openCancellations: openBy.CANCELLATION ?? 0,
+    openReturns: openBy.RETURN ?? 0,
+    awaitingReceipt,
+    decided30d: decided.length,
+    rejected30d: rejected,
+    /** Median hours from request to decision over the last 30 days (null with no decisions). */
+    medianDecisionHours: hours.length
+      ? Math.round(hours[Math.floor(hours.length / 2)]! * 10) / 10
+      : null,
+    refunds30d: { count: refunds._count, paise: refunds._sum.amountPaise ?? 0 },
+  };
+}

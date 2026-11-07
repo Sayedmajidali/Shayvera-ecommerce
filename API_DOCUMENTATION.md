@@ -193,6 +193,15 @@ changes are refused (409) while a request is open.
 | GET / POST           | `/api/admin/roles`                        | POST `{ name, description?, permissions: AdminPermission[] }` (unknown permissions → 400; duplicates removed).                                                                                                                                                                                                                       |
 | PATCH / DELETE       | `/api/admin/roles/:id`                    | Owner role is fixed (409); built-in roles cannot be renamed or deleted; roles in use cannot be deleted.                                                                                                                                                                                                                              |
 
+### Reports and operations (v2 Phase 10)
+
+| Method | Path                        | Permission     | Notes                                                                                                                                                                                                                       |
+| ------ | --------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/admin/reports/export` | `REPORTS_VIEW` | `report=daily\|products\|categories\|states\|coupons\|gst\|hsn`, `from`, `to` (YYYY-MM-DD, India days, `to` inclusive, max 366 days; default last 30) → `text/csv` attachment (UTF-8 BOM, amounts in rupees). Audit-logged. |
+| POST   | `/api/admin/jobs/:id/retry` | `JOBS_MANAGE`  | Fresh attempts for a `DEAD`/`FAILED` job (409 otherwise). Audit-logged.                                                                                                                                                     |
+
+Admin pages added: `/admin/reports` (`REPORTS_VIEW`), `/admin/invoices` (`ORDERS_VIEW`), `/admin/jobs` (`JOBS_MANAGE`).
+
 ### Shipping (v2 Phase 9, `SHIPPING_MANAGE` unless noted)
 
 | Method    | Path                                         | Notes                                                                                                                                                                         |

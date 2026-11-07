@@ -42,6 +42,10 @@ const MAP: Record<string, Variant> = {
   RTO_DELIVERED: "outline",
   LOST: "destructive",
   DAMAGED: "destructive",
+  QUEUED: "secondary",
+  RUNNING: "brand",
+  DEAD: "destructive",
+  SUCCEEDED: "success",
   CUSTOMER: "secondary",
   ADMIN: "brand",
 };

@@ -10,6 +10,8 @@ import {
   ShoppingBag,
   Truck,
   Users,
+  Undo2,
+  XCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -27,17 +29,25 @@ import { StatTile } from "@/components/admin/stat-tile";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
-import { getDashboardStats, RANGES, type RangeKey } from "@/server/modules/analytics/dashboard";
+import {
+  getDashboardStats,
+  getOperationalAlerts,
+  RANGES,
+  type RangeKey,
+} from "@/server/modules/analytics/dashboard";
 import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
 export default async function AdminDashboard({ searchParams }: PageProps<"/admin">) {
   // Each page authorizes itself: layouts are not re-rendered on client-side navigation.
-  await requireAdminPage("DASHBOARD_VIEW");
+  const admin = await requireAdminPage("DASHBOARD_VIEW");
   const sp = firstValues(await searchParams);
   const range = (sp.range && sp.range in RANGES ? sp.range : "30d") as RangeKey;
-  const s = await getDashboardStats(range);
+  const [s, alerts] = await Promise.all([
+    getDashboardStats(range),
+    getOperationalAlerts(admin.permissions),
+  ]);
   const label = `last ${RANGES[range]} days`;
 
   return (
@@ -47,16 +57,32 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
         description="Live figures from your store database."
         actions={<RangeTabs current={range} />}
       />
-      {s.attention > 0 && (
-        <Link
-          href="/admin/orders?attention=1"
-          className="border-warning/50 bg-warning-soft mb-6 flex items-center gap-3 rounded-xl border p-4 text-sm"
+      {alerts.length > 0 && (
+        <section
+          aria-label="Needs attention"
+          className="mb-6 grid gap-2 rounded-xl border p-4 text-sm"
+          data-testid="ops-alerts"
         >
-          <AlertTriangle className="size-4" /> {s.attention} order(s) need attention (payment
-          mismatch, failed automatic refund or late capture). Review now →
-        </Link>
+          <h2 className="flex items-center gap-2 font-medium">
+            <AlertTriangle className="text-warning size-4" aria-hidden /> Needs attention
+          </h2>
+          <ul className="grid gap-1.5 sm:grid-cols-2">
+            {alerts.map((a) => (
+              <li key={a.key}>
+                <Link href={a.href} className="flex items-center gap-2 hover:underline">
+                  <span
+                    className={`inline-flex min-w-7 justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${a.severity === "critical" ? "bg-destructive-soft text-destructive" : "bg-warning-soft"}`}
+                  >
+                    {a.count}
+                  </span>
+                  {a.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
         <StatTile
           label="Gross sales"
           value={formatINR(s.grossSales)}
@@ -103,6 +129,21 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
           hint={label}
           icon={Package}
           href="/admin/orders?status=DELIVERED"
+        />
+        <StatTile
+          label="Cancelled"
+          value={String(s.cancelled)}
+          hint={label}
+          icon={XCircle}
+          href="/admin/orders?status=CANCELLED"
+        />
+        <StatTile
+          label="Open requests"
+          value={String(s.openRequests)}
+          hint="Cancellations & returns to decide"
+          icon={Undo2}
+          href="/admin/requests"
+          tone={s.openRequests ? "warning" : undefined}
         />
         <StatTile
           label="Active products"

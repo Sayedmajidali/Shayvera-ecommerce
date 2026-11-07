@@ -68,7 +68,8 @@ src/
       returns/         cancellation & return requests
       invoices/        GST invoices
       notifications/   templates, queued delivery, providers/ (dev outbox, …)
-      analytics/       dashboard, reports
+      analytics/       dashboard figures + operational alerts, reports (sales, GST register, CSV exports)
+      operations/      background-job monitoring (admin view of the platform queue)
       settings/        store configuration
       audit/           admin audit log
 ```

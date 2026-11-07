@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Undo2 } from "lucide-react";
+import { Clock, IndianRupee, Undo2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -13,12 +13,13 @@ import {
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import { FilterBar } from "@/components/admin/filter-bar";
 import { AdminPageHeader } from "@/components/admin/page-header";
+import { StatTile } from "@/components/admin/stat-tile";
 import { StatusBadge } from "@/components/admin/status-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import { requireAdminPage } from "@/server/modules/auth/session";
-import { listRequests, requestListSchema } from "@/server/modules/orders/requests";
+import { listRequests, requestListSchema, requestStats } from "@/server/modules/orders/requests";
 
 export const metadata: Metadata = { title: "Cancellations & returns" };
 
@@ -26,16 +27,44 @@ export default async function RequestsPage({ searchParams }: PageProps<"/admin/r
   await requireAdminPage("RETURNS_MANAGE");
   const raw = firstValues(await searchParams);
   const f = requestListSchema.parse(raw);
-  const { requests, total, pageCount } = await listRequests(f);
+  const [{ requests, total, pageCount }, st] = await Promise.all([listRequests(f), requestStats()]);
   return (
     <>
       <AdminPageHeader
         title="Cancellations & returns"
         description="Customer requests waiting for a decision (oldest first). Open an order to approve, reject or record returned items."
       />
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4" data-testid="request-tiles">
+        <StatTile
+          icon={XCircle}
+          label="Cancellations to decide"
+          value={String(st.openCancellations)}
+          hint="Stock stays reserved until decided"
+          tone={st.openCancellations ? "warning" : undefined}
+        />
+        <StatTile
+          icon={Undo2}
+          label="Returns to decide"
+          value={String(st.openReturns)}
+          hint={`${st.awaitingReceipt} approved, waiting for the parcel`}
+          tone={st.openReturns ? "warning" : undefined}
+        />
+        <StatTile
+          icon={Clock}
+          label="Median decision time"
+          value={st.medianDecisionHours === null ? "—" : `${st.medianDecisionHours} h`}
+          hint={`${st.decided30d} decided in 30 days · ${st.rejected30d} rejected`}
+        />
+        <StatTile
+          icon={IndianRupee}
+          label="Refunded (30 days)"
+          value={formatINR(st.refunds30d.paise)}
+          hint={`${st.refunds30d.count} refunds completed`}
+        />
+      </div>
       <Card className="gap-0 py-0">
         <FilterBar
-          placeholder="(filters only)"
+          search={false}
           selects={[
             {
               name: "status",
