@@ -20,6 +20,7 @@ import { formatINR } from "@/lib/money";
 import { firstValues } from "@/lib/search-params";
 import { listCustomers } from "@/server/modules/customers/admin-customers";
 import { requireAdminPage } from "@/server/modules/auth/session";
+import { isPlaceholderEmail } from "@/lib/india";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -77,7 +78,9 @@ export default async function CustomersPage({ searchParams }: PageProps<"/admin/
                     <Link href={`/admin/customers/${c.id}`} className="font-medium hover:underline">
                       {c.name}
                     </Link>
-                    <p className="text-muted-foreground text-xs">{c.email}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {isPlaceholderEmail(c.email) ? "Mobile sign-in (no email)" : c.email}
+                    </p>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{c.phone ?? "—"}</TableCell>
                   <TableCell className="text-muted-foreground">

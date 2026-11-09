@@ -123,7 +123,10 @@ npm run dev
 ```
 
 Open <http://localhost:3000>. Admin dashboard: <http://localhost:3000/admin>.
-Demo customer: `customer@shayvera.local` / `Customer123!`.
+Demo customer: `customer@shayvera.local` / `Customer123!`, or sign in on the **Mobile OTP** tab with
+`9845012345`. In development no SMS is sent: the 6-digit code is printed in the `npm run dev` window as
+`[dev-sms] To +919845012345: 123456 is your Shayvera Foods sign-in code…`. Staff always sign in with email and
+password.
 
 > Next.js runs directly on Windows; only PostgreSQL runs in Docker. If `npm run db:up` fails with
 > `ports are not available ... 5432` (a local PostgreSQL install, or a port range Windows has reserved),
@@ -152,6 +155,8 @@ message. Never commit `.env` / `.env.production`.
 | `SHIPROCKET_API_EMAIL` / `SHIPROCKET_API_PASSWORD`                                      | Shiprocket        | A Shiprocket **API user** (not the main login).                                                              |
 | `SHIPROCKET_WEBHOOK_TOKEN`                                                              | Shiprocket (prod) | Security token configured on the Shiprocket webhook (`x-api-key`).                                           |
 | `SHIPROCKET_BASE_URL`, `SHIPPING_HTTP_TIMEOUT_MS`                                       | no                | API base URL; courier call timeout (10000).                                                                  |
+| `SMS_PROVIDER`                                                                          | prod: `msg91`     | `dev-outbox` (codes printed in the dev server window; phone sign-in off in production) or `msg91`.           |
+| `MSG91_AUTH_KEY` / `MSG91_OTP_TEMPLATE_ID` / `MSG91_OTP_VAR`                            | with `msg91`      | MSG91 API key (secret); DLT-approved OTP Flow template id; its code variable (`otp`).                        |
 | `EMAIL_PROVIDER`                                                                        | prod: `smtp`      | `dev-outbox` (stored, not sent) or `smtp`.                                                                   |
 | `SMTP_URL` / `EMAIL_FROM` / `EMAIL_REPLY_TO`                                            | with `smtp`       | e.g. `smtps://user:pass@host:465`; verified sender; optional reply-to.                                       |
 | `STORAGE_DRIVER`                                                                        | no (`local`)      | `local` (one server) or `s3` (any S3-compatible service; required for more than one instance).               |

@@ -26,6 +26,11 @@ const schema = z
     SMTP_URL: z.string().default(""),
     EMAIL_FROM: z.string().default(""),
     EMAIL_REPLY_TO: z.string().default(""),
+    /** dev-outbox (records + prints codes; phone sign-in disabled in production) or msg91. */
+    SMS_PROVIDER: z.enum(["dev-outbox", "msg91"]).default("dev-outbox"),
+    MSG91_AUTH_KEY: z.string().default(""),
+    MSG91_OTP_TEMPLATE_ID: z.string().default(""),
+    MSG91_OTP_VAR: z.string().default("otp"),
     STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
     S3_ENDPOINT: z.preprocess((v) => (v === "" ? undefined : v), z.url().optional()),
     S3_REGION: z.string().default("auto"),
@@ -65,6 +70,12 @@ const schema = z
         code: "custom",
         path: ["SMTP_URL"],
         message: "EMAIL_PROVIDER=smtp needs SMTP_URL and EMAIL_FROM",
+      });
+    if (v.SMS_PROVIDER === "msg91" && (!v.MSG91_AUTH_KEY || !v.MSG91_OTP_TEMPLATE_ID))
+      ctx.addIssue({
+        code: "custom",
+        path: ["MSG91_AUTH_KEY"],
+        message: "SMS_PROVIDER=msg91 needs MSG91_AUTH_KEY and MSG91_OTP_TEMPLATE_ID",
       });
     if (v.STORAGE_DRIVER === "s3")
       for (const k of [

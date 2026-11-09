@@ -32,15 +32,17 @@ All endpoints are Next.js Route Handlers under `/api`. JSON in, JSON out.
 
 ## Authentication — `/api/auth/*` (Better Auth)
 
-| Method | Path                               | Body                                                    | Notes                                                             |
-| ------ | ---------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------- |
-| POST   | `/api/auth/sign-up/email`          | `{ name, email, password }`                             | Password 8–128 chars, letter + number. Role is always `CUSTOMER`. |
-| POST   | `/api/auth/sign-in/email`          | `{ email, password }`                                   | Rate limited 10/min. Disabled accounts → 403.                     |
-| POST   | `/api/auth/sign-out`               | —                                                       |                                                                   |
-| GET    | `/api/auth/get-session`            | —                                                       | Current session/user.                                             |
-| POST   | `/api/auth/request-password-reset` | `{ email, redirectTo: "/reset-password" }`              | Always succeeds (no enumeration). Email goes to the dev outbox.   |
-| POST   | `/api/auth/reset-password`         | `{ newPassword, token }`                                | Revokes all sessions.                                             |
-| POST   | `/api/auth/change-password`        | `{ currentPassword, newPassword, revokeOtherSessions }` | Signed in.                                                        |
+| Method | Path                               | Body                                                    | Notes                                                                                                                                                |
+| ------ | ---------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/auth/sign-up/email`          | `{ name, email, password }`                             | Password 8–128 chars, letter + number. Role is always `CUSTOMER`.                                                                                    |
+| POST   | `/api/auth/sign-in/email`          | `{ email, password }`                                   | Rate limited 10/min. Disabled accounts → 403.                                                                                                        |
+| POST   | `/api/auth/sign-out`               | —                                                       |                                                                                                                                                      |
+| GET    | `/api/auth/get-session`            | —                                                       | Current session/user.                                                                                                                                |
+| POST   | `/api/auth/phone-number/send-otp`  | `{ phoneNumber }` (`+91XXXXXXXXXX`)                     | Texts a 6-digit code (5 min). 3/min per IP; 30 s and 5/h per number. 503 when SMS is off.                                                            |
+| POST   | `/api/auth/phone-number/verify`    | `{ phoneNumber, code, updatePhoneNumber? }`             | Signs in (creates the customer on first use) or, with `updatePhoneNumber` and a session, links the number. 3 wrong tries burn the code. Staff → 403. |
+| POST   | `/api/auth/request-password-reset` | `{ email, redirectTo: "/reset-password" }`              | Always succeeds (no enumeration). Email goes to the dev outbox.                                                                                      |
+| POST   | `/api/auth/reset-password`         | `{ newPassword, token }`                                | Revokes all sessions.                                                                                                                                |
+| POST   | `/api/auth/change-password`        | `{ currentPassword, newPassword, revokeOtherSessions }` | Signed in.                                                                                                                                           |
 
 There is **no** admin sign-up endpoint. Administrators are created with `npm run admin:create`.
 

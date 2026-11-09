@@ -33,14 +33,14 @@ User 1─* Order 1─* OrderItem
 StoreSettings (singleton row id = "default")
 AdminAuditLog *─1 User
 Sequence (named counters: order numbers, invoice numbers per financial year)
-OutboundEmail, NewsletterSubscriber, ContactMessage, RateLimitBucket
+OutboundEmail, OutboundSms, NewsletterSubscriber, ContactMessage, RateLimitBucket
 ```
 
 ## Tables
 
 | Table                                  | Purpose                                                                                 | Key constraints / indexes                                                                                  |
 | -------------------------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `user`                                 | Better Auth user + `role`, `status`, `phone`                                            | unique `email`                                                                                             |
+| `user`                                 | Better Auth user + `role`, `status`, `phone`; OTP sign-in `phoneNumber` (+91…)          | unique `email`, unique `phoneNumber`                                                                       |
 | `session` / `account` / `verification` | Better Auth                                                                             | unique `token`; FK cascade on user delete                                                                  |
 | `Address`                              | Saved customer addresses (Indian format: `stateCode`, 6-digit `pincode`)                | idx `userId`; cascade on user delete                                                                       |
 | `Category`                             | Hierarchical categories, SEO fields                                                     | unique `slug`; idx `parentId`, `isActive`                                                                  |
@@ -66,6 +66,7 @@ OutboundEmail, NewsletterSubscriber, ContactMessage, RateLimitBucket
 | `AdminAuditLog`                        | Who did what to which entity                                                            | idx (`entityType`,`entityId`), `createdAt`                                                                 |
 | `Sequence`                             | Atomic counters (`UPDATE … RETURNING`)                                                  | PK `key`                                                                                                   |
 | `OutboundEmail`                        | Dev email sink / outbox                                                                 | idx `to`                                                                                                   |
+| `OutboundSms`                          | SMS log (dev: full text incl. code; MSG91: code redacted); drives per-number OTP limits | idx (`to`,`createdAt`)                                                                                     |
 | `RateLimitBucket`                      | Fixed-window counters                                                                   | PK `key`                                                                                                   |
 | `RateLimit` (`rateLimit`)              | Better Auth's own auth-endpoint rate limiter (database storage, managed by Better Auth) | unique `key`                                                                                               |
 | `rateLimit`                            | Better Auth rate-limit storage (auth endpoints)                                         | unique `key`                                                                                               |

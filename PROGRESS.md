@@ -696,3 +696,25 @@ Full re-review against the specification's security (§14) and reliability (§15
   monitoring/alerting plan, webhook requirements, pre-launch verifications and the launch review checklist.
 - Results: unit 185 · integration 254 · E2E 60 (run twice) — all passing; coverage lines 84.6 %; lint,
   typecheck, production build clean; production `npm audit` 0 vulnerabilities.
+
+## Mobile number + OTP sign-in ✅ (dev outbox verified; MSG91 live delivery unverified)
+
+- **Customers sign in with their mobile number and a 6-digit SMS code** (Better Auth 1.7.13 `phone-number`
+  plugin). The first verified code creates the account; new customers are asked for their name. Email + password
+  stays available on a second tab; staff (admin) accounts can only use email + password — an SMS code never opens
+  the admin, checked when the session is created.
+- **Security:** Indian mobiles only (`+91[6-9]XXXXXXXXX`); codes expire in 5 minutes, 3 wrong attempts burn the
+  code, codes are single-use; per-IP limits (3 sends / 10 verifies per minute) plus a per-number throttle (30 s
+  between sends, 5 per hour) against SMS bombing; role/status in the verify body are ignored; numbers can only be
+  attached by verifying a code (`update-user` cannot set one); phone + password and phone password-reset endpoints
+  are disabled (404).
+- **Accounts:** new column `user.phoneNumber` (unique) + `phoneNumberVerified`; phone-only accounts get a
+  non-deliverable placeholder email (`<digits>@phone.invalid`) which is never mailed, never prefilled at checkout
+  and shown as "Mobile sign-in" in the admin. Email customers can add a verified sign-in number on the account
+  page; the password card only shows for accounts that have a password.
+- **SMS providers:** `SMS_PROVIDER=dev-outbox` (stored in `OutboundSms`, code printed in the dev server window;
+  phone sign-in switches off in production) and `msg91` (Flow API, DLT template; the code is never stored or
+  logged, no blind retries). The MSG91 call is tested against a fake HTTP server only.
+- Migration `20261109090000_phone_otp_signin` (additive). Seed gives the demo customer `9845012345`.
+- Tests: integration +19 (`phone-auth.test.ts`), E2E +4 (`phone-login.spec.ts`); full suites green —
+  unit + integration 458, E2E 64.

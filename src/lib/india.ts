@@ -86,3 +86,26 @@ export function gstStateCodeFromGstin(gstin: string): string | undefined {
   const prefix = gstin.slice(0, 2);
   return INDIAN_STATES.find((s) => s.gst === prefix)?.code;
 }
+
+/** E.164 form (+91XXXXXXXXXX) of a valid Indian mobile number, or null. Used as the OTP login id. */
+export function toE164IndianMobile(input: string): string | null {
+  const d = normalizeIndianPhone(input);
+  return /^[6-9]\d{9}$/.test(d) ? `+91${d}` : null;
+}
+
+/** Accounts created by phone sign-in get a non-deliverable placeholder email (RFC 2606 `.invalid`). */
+export const PHONE_PLACEHOLDER_EMAIL_DOMAIN = "phone.invalid";
+
+export function phonePlaceholderEmail(e164: string): string {
+  return `${e164.replace(/\D/g, "")}@${PHONE_PLACEHOLDER_EMAIL_DOMAIN}`;
+}
+
+export function isPlaceholderEmail(email: string | null | undefined): boolean {
+  return !!email && email.toLowerCase().endsWith(`@${PHONE_PLACEHOLDER_EMAIL_DOMAIN}`);
+}
+
+/** Formats +91XXXXXXXXXX as "+91 98450 12345" for display. */
+export function formatIndianMobile(e164: string): string {
+  const d = normalizeIndianPhone(e164);
+  return d.length === 10 ? `+91 ${d.slice(0, 5)} ${d.slice(5)}` : e164;
+}

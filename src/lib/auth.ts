@@ -3,8 +3,11 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
+import { phoneNumber } from "better-auth/plugins/phone-number";
+import { normalizeIndianPhone, phonePlaceholderEmail } from "@/lib/india";
 import { db } from "@/server/platform/db";
 import { sendEmail, escapeHtml } from "@/server/modules/notifications/email-service";
+import { isPhoneOtpEnabled, sendSms } from "@/server/modules/notifications/sms-service";
 
 const appUrl =
   process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -17,6 +20,46 @@ function assertStrongPassword(pw: unknown) {
   if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) {
     throw new APIError("BAD_REQUEST", {
       message: "Password must contain at least one letter and one number",
+    });
+  }
+}
+
+/** Phone sign-in ids are Indian mobiles in E.164 form; the UI normalises before sending. */
+const E164_INDIAN_MOBILE = /^\+91[6-9]\d{9}$/;
+
+/** Phone-number plugin endpoints Shayvera does not use (customers sign in by OTP, never phone+password). */
+const DISABLED_PATHS = new Set([
+  "/sign-in/phone-number",
+  "/phone-number/request-password-reset",
+  "/phone-number/reset-password",
+]);
+
+/** Per-number OTP throttle on top of the per-IP rate limit, so one number cannot be SMS-bombed. */
+const OTP_RESEND_SECONDS = 30;
+const OTP_MAX_PER_HOUR = 5;
+
+async function assertOtpAllowed(phone: unknown) {
+  if (!isPhoneOtpEnabled()) {
+    throw new APIError("SERVICE_UNAVAILABLE", {
+      message: "Sign-in by SMS code is not available right now. Please use email.",
+    });
+  }
+  if (typeof phone !== "string" || !E164_INDIAN_MOBILE.test(phone)) return; // plugin validator rejects
+  const now = Date.now();
+  const [recent, lastHour] = await Promise.all([
+    db.outboundSms.count({
+      where: { to: phone, createdAt: { gt: new Date(now - OTP_RESEND_SECONDS * 1000) } },
+    }),
+    db.outboundSms.count({ where: { to: phone, createdAt: { gt: new Date(now - 3600_000) } } }),
+  ]);
+  if (recent > 0) {
+    throw new APIError("TOO_MANY_REQUESTS", {
+      message: `Please wait ${OTP_RESEND_SECONDS} seconds before requesting another code.`,
+    });
+  }
+  if (lastHour >= OTP_MAX_PER_HOUR) {
+    throw new APIError("TOO_MANY_REQUESTS", {
+      message: "Too many codes requested for this number. Please try again in an hour.",
     });
   }
 }
@@ -81,6 +124,8 @@ export const auth = betterAuth({
       "/sign-up/email": { window: 60, max: 5 },
       "/request-password-reset": { window: 300, max: 5 },
       "/reset-password": { window: 300, max: 10 },
+      "/phone-number/send-otp": { window: 60, max: 3 },
+      "/phone-number/verify": { window: 60, max: 10 },
     },
   },
   advanced: {
@@ -89,6 +134,11 @@ export const auth = betterAuth({
   },
   hooks: {
     before: createAuthMiddleware(async (ctx) => {
+      if (DISABLED_PATHS.has(ctx.path)) throw new APIError("NOT_FOUND");
+      if (ctx.path === "/phone-number/send-otp") {
+        await assertOtpAllowed((ctx.body as { phoneNumber?: unknown } | undefined)?.phoneNumber);
+        return;
+      }
       if (!PASSWORD_PATHS.has(ctx.path)) return;
       const body = (ctx.body ?? {}) as { password?: unknown; newPassword?: unknown };
       assertStrongPassword(body.password);
@@ -98,20 +148,50 @@ export const auth = betterAuth({
   databaseHooks: {
     session: {
       create: {
-        before: async (session) => {
+        before: async (session, ctx) => {
           const user = await db.user.findUnique({
             where: { id: session.userId },
-            select: { status: true },
+            select: { status: true, role: true },
           });
           if (!user || user.status !== "ACTIVE") {
             throw new APIError("FORBIDDEN", { message: "This account has been disabled." });
+          }
+          // Staff always sign in with email + password; an SMS code alone never opens the admin.
+          if (user.role === "ADMIN" && ctx?.path === "/phone-number/verify") {
+            throw new APIError("FORBIDDEN", {
+              message: "Staff accounts sign in with email and password.",
+            });
           }
         },
       },
     },
   },
   telemetry: { enabled: false },
-  plugins: [nextCookies()],
+  plugins: [
+    phoneNumber({
+      otpLength: 6,
+      expiresIn: 5 * 60,
+      allowedAttempts: 3,
+      phoneNumberValidator: (p) => E164_INDIAN_MOBILE.test(p),
+      sendOTP: async ({ phoneNumber: to, code }) => {
+        await sendSms({ to, template: "login-otp", vars: { otp: code } });
+      },
+      // First successful code for a new number creates the customer account. The email is a
+      // non-deliverable placeholder; the customer gives a real email at checkout.
+      signUpOnVerification: {
+        getTempEmail: (p) => phonePlaceholderEmail(p),
+        getTempName: (p) => p,
+      },
+      callbackOnVerification: async ({ phoneNumber: verified, user }) => {
+        // Use the verified number as the delivery contact when none is saved yet.
+        await db.user.updateMany({
+          where: { id: user.id, phone: null },
+          data: { phone: normalizeIndianPhone(verified) },
+        });
+      },
+    }),
+    nextCookies(),
+  ],
 });
 
 export type AuthSession = typeof auth.$Infer.Session;

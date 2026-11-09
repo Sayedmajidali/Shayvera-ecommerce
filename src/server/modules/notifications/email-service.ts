@@ -2,6 +2,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 import { db } from "@/server/platform/db";
 import { logger } from "@/server/platform/logger";
+import { isPlaceholderEmail } from "@/lib/india";
 
 export type EmailMessage = {
   to: string;
@@ -91,6 +92,11 @@ export function resetEmailProvider() {
 
 /** Delivers an email and throws on failure (used by the notification job, which retries). */
 export async function deliverEmail(message: EmailMessage): Promise<EmailDelivery> {
+  // Phone-only accounts have a non-deliverable placeholder address; never try to mail it.
+  if (isPlaceholderEmail(message.to)) {
+    logger.info("Email skipped (phone-only account)", { template: message.template });
+    return { provider: "skipped", messageId: null };
+  }
   const result = await emailProvider().send(message);
   logger.info("Email delivered", {
     to: maskEmail(message.to),

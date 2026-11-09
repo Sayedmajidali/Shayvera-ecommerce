@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/server/modules/auth/session";
 import { getNavCategories } from "@/server/modules/catalog/queries";
 import { getCartItemCount } from "@/server/modules/cart/cart-count";
 import { getStoreSettings } from "@/server/modules/settings/queries";
+import { formatIndianMobile } from "@/lib/india";
 
 export async function SiteHeader() {
   const [user, categories, cartCount, settings] = await Promise.all([
@@ -59,7 +60,15 @@ export async function SiteHeader() {
           <div className="ml-auto flex items-center gap-1">
             <SearchBox className="mr-2 hidden w-56 md:block xl:w-64" />
             {user ? (
-              <UserMenu name={user.name} email={user.email} isAdmin={user.role === "ADMIN"} />
+              <UserMenu
+                name={user.name}
+                email={
+                  user.hasPlaceholderEmail && user.phoneNumber
+                    ? formatIndianMobile(user.phoneNumber)
+                    : user.email
+                }
+                isAdmin={user.role === "ADMIN"}
+              />
             ) : (
               <Button asChild variant="ghost" size="icon" aria-label="Sign in">
                 <Link href="/login">

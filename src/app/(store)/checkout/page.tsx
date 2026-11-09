@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/store/checkout-form";
+import { isPlaceholderEmail } from "@/lib/india";
 import { isOnlinePaymentConfigured } from "@/server/modules/payments/gateway";
 import { getCurrentCartView } from "@/server/modules/cart/cart-page";
 import { getStoreSettings } from "@/server/modules/settings/queries";
@@ -31,7 +32,15 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
       <div className="mt-8">
         <CheckoutForm
           initialView={view}
-          user={user ? { name: user.name, email: user.email, phone: user.phone } : null}
+          user={
+            user
+              ? {
+                  name: user.name === user.phoneNumber ? "" : user.name,
+                  email: isPlaceholderEmail(user.email) ? "" : user.email,
+                  phone: user.phone,
+                }
+              : null
+          }
           savedAddresses={addresses.map((a) => ({
             id: a.id,
             fullName: a.fullName,

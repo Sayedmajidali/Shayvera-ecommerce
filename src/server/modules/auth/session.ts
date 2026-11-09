@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { AppError } from "@/lib/errors";
 import { db } from "@/server/platform/db";
+import { isPlaceholderEmail } from "@/lib/india";
 import {
   ALL_PERMISSIONS,
   hasPermission,
@@ -19,6 +20,10 @@ export type SessionUser = {
   role: "CUSTOMER" | "ADMIN";
   status: "ACTIVE" | "DISABLED";
   phone: string | null;
+  /** Verified sign-in mobile (+91…), or null for email-only accounts. */
+  phoneNumber: string | null;
+  /** True for accounts created by phone sign-in that have no real email yet. */
+  hasPlaceholderEmail: boolean;
   /** Admin permissions from the staff role; empty for customers and role-less admins. */
   permissions: Permission[];
   adminRole: { id: string; name: string } | null;
@@ -46,6 +51,7 @@ export async function getUserFromHeaders(h: Headers): Promise<SessionUser | null
     role?: string;
     status?: string;
     phone?: string | null;
+    phoneNumber?: string | null;
   };
   if (u.status === "DISABLED") return null;
   const isAdmin = u.role === "ADMIN";
@@ -59,6 +65,8 @@ export async function getUserFromHeaders(h: Headers): Promise<SessionUser | null
     role: isAdmin ? "ADMIN" : "CUSTOMER",
     status: "ACTIVE",
     phone: u.phone ?? null,
+    phoneNumber: u.phoneNumber ?? null,
+    hasPlaceholderEmail: isPlaceholderEmail(u.email),
     ...staff,
   };
 }

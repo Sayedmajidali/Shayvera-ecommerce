@@ -21,6 +21,7 @@ export async function listCustomers(
             { name: { contains: f.q, mode: "insensitive" } },
             { email: { contains: f.q, mode: "insensitive" } },
             { phone: { contains: f.q } },
+            { phoneNumber: { contains: f.q } },
           ],
         }
       : {}),

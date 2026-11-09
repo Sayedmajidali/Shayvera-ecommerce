@@ -94,6 +94,7 @@ the process. Full list with defaults: `.env.example` and README → Environment 
 | `RAZORPAY_WEBHOOK_SECRET`                                       | secret set on the Razorpay webhook                                    | yes                   |
 | `SHIPPING_PROVIDER=shiprocket`, `SHIPROCKET_API_EMAIL/PASSWORD` | Shiprocket API user                                                   | yes                   |
 | `SHIPROCKET_WEBHOOK_TOKEN`                                      | random token, also entered in Shiprocket (required in production)     | yes                   |
+| `SMS_PROVIDER=msg91`, `MSG91_AUTH_KEY`, `MSG91_OTP_TEMPLATE_ID` | DLT-registered sender id + approved OTP template (TRAI rules)         | yes                   |
 | `EMAIL_PROVIDER=smtp`, `SMTP_URL`, `EMAIL_FROM`                 | transactional email service, verified sender domain (SPF/DKIM/DMARC)  | yes                   |
 | `STORAGE_DRIVER=s3`, `S3_*`                                     | private bucket; app serves `/media/*`                                 | yes                   |
 | `JOB_RUNNER=worker`                                             | default in production; run the worker process (§4)                    |                       |
@@ -208,13 +209,16 @@ domain; return/refund policy confirmation; reviewed legal pages.
    secret) and record the results in PAYMENT_INTEGRATION.md §8.
 3. Shiprocket: `npm run shipping:verify`; then, with the business's consent, one real booking → label → cancel,
    and a webhook test event (SHIPPING_INTEGRATION.md go-live checklist).
-4. SMTP: password reset and an order confirmation delivered to Gmail/Outlook (SPF/DKIM pass).
-5. Object storage: upload an image, open it through `/media/…` from two web instances.
-6. Backups: automated backups on; restore drill in staging.
-7. Security: items in SECURITY_REVIEW.md §4 accepted or fixed (staff MFA, shorter staff sessions,
+4. SMS: with MSG91 configured, request a sign-in code to two real numbers (different operators) and confirm
+   delivery time and template text. The MSG91 integration is written to its Flow API but **unverified against the
+   live service** (no account during development).
+5. SMTP: password reset and an order confirmation delivered to Gmail/Outlook (SPF/DKIM pass).
+6. Object storage: upload an image, open it through `/media/…` from two web instances.
+7. Backups: automated backups on; restore drill in staging.
+8. Security: items in SECURITY_REVIEW.md §4 accepted or fixed (staff MFA, shorter staff sessions,
    `TRUSTED_PROXY_HOPS`, CSP review); professional penetration test before real payments.
-8. Load test of browse → checkout at expected peak (e.g. k6) against staging.
-9. Switch Razorpay to live keys only after 1–8; place and refund a real low-value order.
+9. Load test of browse → checkout at expected peak (e.g. k6) against staging.
+10. Switch Razorpay to live keys only after 1–9; place and refund a real low-value order.
 
 ## 10. Launch review checklist (when deployment begins — specification §20)
 

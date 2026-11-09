@@ -16,7 +16,8 @@ export function ProfileForm({
   phone,
 }: {
   name: string;
-  email: string;
+  /** Null for phone-only accounts (no real email on file). */
+  email: string | null;
   phone: string | null;
 }) {
   const router = useRouter();
@@ -73,7 +74,12 @@ export function ProfileForm({
       </div>
       <div className="grid gap-2">
         <Label htmlFor="email">Email</Label>
-        <Input id="email" value={email} disabled readOnly />
+        <Input
+          id="email"
+          value={email ?? "Not added — you sign in with your mobile number"}
+          disabled
+          readOnly
+        />
       </div>
       <Button type="submit" disabled={pending} className="justify-self-start">
         {pending ? "Saving…" : "Save changes"}

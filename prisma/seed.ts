@@ -169,13 +169,34 @@ async function seedProducts(categoryIds: Record<string, string>) {
   return created;
 }
 
+const DEMO_PHONE = "+919845012345";
+
 async function seedCustomerAndReviews() {
   const email = "customer@shayvera.local";
   let user = await db.user.findUnique({ where: { email } });
+  // Databases seeded before phone sign-in existed: give the demo customer its sign-in number.
+  if (
+    user &&
+    !user.phoneNumber &&
+    !(await db.user.findUnique({ where: { phoneNumber: DEMO_PHONE } }))
+  ) {
+    user = await db.user.update({
+      where: { id: user.id },
+      data: { phoneNumber: DEMO_PHONE, phoneNumberVerified: true },
+    });
+  }
   if (!user) {
     const id = randomUUID();
     user = await db.user.create({
-      data: { id, email, name: "Ananya Iyer", phone: "9845012345", emailVerified: true },
+      data: {
+        id,
+        email,
+        name: "Ananya Iyer",
+        phone: "9845012345",
+        phoneNumber: DEMO_PHONE,
+        phoneNumberVerified: true,
+        emailVerified: true,
+      },
     });
     await db.account.create({
       data: {
@@ -279,6 +300,9 @@ async function main() {
     `Seed complete: ${Object.keys(categoryIds).length} categories, ${created} new products.`,
   );
   console.log(`Demo customer: customer@shayvera.local / ${DEMO_PASSWORD}`);
+  console.log(
+    `Demo customer mobile sign-in: ${DEMO_PHONE.slice(3)} (the code is printed in the npm run dev window)`,
+  );
   console.log(
     'Create an admin with: npm run admin:create -- --email you@example.com --name "Your Name"',
   );

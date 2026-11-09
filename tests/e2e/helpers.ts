@@ -8,8 +8,40 @@ export const db = new PrismaClient({ datasourceUrl: e2eEnv.DATABASE_URL });
 export const ADMIN = { email: "admin@e2e.test", password: "AdminE2E123!" };
 export const CUSTOMER = { email: "customer@shayvera.local", password: "Customer123!" };
 
+/** Sign-in pages default to mobile OTP; switch to the email form when the tabs are shown. */
+export async function chooseEmailTab(page: Page) {
+  const tab = page.getByRole("tab", { name: "Email & password" });
+  if ((await tab.count()) && (await tab.getAttribute("aria-selected")) !== "true")
+    await tab.click();
+}
+
+/** Signs in with a mobile number, reading the code from the dev SMS outbox. Returns the code. */
+export async function loginWithPhone(page: Page, mobile: string, next?: string) {
+  await page.goto(`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+  await page.getByLabel("Mobile number").fill(mobile);
+  const since = new Date();
+  await page.getByRole("button", { name: "Send code" }).click();
+  await expect(page.getByLabel("6-digit code")).toBeVisible();
+  const to = `+91${mobile.replace(/\D/g, "").slice(-10)}`;
+  let code = "";
+  await expect
+    .poll(async () => {
+      const sms = await db.outboundSms.findFirst({
+        where: { to, createdAt: { gte: new Date(since.getTime() - 2000) } },
+        orderBy: { createdAt: "desc" },
+      });
+      code = /^(\d{6})/.exec(sms?.body ?? "")?.[1] ?? "";
+      return code;
+    })
+    .toMatch(/^\d{6}$/);
+  await page.getByLabel("6-digit code").fill(code);
+  await page.getByRole("button", { name: "Verify & continue" }).click();
+  return code;
+}
+
 export async function login(page: Page, who: { email: string; password: string }, next?: string) {
   await page.goto(`/login${next ? `?next=${encodeURIComponent(next)}` : ""}`);
+  await chooseEmailTab(page);
   await page.getByLabel("Email", { exact: true }).fill(who.email);
   await page.getByLabel("Password", { exact: true }).fill(who.password);
   await page.getByRole("button", { name: "Sign in" }).click();
@@ -19,6 +51,7 @@ export async function login(page: Page, who: { email: string; password: string }
 export async function register(page: Page, name: string) {
   const email = `e2e-${randomUUID().slice(0, 8)}@example.com`;
   await page.goto("/register");
+  await chooseEmailTab(page);
   await page.getByLabel("Full name").fill(name);
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill("Shopper123!");

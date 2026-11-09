@@ -172,19 +172,22 @@ enum RefundMethod {
 // ─────────────────────── Auth (Better Auth) ───────────────────────
 
 model User {
-  id            String     @id
-  name          String
-  email         String     @unique
-  emailVerified Boolean    @default(false)
-  image         String?
-  role          Role       @default(CUSTOMER)
-  status        UserStatus @default(ACTIVE)
-  phone         String?
+  id                  String     @id
+  name                String
+  email               String     @unique
+  emailVerified       Boolean    @default(false)
+  image               String?
+  role                Role       @default(CUSTOMER)
+  status              UserStatus @default(ACTIVE)
+  phone               String?
+  /// Verified mobile number in E.164 form (+91XXXXXXXXXX) used for OTP sign-in. Unique.
+  phoneNumber         String?    @unique
+  phoneNumberVerified Boolean    @default(false)
   /// Staff role (only meaningful when role = ADMIN). Null = no admin permissions (fail closed).
-  adminRoleId   String?
-  adminRole     AdminRole? @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  adminRoleId         String?
+  adminRole           AdminRole? @relation(fields: [adminRoleId], references: [id], onDelete: SetNull)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
 
   sessions     Session[]
   accounts     Account[]
@@ -1036,6 +1039,20 @@ model OutboundEmail {
   text      String
   html      String?
   status    String   @default("SENT_DEV")
+  createdAt DateTime @default(now())
+
+  @@index([to, createdAt])
+}
+
+/// SMS sent (or, in development, recorded instead of sent). Production providers never store OTP codes:
+/// `body` is redacted for templates marked sensitive.
+model OutboundSms {
+  id        String   @id @default(cuid())
+  to        String
+  template  String
+  body      String
+  provider  String
+  status    String
   createdAt DateTime @default(now())
 
   @@index([to, createdAt])

@@ -18,6 +18,7 @@ import { formatINR } from "@/lib/money";
 import { getCustomer } from "@/server/modules/customers/admin-customers";
 import { requireAdminPage } from "@/server/modules/auth/session";
 import { SOLD_STATUSES } from "@/server/modules/orders/order-status";
+import { isPlaceholderEmail } from "@/lib/india";
 
 export const metadata: Metadata = { title: "Customer" };
 
@@ -44,7 +45,7 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
             {c.name} <StatusBadge status={c.status} className="ml-2 align-middle" />
           </h1>
           <p className="text-muted-foreground text-sm">
-            {c.email}
+            {isPlaceholderEmail(c.email) ? "Mobile sign-in (no email)" : c.email}
             {c.phone ? ` · ${c.phone}` : ""} · joined {c.createdAt.toLocaleDateString("en-IN")} ·{" "}
             {c.sessions.length} active session(s)
           </p>
