@@ -794,3 +794,37 @@ animations to settle. JS: `/` 229 KB, `/shop` 241, product 235, cart 230, login 
   readable without JS, and reduced-motion visitors never download it. Used on the home page promo
   ("10% off…", letters rise) and newsletter heading (words blur in). The hero keeps the CSS line reveal (LCP).
 - E2E: lazy-load + split + heading semantics test; suite 71/71; page JS unchanged (`/` 229 KB).
+
+## React Bits batch: 10 components ✅
+
+Installed from the `@react-bits` registry (TS + Tailwind variants) into `src/components/react-bits/`. The shadcn
+CLI could not install this batch (Masonry asks npm for a newer `react-dom` than the pinned React allows), so the
+same registry files were written directly. Local changes: strict-TypeScript fixes and lucide icons instead of
+Hugeicons (one icon library). New dependency: `motion@12.43.0` (CountUp, ScrollVelocity, CodeSlots). ESLint's
+React Compiler advisory rules are relaxed for that vendored folder only.
+
+All are wired through `src/components/bits/` with progressive enhancement (`useEnhance`): the plain, accessible
+version renders on the server, the React Bits component is downloaded only when needed (near the viewport, on first
+interaction, or when its step opens), and decorative ones stay plain for reduced motion.
+
+| Component      | Where                                  | Notes                                                                                  |
+| -------------- | -------------------------------------- | -------------------------------------------------------------------------------------- |
+| StarBorder     | Hero "Shop the pantry"                 | Loads on first interaction                                                             |
+| ShinyText      | `WELCOME10` code, product "New" badges | Brand lime sheen                                                                       |
+| SpotlightCard  | Home value-prop cards                  | Leaf-tinted spotlight                                                                  |
+| TiltedCard     | Home category tiles                    | Next/Image inside, no flip/tooltip                                                     |
+| LogoLoop       | Home trust strip                       | Text + lucide badges driven by settings (no third-party logos/trademarks)              |
+| ScrollVelocity | Home ticker                            | CSS marquee until the first scroll                                                     |
+| Masonry        | Home "From our pantry" gallery         | Real product photos via the image optimiser; tiles open products                       |
+| CountUp        | About page figures                     | Real data: delivered orders, distinct customers, products, average rating (≥3 reviews) |
+| CodeSlots      | OTP sign-in code                       | Keeps the `one-time-code` input (SMS autofill); preloaded while the SMS is sent        |
+| PeekRating     | New "Write a review" form              | New feature: customer reviews (moderated)                                              |
+| Stepper        | Checkout progress                      | Indicator only; the form stays one page                                                |
+
+**New feature — customer reviews:** `POST /api/products/:slug/reviews` (signed-in, 1 per product, editable,
+always re-moderated, verified-purchase flag from delivered orders, rate-limited) and **Admin → Reviews**
+(`CATALOG_MANAGE`; approve/reject, audited, recomputes the product rating from approved reviews only).
+
+Tests: integration +7 (`reviews.test.ts`, incl. store stats), E2E +4 (`react-bits.spec.ts`); totals — unit 185,
+integration 280, E2E 75 incl. 21 axe scans. JS per page: `/` 241 KB, `/shop` 246, product 240, cart 230,
+login 248 (budget 250).

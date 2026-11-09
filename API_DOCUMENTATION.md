@@ -53,11 +53,12 @@ There is **no** admin sign-up endpoint. Administrators are created with `npm run
 
 ## Catalog (public)
 
-| Method | Path                     | Query / notes                                                                                                                                                                                                                 |
-| ------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| GET    | `/api/products`          | `q, category (slug), minPrice, maxPrice (₹), inStock=1, sort (featured\|newest\|price-asc\|price-desc\|bestselling\|rating), page` → `{ items, total, page, pageCount }` (12 per page). Invalid params fall back to defaults. |
-| GET    | `/api/products/:slug`    | Active product with images, variants (price, stock), approved reviews.                                                                                                                                                        |
-| GET    | `/api/search/suggest?q=` | Up to 6 suggestions `{ slug, name, image, pricePaise }`.                                                                                                                                                                      |
+| Method | Path                          | Query / notes                                                                                                                                                                                                                                  |
+| ------ | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/products`               | `q, category (slug), minPrice, maxPrice (₹), inStock=1, sort (featured\|newest\|price-asc\|price-desc\|bestselling\|rating), page` → `{ items, total, page, pageCount }` (12 per page). Invalid params fall back to defaults.                  |
+| GET    | `/api/products/:slug`         | Active product with images, variants (price, stock), approved reviews.                                                                                                                                                                         |
+| POST   | `/api/products/:slug/reviews` | Signed-in customer. `{ rating 1–5, title?, body 10–2000 }` → creates or edits the customer's review (one per product), status `PENDING` until staff approve; `verifiedPurchase` when a delivered order contains the product. 10/hour per user. |
+| GET    | `/api/search/suggest?q=`      | Up to 6 suggestions `{ slug, name, image, pricePaise }`.                                                                                                                                                                                       |
 
 ## Cart
 
@@ -151,6 +152,10 @@ quantities also needs `INVENTORY_MANAGE`.
 `ORDERS_MANAGE`) re-queues a verified webhook event that was not processed (409 if already processed). Refunds whose
 Razorpay outcome is unknown (timeout) stay `PENDING` with the amount reserved until reconciled against Razorpay's refund
 list (matched by `notes.refundId`); a definite Razorpay rejection returns 502 with the reason and releases the amount.
+
+**Reviews (admin, `CATALOG_MANAGE`)**: `PATCH /api/admin/reviews/:id { status: "APPROVED" | "REJECTED" }` — publishes or
+hides a customer review and recomputes the product's `ratingAverage`/`ratingCount` from approved reviews; audited
+(`review.approve` / `review.reject`). UI: Admin → Reviews.
 
 **Requests (admin)**: `GET /api/admin/requests?status=&type=&page=` (default: open requests, oldest first) ·
 `POST /api/admin/requests/:id/approve { note? }` — cancellation → order `CANCELLED` (stock released, or put back if

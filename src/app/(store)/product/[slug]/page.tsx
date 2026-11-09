@@ -18,6 +18,9 @@ import { formatINR } from "@/lib/money";
 import { siteConfig } from "@/lib/site";
 import { getProductBySlug, getRelatedProducts } from "@/server/modules/catalog/queries";
 import { getStoreSettings } from "@/server/modules/settings/queries";
+import { getCurrentUser } from "@/server/modules/auth/session";
+import { getOwnReview } from "@/server/modules/catalog/reviews";
+import { ReviewForm } from "@/components/store/review-form";
 import { productSpecifications } from "@/server/modules/catalog/specifications";
 
 export async function generateMetadata({
@@ -45,10 +48,12 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
   const unavailable = (await searchParams).unavailable === "1";
   const product = await getProductBySlug(slug);
   if (!product) notFound();
-  const [related, settings] = await Promise.all([
+  const [related, settings, user] = await Promise.all([
     getRelatedProducts(product.id, product.category.id),
     getStoreSettings(),
+    getCurrentUser(),
   ]);
+  const ownReview = user ? await getOwnReview(user.id, product.id) : null;
 
   const specs = productSpecifications(product, settings);
   const prices = product.variants.map((v) => v.pricePaise);
@@ -198,7 +203,10 @@ export default async function ProductPage({ params, searchParams }: PageProps<"/
       </div>
 
       <section id="reviews" className="mt-24 scroll-mt-24">
-        <h2 className="heading-display text-3xl">Customer reviews</h2>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className="heading-display text-3xl">Customer reviews</h2>
+          <ReviewForm slug={product.slug} signedIn={!!user} existing={ownReview} />
+        </div>
         {product.reviews.length === 0 ? (
           <p className="text-muted-foreground mt-4">No reviews yet.</p>
         ) : (

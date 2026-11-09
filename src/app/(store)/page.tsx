@@ -1,10 +1,35 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Leaf, Quote, RotateCcw, ShieldCheck, Truck } from "lucide-react";
+import {
+  ArrowRight,
+  BadgeCheck,
+  Banknote,
+  Check,
+  CreditCard,
+  Landmark,
+  Leaf,
+  MapPin,
+  PackageCheck,
+  Quote,
+  RotateCcw,
+  ShieldCheck,
+  Smartphone,
+  Truck,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { ProductGrid } from "@/components/store/product-card";
 import { SplitHeading } from "@/components/motion/split-heading";
+import {
+  Shiny,
+  Spotlight,
+  StarCta,
+  TiltTile,
+  TrustLoop,
+  VelocityTicker,
+  type TrustItem,
+} from "@/components/bits/enhanced";
+import { PantryGallery, type PantryPhoto } from "@/components/bits/pantry-gallery";
 import { RatingStars } from "@/components/store/rating-stars";
 import { formatINR } from "@/lib/money";
 import { getHomeData } from "@/server/modules/catalog/queries";
@@ -51,10 +76,15 @@ function SectionHeading({
 
 const TICKER = ["Spices", "Dry fruits", "Makhana", "Herbal", "Food", "Nuts", "Masalas"];
 
+/** CSS marquee shown first; upgraded to React Bits ScrollVelocity on the first scroll. */
 function Ticker() {
+  return <VelocityTicker words={TICKER.join(" · ") + " ·"} fallback={<CssTicker />} />;
+}
+
+function CssTicker() {
   const items = [...TICKER, ...TICKER];
   return (
-    <div className="marquee-wrap bg-deep text-deep-foreground overflow-hidden py-4" aria-hidden>
+    <div className="marquee-wrap overflow-hidden py-4">
       <div className="marquee">
         {[0, 1].map((copy) => (
           <div key={copy} className="flex shrink-0 items-center">
@@ -86,6 +116,37 @@ export default async function HomePage() {
     await Promise.all([getHomeData(), getStoreSettings()]);
   const heroImages = featured.flatMap((p) => p.images.slice(0, 1)).slice(0, 2);
   const featuredCategories = categories.filter((c) => c.isFeatured).slice(0, 4);
+  // Real product photos for the "From our pantry" gallery (one per product, no duplicates).
+  const seen = new Set<string>();
+  const pantry: PantryPhoto[] = [...featured, ...bestsellers, ...newArrivals]
+    .filter((p) => p.images[0] && !seen.has(p.slug) && seen.add(p.slug))
+    .slice(0, 10)
+    .map((p, i) => ({
+      slug: p.slug,
+      name: p.name,
+      img: p.images[0]!.url,
+      alt: p.images[0]!.alt,
+      tall: i % 3 === 0,
+    }));
+  // Only claims the store can stand behind, driven by its settings.
+  const trust: TrustItem[] = [
+    { label: "Secure payments by Razorpay", icon: <ShieldCheck /> },
+    { label: "UPI", icon: <Smartphone /> },
+    { label: "Credit & debit cards", icon: <CreditCard /> },
+    { label: "Net banking", icon: <Landmark /> },
+    ...(settings.codEnabled ? [{ label: "Cash on Delivery", icon: <Banknote /> }] : []),
+    ...(settings.freeShippingThresholdPaise !== null
+      ? [
+          {
+            label: `Free shipping over ${formatINR(settings.freeShippingThresholdPaise)}`,
+            icon: <Truck />,
+          },
+        ]
+      : []),
+    ...(settings.fssaiLicense ? [{ label: "FSSAI licensed", icon: <BadgeCheck /> }] : []),
+    { label: "Hygienically packed", icon: <PackageCheck /> },
+    { label: "Ships across India", icon: <MapPin /> },
+  ];
 
   return (
     <>
@@ -144,11 +205,9 @@ export default async function HomePage() {
               className="animate-fade-up mt-8 flex flex-wrap gap-3"
               style={{ animationDelay: "500ms" }}
             >
-              <Button asChild size="lg">
-                <Link href="/shop">
-                  Shop the pantry <ArrowRight />
-                </Link>
-              </Button>
+              <StarCta href="/shop">
+                Shop the pantry <ArrowRight />
+              </StarCta>
               <Button asChild size="lg" variant="outline">
                 <Link href="/about">Our promise</Link>
               </Button>
@@ -251,9 +310,9 @@ export default async function HomePage() {
               text: "Sourced responsibly, processed carefully",
             },
           ].map(({ icon: Icon, title, text }) => (
-            <div
+            <Spotlight
               key={title}
-              className="group lift bg-card hover:border-primary/20 flex flex-col items-start gap-3 rounded-2xl border p-4 sm:flex-row sm:p-5"
+              className="group flex flex-col items-start gap-3 p-4 sm:flex-row sm:p-5"
             >
               <div className="bg-leaf-soft text-primary group-hover:bg-primary group-hover:text-primary-foreground flex size-11 shrink-0 items-center justify-center rounded-xl transition-colors duration-300">
                 <Icon
@@ -265,7 +324,7 @@ export default async function HomePage() {
                 <p className="text-sm font-semibold">{title}</p>
                 <p className="text-muted-foreground mt-0.5 text-sm leading-snug">{text}</p>
               </div>
-            </div>
+            </Spotlight>
           ))}
         </div>
       </section>
@@ -281,10 +340,10 @@ export default async function HomePage() {
           />
           <div data-reveal-stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {featuredCategories.map((c) => (
-              <Link
+              <TiltTile
                 key={c.slug}
                 href={`/category/${c.slug}`}
-                className="group lift bg-muted relative aspect-[4/5] overflow-hidden rounded-3xl"
+                className="bg-muted relative aspect-[4/5] rounded-3xl"
               >
                 {c.imageUrl && (
                   <Image
@@ -310,7 +369,7 @@ export default async function HomePage() {
                     <ArrowRight className="size-4" aria-hidden />
                   </span>
                 </div>
-              </Link>
+              </TiltTile>
             ))}
           </div>
         </section>
@@ -352,7 +411,7 @@ export default async function HomePage() {
               <p className="mt-4 max-w-md text-white/75">
                 Use code{" "}
                 <span className="rounded-md border border-dashed border-white/40 bg-white/10 px-2 py-0.5 font-mono font-semibold text-white">
-                  WELCOME10
+                  <Shiny text="WELCOME10" color="#ffffff" shineColor="#d9ee9c" />
                 </span>{" "}
                 at checkout on orders above ₹999.
               </p>
@@ -376,6 +435,24 @@ export default async function HomePage() {
       <section className="container-page pb-20">
         <SectionHeading eyebrow="Just landed" title="New arrivals" href="/shop?sort=newest" />
         <ProductGrid products={newArrivals} />
+      </section>
+
+      {/* From our pantry (React Bits Masonry) */}
+      {pantry.length >= 4 && (
+        <section className="container-page pb-20">
+          <SectionHeading
+            eyebrow="From our pantry"
+            title="A closer look"
+            href="/shop"
+            cta="Shop all"
+          />
+          <PantryGallery photos={pantry} />
+        </section>
+      )}
+
+      {/* Trust strip (React Bits LogoLoop) */}
+      <section className="border-y py-6">
+        <TrustLoop items={trust} />
       </section>
 
       {/* Testimonials */}

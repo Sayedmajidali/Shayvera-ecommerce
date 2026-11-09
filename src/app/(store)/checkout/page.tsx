@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { CheckoutForm } from "@/components/store/checkout-form";
+import { CheckoutProgress } from "@/components/bits/checkout-progress";
 import { isPlaceholderEmail } from "@/lib/india";
 import { isOnlinePaymentConfigured } from "@/server/modules/payments/gateway";
 import { getCurrentCartView } from "@/server/modules/cart/cart-page";
@@ -29,7 +30,8 @@ export default async function CheckoutPage({ searchParams }: PageProps<"/checkou
   return (
     <div className="container-page py-10">
       <h1 className="heading-display text-4xl">Checkout</h1>
-      <div className="mt-8">
+      <div className="mt-6">
+        <CheckoutProgress />
         <CheckoutForm
           initialView={view}
           user={

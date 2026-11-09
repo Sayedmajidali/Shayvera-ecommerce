@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,10 @@ import { formatIndianMobile, toE164IndianMobile } from "@/lib/india";
 import { safeRedirectPath } from "@/lib/safe-redirect";
 
 const RESEND_SECONDS = 30;
+
+// React Bits CodeSlots (uses Motion): downloaded only once a code has been requested.
+const loadCodeSlots = () => import("@/components/react-bits/code-slots");
+const CodeSlots = lazy(loadCodeSlots);
 
 type AuthErr = { status?: number; code?: string; message?: string } | null | undefined;
 
@@ -87,6 +91,7 @@ export function PhoneOtpForm({
   }, [step]);
 
   async function sendCode(target: string) {
+    void loadCodeSlots(); // start fetching the code input while the SMS is on its way
     setPending(true);
     setError(null);
     const { error } = await authClient.phoneNumber.sendOtp({ phoneNumber: target });
@@ -204,20 +209,49 @@ export function PhoneOtpForm({
           </button>
         </p>
         <div className="grid gap-2">
-          <Label htmlFor="otp-code">6-digit code</Label>
-          <Input
-            ref={codeRef}
-            id="otp-code"
-            name="code"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            className="text-center font-mono text-lg tracking-[0.5em]"
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            aria-invalid={!!error}
-            required
-          />
+          <p className="text-sm font-medium" aria-hidden>
+            6-digit code
+          </p>
+          {/* React Bits CodeSlots (lazy); a plain one-time-code input until it has loaded. */}
+          <Suspense
+            fallback={
+              <Input
+                ref={codeRef}
+                aria-label="6-digit code"
+                name="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                className="text-center font-mono text-lg tracking-[0.5em]"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                aria-invalid={!!error}
+                required
+              />
+            }
+          >
+            <CodeSlots
+              length={6}
+              value={code}
+              onChange={(v) => {
+                setCode(v);
+                if (error) setError(null);
+              }}
+              status={error ? "error" : "idle"}
+              autoFocus
+              ariaLabel="6-digit code"
+              // Brand palette: empty slots soft green, filled slots lotus green with white digits.
+              accentColor="#0c764e"
+              digitColor="#ffffff"
+              slotColor="#eef2e4"
+              inkColor="#0c764e"
+              dangerColor="#c0362c"
+              slotSize={48}
+              gap={8}
+              radius={12}
+              className="justify-self-start"
+            />
+          </Suspense>
         </div>
         <FieldError message={error ?? undefined} />
         <Button type="submit" size="lg" disabled={pending}>

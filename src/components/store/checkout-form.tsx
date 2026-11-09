@@ -222,7 +222,11 @@ export function CheckoutForm({
     <form onSubmit={submit} noValidate className="grid gap-10 lg:grid-cols-[1fr_400px]">
       {dialog}
       <div className="grid gap-8">
-        <section className="bg-card rounded-2xl border p-6">
+        <section
+          id="checkout-contact"
+          data-checkout-step="1"
+          className="bg-card scroll-mt-28 rounded-2xl border p-6"
+        >
           <h2 className="text-lg font-semibold">Contact</h2>
           {!user && (
             <p className="text-muted-foreground mt-1 text-sm">
@@ -262,7 +266,11 @@ export function CheckoutForm({
           </div>
         </section>
 
-        <section className="bg-card rounded-2xl border p-6">
+        <section
+          id="checkout-address"
+          data-checkout-step="1"
+          className="bg-card scroll-mt-28 rounded-2xl border p-6"
+        >
           <h2 className="text-lg font-semibold">Shipping address</h2>
           {savedAddresses.length > 0 && (
             <RadioGroup
@@ -355,7 +363,11 @@ export function CheckoutForm({
           )}
         </section>
 
-        <section className="bg-card rounded-2xl border p-6">
+        <section
+          id="checkout-payment"
+          data-checkout-step="2"
+          className="bg-card scroll-mt-28 rounded-2xl border p-6"
+        >
           <h2 className="text-lg font-semibold">Payment</h2>
           <RadioGroup
             value={method}
@@ -423,7 +435,11 @@ export function CheckoutForm({
         </section>
       </div>
 
-      <aside className="bg-card h-fit rounded-2xl border p-6 lg:sticky lg:top-24">
+      <aside
+        id="checkout-review"
+        data-checkout-step="3"
+        className="bg-card h-fit scroll-mt-28 rounded-2xl border p-6 lg:sticky lg:top-24"
+      >
         <h2 className="text-lg font-semibold">Order summary</h2>
         <ul className="mt-5 grid gap-4">
           {lines.map((l) => (

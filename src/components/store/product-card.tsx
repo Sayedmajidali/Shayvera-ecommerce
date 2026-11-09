@@ -7,6 +7,7 @@ import { Price } from "@/components/store/price";
 import { RatingStars } from "@/components/store/rating-stars";
 import { WishlistButton } from "@/components/store/wishlist";
 import { QuickViewButton } from "@/components/store/quick-view-store";
+import { Shiny } from "@/components/bits/enhanced";
 import type { ProductCardData } from "@/server/modules/catalog/queries";
 
 export function ProductCard({
@@ -60,7 +61,7 @@ export function ProductCard({
           {product.inStock && product.compareAtPaise && <Badge variant="brand">Sale</Badge>}
           {product.inStock && product.isNew && !product.compareAtPaise && (
             <Badge variant="outline" className="bg-card">
-              New
+              <Shiny text="New" color="#183d2e" shineColor="#a4c848" speed={2.5} />
             </Badge>
           )}
         </div>
