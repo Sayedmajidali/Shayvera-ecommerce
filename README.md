@@ -125,8 +125,10 @@ npm run dev
 Open <http://localhost:3000>. Admin dashboard: <http://localhost:3000/admin>.
 Demo customer: `customer@shayvera.local` / `Customer123!`.
 
-> Next.js runs directly on Windows; only PostgreSQL runs in Docker. If port 5432 is already taken by a local
-> PostgreSQL install, stop that service or change the port mapping in `docker-compose.yml` and `DATABASE_URL`.
+> Next.js runs directly on Windows; only PostgreSQL runs in Docker. If `npm run db:up` fails with
+> `ports are not available ... 5432` (a local PostgreSQL install, or a port range Windows has reserved),
+> set `POSTGRES_PORT="5433"` in `.env`, change `5432` to `5433` in the three `DATABASE_URL*` lines, and run
+> `npm run db:up` again.
 
 ## Environment variables
 
