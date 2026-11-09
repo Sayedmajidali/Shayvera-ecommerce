@@ -133,6 +133,16 @@ password.
 > set `POSTGRES_PORT="5433"` in `.env`, change `5432` to `5433` in the three `DATABASE_URL*` lines, and run
 > `npm run db:up` again.
 
+### Sharing your local app with a public link (ngrok)
+
+For a quick demo only — the link exposes your development server, demo data and admin login page.
+
+1. Start a tunnel in a second terminal: `ngrok http 3000` and copy the `https://….ngrok-free.app` (or `.dev`) URL.
+2. In `.env` set both `NEXT_PUBLIC_APP_URL` and `BETTER_AUTH_URL` to that URL (no trailing slash).
+3. Restart `npm run dev`, then open the ngrok URL. Sign-in, checkout and admin forms only accept requests from
+   this URL; the dev server allows its hostname automatically (`allowedDevOrigins` in `next.config.ts`).
+4. Afterwards stop ngrok and set both variables back to `http://localhost:3000`.
+
 ## Environment variables
 
 All variables are documented in `.env.example` and validated at start-up (`src/lib/env.ts`): an invalid

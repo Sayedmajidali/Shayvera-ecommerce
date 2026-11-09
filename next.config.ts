@@ -4,6 +4,18 @@ const isDev = process.env.NODE_ENV !== "production";
 const isHttps = (process.env.NEXT_PUBLIC_APP_URL ?? "").startsWith("https://");
 
 /**
+ * When the dev server is shared through a tunnel (ngrok, Cloudflare Tunnel), NEXT_PUBLIC_APP_URL is set to
+ * the tunnel URL; its hostname must be allowed to load dev-only assets (Next.js blocks other origins).
+ */
+const appHostname = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_APP_URL ?? "").hostname;
+  } catch {
+    return "";
+  }
+})();
+
+/**
  * Content Security Policy.
  * Razorpay Checkout needs its script origin, its iframe origins and its API for XHR.
  * 'unsafe-inline' for scripts is required by Next.js inline bootstrap scripts unless
@@ -48,6 +60,9 @@ const nextConfig: NextConfig = {
   // The Docker image sets NEXT_OUTPUT=standalone for a minimal runtime; local `next start` is unaffected.
   ...(process.env.NEXT_OUTPUT === "standalone" ? { output: "standalone" as const } : {}),
   poweredByHeader: false,
+  ...(isDev && appHostname && appHostname !== "localhost"
+    ? { allowedDevOrigins: [appHostname] }
+    : {}),
   reactStrictMode: true,
   serverExternalPackages: ["sharp", "razorpay"],
   images: {
