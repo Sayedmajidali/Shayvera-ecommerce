@@ -828,3 +828,21 @@ always re-moderated, verified-purchase flag from delivered orders, rate-limited)
 Tests: integration +7 (`reviews.test.ts`, incl. store stats), E2E +4 (`react-bits.spec.ts`); totals — unit 185,
 integration 280, E2E 75 incl. 21 axe scans. JS per page: `/` 241 KB, `/shop` 246, product 240, cart 230,
 login 248 (budget 250).
+
+## Admin-editable images ✅
+
+- **Admin → Site images** (`SETTINGS_MANAGE`): upload, replace or reset every storefront image that is not a
+  product or category photo — logo, home hero main + round photo, offer-banner background, About page banner,
+  product-photo placeholder, link-preview (Open Graph) image, browser/app icon. Each slot has a built-in default,
+  recommended size, optional alt text and a Custom/Default badge. Slots are defined in `src/lib/site-images.ts`;
+  uploads are stored in the new `SiteImage` table (migration `20261110090000_site_images`, additive).
+- **Categories:** the category editor now uploads, replaces and removes the category image (`CATALOG_MANAGE`), with
+  a thumbnail column in the list. Product photos keep their existing manager on each product.
+- **Same upload safety as product photos:** extension allow-list, magic-byte sniffing, full decode with sharp,
+  pixel-bomb guard, re-encode to WebP (metadata stripped; branding keeps transparency). Replaced or reset files we
+  own (`branding/`, `categories/`) are deleted from storage; every change is audited.
+- **Storefront:** the logo component, hero, offer banner and About page read the slots server-side; client-rendered
+  placeholders, the favicon/app icon and the link preview use `/site-image/:slot`, which redirects to the upload or
+  the default (60 s cache). Default icon/preview files moved from `src/app` to `public/brand` so uploads can
+  override them.
+- Tests: integration +6 (`site-images.test.ts`), E2E +2 (`site-images.spec.ts`).

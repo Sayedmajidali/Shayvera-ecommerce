@@ -31,6 +31,7 @@ import { cartChanged, setCartOpen, takeOpener, useCartUi } from "@/components/st
 import { apiFetch, ApiClientError } from "@/lib/fetcher";
 import { formatINR } from "@/lib/money";
 import { cn } from "@/lib/utils";
+import { siteImageHref } from "@/lib/site-images";
 import type { CartView } from "@/server/modules/cart/cart";
 
 type Load = { status: "idle" | "loading" | "ready" | "error"; view: CartView | null };
@@ -242,15 +243,14 @@ export function CartDrawer() {
                         tabIndex={-1}
                         aria-hidden
                       >
-                        {l.imageUrl && (
-                          <Image
-                            src={l.imageUrl}
-                            alt=""
-                            fill
-                            sizes="80px"
-                            className="object-cover"
-                          />
-                        )}
+                        <Image
+                          src={l.imageUrl ?? siteImageHref("productPlaceholder")}
+                          alt=""
+                          fill
+                          sizes="80px"
+                          unoptimized={!l.imageUrl}
+                          className="object-cover"
+                        />
                       </Link>
                       <div className="flex min-w-0 flex-1 flex-col">
                         <div className="flex items-start justify-between gap-3">

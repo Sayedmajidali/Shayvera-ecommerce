@@ -28,6 +28,7 @@ export default async function AdminCategoriesPage() {
           seoTitle: c.seoTitle,
           seoDescription: c.seoDescription,
           productCount: c._count.products,
+          imageUrl: c.imageUrl,
         }))}
       />
     </>

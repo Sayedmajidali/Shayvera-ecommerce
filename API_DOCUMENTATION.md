@@ -153,6 +153,13 @@ quantities also needs `INVENTORY_MANAGE`.
 Razorpay outcome is unknown (timeout) stay `PENDING` with the amount reserved until reconciled against Razorpay's refund
 list (matched by `notes.refundId`); a definite Razorpay rejection returns 502 with the reason and releases the amount.
 
+**Site images (admin, `SETTINGS_MANAGE`)**: `POST /api/admin/site-images/:slot` (multipart `file`, `alt?`) replaces a
+storefront image (`logo`, `heroPrimary`, `heroSecondary`, `promoBanner`, `aboutBanner`, `productPlaceholder`,
+`shareImage`, `appIcon`); `DELETE` restores the default. Public: `GET /site-image/:slot` → 307 to the current image
+or the default (404 when a slot has neither). **Category image (`CATALOG_MANAGE`)**:
+`POST|DELETE /api/admin/categories/:id/image`. Uploads use the product-photo pipeline (validated, re-encoded to
+WebP); replaced files are deleted; changes are audited.
+
 **Reviews (admin, `CATALOG_MANAGE`)**: `PATCH /api/admin/reviews/:id { status: "APPROVED" | "REJECTED" }` — publishes or
 hides a customer review and recomputes the product's `ratingAverage`/`ratingCount` from approved reviews; audited
 (`review.approve` / `review.reject`). UI: Admin → Reviews.

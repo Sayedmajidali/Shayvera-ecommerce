@@ -25,8 +25,15 @@ export const metadata: Metadata = {
     siteName: siteConfig.name,
     locale: "en_IN",
     url: siteConfig.url,
+    // Admin → Site images can replace these; /site-image/* redirects to the current file.
+    images: [{ url: "/site-image/shareImage", width: 1200, height: 630 }],
   },
-  twitter: { card: "summary_large_image" },
+  twitter: { card: "summary_large_image", images: ["/site-image/shareImage"] },
+  icons: {
+    icon: [{ url: "/site-image/appIcon" }],
+    apple: [{ url: "/site-image/appIcon" }],
+    shortcut: ["/favicon.ico"],
+  },
 };
 
 export const viewport: Viewport = {

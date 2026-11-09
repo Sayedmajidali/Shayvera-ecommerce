@@ -5,6 +5,7 @@ import Image from "next/image";
 import { ChevronLeft, ChevronRight, Expand } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { siteImageHref } from "@/lib/site-images";
 
 type Img = { url: string; alt: string };
 
@@ -71,8 +72,16 @@ export function ProductGallery({ images, name }: { images: Img[]; name: string }
 
   if (!current) {
     return (
-      <div className="bg-muted text-muted-foreground flex aspect-[4/5] items-center justify-center rounded-2xl">
-        No image available
+      <div className="bg-muted relative aspect-[4/5] overflow-hidden rounded-3xl">
+        <Image
+          src={siteImageHref("productPlaceholder")}
+          alt={name}
+          fill
+          unoptimized
+          priority
+          sizes="(min-width: 1024px) 45vw, 100vw"
+          className="object-cover"
+        />
       </div>
     );
   }

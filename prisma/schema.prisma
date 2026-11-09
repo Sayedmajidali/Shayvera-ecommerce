@@ -958,6 +958,18 @@ model CreditNote {
 
 // ─────────────────────────── Store & ops ───────────────────────────
 
+/// An admin-uploaded image for a named place in the storefront (logo, hero photos, share image…).
+/// Missing rows mean "use the built-in default". Slots are defined in src/lib/site-images.ts.
+model SiteImage {
+  slot      String   @id
+  key       String
+  url       String
+  width     Int
+  height    Int
+  alt       String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
 model StoreSettings {
   id                         String   @id @default("default")
   storeName                  String   @default("Shayvera Foods")

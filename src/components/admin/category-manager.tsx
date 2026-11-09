@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { FolderTree, Pencil, Plus, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { FolderTree, ImageUp, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,9 +37,10 @@ export type AdminCategory = {
   seoTitle: string | null;
   seoDescription: string | null;
   productCount: number;
+  imageUrl: string | null;
 };
 
-type FormState = Omit<AdminCategory, "id" | "productCount">;
+type FormState = Omit<AdminCategory, "id" | "productCount" | "imageUrl">;
 const empty: FormState = {
   name: "",
   slug: "",
@@ -64,7 +66,11 @@ export function CategoryManager({ categories }: { categories: AdminCategory[] })
       c === "new"
         ? empty
         : {
-            ...c,
+            name: c.name,
+            slug: c.slug,
+            sortOrder: c.sortOrder,
+            isActive: c.isActive,
+            isFeatured: c.isFeatured,
             description: c.description ?? "",
             seoTitle: c.seoTitle ?? "",
             seoDescription: c.seoDescription ?? "",
@@ -122,6 +128,7 @@ export function CategoryManager({ categories }: { categories: AdminCategory[] })
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-16">Image</TableHead>
                 <TableHead>Name</TableHead>
                 <TableHead>Slug</TableHead>
                 <TableHead>Status</TableHead>
@@ -133,6 +140,20 @@ export function CategoryManager({ categories }: { categories: AdminCategory[] })
             <TableBody>
               {categories.map((c) => (
                 <TableRow key={c.id}>
+                  <TableCell>
+                    <div className="bg-muted relative size-10 overflow-hidden rounded-lg border">
+                      {c.imageUrl && (
+                        <Image
+                          src={c.imageUrl}
+                          alt=""
+                          fill
+                          sizes="40px"
+                          loading="eager"
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="font-medium">
                     {c.name}
                     {c.isFeatured && <span className="text-brand ml-2 text-xs">Featured</span>}
@@ -177,6 +198,16 @@ export function CategoryManager({ categories }: { categories: AdminCategory[] })
           <DialogHeader>
             <DialogTitle>{editing === "new" ? "New category" : "Edit category"}</DialogTitle>
           </DialogHeader>
+          {editing && editing !== "new" ? (
+            <CategoryImage
+              category={editing}
+              onChange={(imageUrl) => setEditing({ ...editing, imageUrl })}
+            />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              You can add a category image after creating the category.
+            </p>
+          )}
           <form onSubmit={save} className="grid gap-4" noValidate>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
@@ -269,5 +300,109 @@ export function CategoryManager({ categories }: { categories: AdminCategory[] })
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+/** Upload, replace or remove a category's image (shown on home-page tiles and category pages). */
+function CategoryImage({
+  category,
+  onChange,
+}: {
+  category: AdminCategory;
+  onChange: (imageUrl: string | null) => void;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const inputId = `cat-image-${category.id}`;
+  const upload = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`/api/admin/categories/${category.id}/image`, {
+        method: "POST",
+        body: form,
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(json?.error?.message ?? "Upload failed");
+      onChange(json.data.imageUrl);
+      toast.success("Category image updated");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="flex items-center gap-4 rounded-xl border p-3" data-testid="category-image">
+      <div className="bg-muted relative h-24 w-20 shrink-0 overflow-hidden rounded-lg">
+        {category.imageUrl ? (
+          <Image
+            src={category.imageUrl}
+            alt=""
+            fill
+            sizes="80px"
+            loading="eager"
+            className="object-cover"
+          />
+        ) : (
+          <span className="text-muted-foreground absolute inset-0 grid place-items-center text-xs">
+            No image
+          </span>
+        )}
+      </div>
+      <div className="grid gap-2">
+        <p className="text-sm font-medium">Category image</p>
+        <p className="text-muted-foreground text-xs">
+          Portrait 4:5 works best (e.g. 1200×1500px). JPG, PNG, WebP or AVIF.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <input
+            id={inputId}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            className="sr-only"
+            aria-label={`Upload image for ${category.name}`}
+            onChange={(e) => void upload(e.target.files?.[0])}
+          />
+          <Button
+            type="button"
+            size="sm"
+            disabled={busy}
+            onClick={() => document.getElementById(inputId)?.click()}
+          >
+            {busy ? <Loader2 className="animate-spin" /> : <ImageUp />}
+            {category.imageUrl ? "Replace" : "Upload"}
+          </Button>
+          {category.imageUrl && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                try {
+                  await apiFetch(`/api/admin/categories/${category.id}/image`, {
+                    method: "DELETE",
+                  });
+                  onChange(null);
+                  toast.success("Category image removed");
+                  router.refresh();
+                } catch (err) {
+                  toast.error(err instanceof ApiClientError ? err.message : "Could not remove");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              <Trash2 /> Remove
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

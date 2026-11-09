@@ -8,6 +8,7 @@ import { RatingStars } from "@/components/store/rating-stars";
 import { WishlistButton } from "@/components/store/wishlist";
 import { QuickViewButton } from "@/components/store/quick-view-store";
 import { Shiny } from "@/components/bits/enhanced";
+import { siteImageHref } from "@/lib/site-images";
 import type { ProductCardData } from "@/server/modules/catalog/queries";
 
 export function ProductCard({
@@ -52,9 +53,15 @@ export function ProductCard({
             )}
           </>
         ) : (
-          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-            No image
-          </div>
+          // Product without photos: the store's placeholder (Admin → Site images).
+          <Image
+            src={siteImageHref("productPlaceholder")}
+            alt={product.name}
+            fill
+            unoptimized
+            sizes="(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 46vw"
+            className="zoom-img object-cover"
+          />
         )}
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           {!product.inStock && <Badge variant="secondary">Sold out</Badge>}

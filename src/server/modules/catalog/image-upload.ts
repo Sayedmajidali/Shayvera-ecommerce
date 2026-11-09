@@ -41,6 +41,8 @@ export async function processImageUpload(
   file: { name: string; size: number; arrayBuffer(): Promise<ArrayBuffer> },
   folder: "products" | "categories" | "branding",
   maxBytes: number,
+  /** Smallest accepted width/height (logos and icons may be smaller than product photos). */
+  minDimension = MIN_DIMENSION,
 ): Promise<ProcessedImage> {
   if (file.size <= 0) throw new AppError("VALIDATION_ERROR", "The file is empty");
   if (file.size > maxBytes) {
@@ -69,10 +71,10 @@ export async function processImageUpload(
     throw new AppError("UNSUPPORTED_MEDIA", "Unsupported image format");
   }
   const { width = 0, height = 0 } = meta;
-  if (width < MIN_DIMENSION || height < MIN_DIMENSION) {
+  if (width < minDimension || height < minDimension) {
     throw new AppError(
       "VALIDATION_ERROR",
-      `Images must be at least ${MIN_DIMENSION}×${MIN_DIMENSION} pixels`,
+      `Images must be at least ${minDimension}×${minDimension} pixels`,
     );
   }
   if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
@@ -92,7 +94,12 @@ export async function processImageUpload(
         fit: "inside",
         withoutEnlargement: true,
       })
-      .webp({ quality: 84 })
+      // Branding (logos, icons) keeps crisp edges and transparency; photos use lossy WebP.
+      .webp(
+        folder === "branding"
+          ? { quality: 92, alphaQuality: 100, smartSubsample: true }
+          : { quality: 84 },
+      )
       .toBuffer({ resolveWithObject: true });
   } catch {
     throw new AppError("UNSUPPORTED_MEDIA", "The image could not be processed");

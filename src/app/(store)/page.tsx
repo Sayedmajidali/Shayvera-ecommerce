@@ -34,6 +34,7 @@ import { RatingStars } from "@/components/store/rating-stars";
 import { formatINR } from "@/lib/money";
 import { getHomeData } from "@/server/modules/catalog/queries";
 import { getStoreSettings } from "@/server/modules/settings/queries";
+import { getSiteImages } from "@/server/modules/settings/site-images";
 import { siteConfig } from "@/lib/site";
 import type { Metadata } from "next";
 
@@ -112,9 +113,18 @@ function CssTicker() {
 }
 
 export default async function HomePage() {
-  const [{ categories, featured, bestsellers, newArrivals, testimonials }, settings] =
-    await Promise.all([getHomeData(), getStoreSettings()]);
-  const heroImages = featured.flatMap((p) => p.images.slice(0, 1)).slice(0, 2);
+  const [{ categories, featured, bestsellers, newArrivals, testimonials }, settings, site] =
+    await Promise.all([getHomeData(), getStoreSettings(), getSiteImages()]);
+  // Admin → Site images can replace the hero photos; otherwise featured product photos are used.
+  const productHero = featured.flatMap((p) => p.images.slice(0, 1)).slice(0, 2);
+  const heroImages = [
+    site.heroPrimary
+      ? { url: site.heroPrimary.url, alt: site.heroPrimary.alt || "Shayvera Foods" }
+      : productHero[0],
+    site.heroSecondary
+      ? { url: site.heroSecondary.url, alt: site.heroSecondary.alt || "Shayvera Foods" }
+      : productHero[1],
+  ];
   const featuredCategories = categories.filter((c) => c.isFeatured).slice(0, 4);
   // Real product photos for the "From our pantry" gallery (one per product, no duplicates).
   const seen = new Set<string>();
@@ -389,6 +399,19 @@ export default async function HomePage() {
           data-reveal
           className="bg-deep-aura text-deep-foreground relative overflow-hidden rounded-[2rem] px-6 py-14 sm:px-12 lg:px-16"
         >
+          {site.promoBanner && (
+            <>
+              <Image
+                src={site.promoBanner.url}
+                alt=""
+                fill
+                sizes="(min-width: 1280px) 1216px, 100vw"
+                className="object-cover"
+              />
+              {/* Keeps the offer text legible over any photo. */}
+              <div className="from-deep/95 via-deep/80 to-deep/40 absolute inset-0 bg-gradient-to-r" />
+            </>
+          )}
           <Image
             src="/brand/mark.svg"
             alt=""

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
+import { getSiteImages } from "@/server/modules/settings/site-images";
 import { HandHeart, PackageCheck, Sprout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageIntro } from "@/components/store/page-intro";
@@ -32,7 +34,7 @@ const promises = [
 ];
 
 export default async function AboutPage() {
-  const stats = await getStoreStats();
+  const [stats, site] = await Promise.all([getStoreStats(), getSiteImages()]);
   const figures = [
     { value: stats.happyKitchens, label: "Happy kitchens", suffix: "+" },
     { value: stats.ordersDelivered, label: "Orders delivered", suffix: "" },
@@ -51,6 +53,18 @@ export default async function AboutPage() {
   return (
     <div className="container-page pb-10">
       <PageIntro eyebrow="Shayvera Foods" title="Rooted in Trust, Crafted with Care" />
+      {site.aboutBanner && (
+        <div className="shadow-soft relative mx-auto mb-12 aspect-[16/7] max-w-5xl overflow-hidden rounded-3xl">
+          <Image
+            src={site.aboutBanner.url}
+            alt={site.aboutBanner.alt || "Shayvera Foods"}
+            fill
+            priority
+            sizes="(min-width: 1024px) 1024px, 100vw"
+            className="object-cover"
+          />
+        </div>
+      )}
       <div className="prose-store mx-auto max-w-2xl">
         <p className="text-foreground text-lg leading-8">
           Shayvera Foods was born from a belief that food should be simple, authentic and made from
