@@ -41,6 +41,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en-IN"
       data-scroll-behavior="smooth"
       className={`${sans.variable} ${display.variable}`}
+      // Browser extensions (e.g. QuillBot, Grammarly) add attributes to <html> before React loads.
+      // This only silences attribute mismatches on this one element, not on the page content.
+      suppressHydrationWarning
     >
       <body className="flex min-h-dvh flex-col">
         {children}
