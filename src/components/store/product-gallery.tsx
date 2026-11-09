@@ -33,7 +33,7 @@ export function ProductGallery({
               aria-label={`Show image ${i + 1} of ${images.length}`}
               onClick={() => setActive(i)}
               className={cn(
-                "relative aspect-[4/5] w-16 overflow-hidden rounded-lg border-2 transition md:w-20",
+                "relative aspect-[4/5] w-16 overflow-hidden rounded-xl border-2 transition duration-300 hover:-translate-y-0.5 md:w-20",
                 i === active ? "border-primary" : "border-transparent opacity-70 hover:opacity-100",
               )}
             >
@@ -42,7 +42,7 @@ export function ProductGallery({
           ))}
         </div>
       )}
-      <div className="bg-muted relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded-2xl md:flex-1">
+      <div className="group bg-muted shadow-soft relative aspect-[4/5] w-full min-w-0 overflow-hidden rounded-3xl md:flex-1">
         <Image
           key={current.url}
           src={current.url}
@@ -50,7 +50,7 @@ export function ProductGallery({
           fill
           priority
           sizes="(min-width: 1024px) 45vw, 100vw"
-          className="animate-in fade-in-0 object-cover duration-300"
+          className="animate-in fade-in-0 zoom-img object-cover duration-300"
         />
       </div>
     </div>

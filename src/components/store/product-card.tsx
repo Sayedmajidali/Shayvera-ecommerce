@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -16,14 +17,17 @@ export function ProductCard({
 }) {
   const [primary, secondary] = product.images;
   return (
-    <article className="group relative flex flex-col" data-testid="product-card">
+    <article
+      className="group lift bg-card hover:border-border relative flex flex-col rounded-2xl border border-transparent p-2 pb-4"
+      data-testid="product-card"
+    >
       {/* Same destination as the title link below: hidden from keyboard and screen readers so each
           product is one tab stop and its name is announced once. */}
       <Link
         href={`/product/${product.slug}`}
         aria-hidden
         tabIndex={-1}
-        className="bg-muted relative block aspect-[4/5] overflow-hidden rounded-xl"
+        className="bg-muted relative block aspect-[4/5] overflow-hidden rounded-xl [mask-image:radial-gradient(white,black)]"
       >
         {primary ? (
           <>
@@ -33,7 +37,7 @@ export function ProductCard({
               fill
               priority={priority}
               sizes="(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 46vw"
-              className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+              className="zoom-img object-cover"
             />
             {secondary && (
               <Image
@@ -41,7 +45,7 @@ export function ProductCard({
                 alt=""
                 fill
                 sizes="(min-width: 1280px) 22vw, (min-width: 768px) 30vw, 46vw"
-                className="object-cover opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                className="zoom-img object-cover opacity-0 transition-[opacity,transform] duration-700 group-hover:opacity-100"
               />
             )}
           </>
@@ -61,10 +65,10 @@ export function ProductCard({
         </div>
         <span className="sr-only">{product.name}</span>
       </Link>
-      <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+      <div className="absolute top-5 right-5 flex flex-col items-end gap-2">
         <WishlistButton productId={product.id} productName={product.name} />
         {product.defaultVariantId && product.inStock && (
-          <div className="opacity-100 transition-opacity md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100">
+          <div className="opacity-100 transition-[opacity,transform] duration-300 ease-[var(--ease-out)] md:translate-y-2 md:opacity-0 md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100 md:group-hover:translate-y-0 md:group-hover:opacity-100">
             <AddToCartButton
               variantId={product.defaultVariantId}
               compact
@@ -74,13 +78,12 @@ export function ProductCard({
           </div>
         )}
       </div>
-      <div className="mt-3 flex flex-1 flex-col gap-1">
-        <p className="text-muted-foreground text-xs">{product.categoryName}</p>
+      <div className="mt-3 flex flex-1 flex-col gap-1 px-1.5">
+        <p className="text-primary text-[11px] font-medium tracking-wider uppercase">
+          {product.categoryName}
+        </p>
         <h3 className="text-[15px] leading-snug font-medium">
-          <Link
-            href={`/product/${product.slug}`}
-            className="hover:underline hover:underline-offset-4"
-          >
+          <Link href={`/product/${product.slug}`} className="link-draw">
             {product.name}
           </Link>
         </h3>
@@ -103,6 +106,7 @@ export function ProductGrid({
   products,
   priorityCount = 0,
   heading,
+  reveal = true,
 }: {
   products: ProductCardData[];
   priorityCount?: number;
@@ -111,9 +115,19 @@ export function ProductGrid({
    * keeps the outline h1 → h2 → h3). Omit where the surrounding section already has an h2.
    */
   heading?: string;
+  /**
+   * Fade cards in as they scroll into view. Off for grids at the top of a page (listings), where
+   * the first row is already visible and a fade would only delay the largest paint.
+   */
+  reveal?: boolean;
 }) {
   const grid = (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-10 md:grid-cols-3 lg:gap-x-6 xl:grid-cols-4">
+    <div
+      className={cn(
+        "grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 md:grid-cols-3 lg:gap-x-5 lg:gap-y-8 xl:grid-cols-4",
+        reveal && "reveal-stagger",
+      )}
+    >
       {products.map((p, i) => (
         <ProductCard key={p.id} product={p} priority={i < priorityCount} />
       ))}

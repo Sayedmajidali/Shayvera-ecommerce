@@ -60,7 +60,12 @@ export async function ProductListing({
           />
         ) : (
           <>
-            <ProductGrid products={result.items} priorityCount={4} heading="Products" />
+            <ProductGrid
+              products={result.items}
+              priorityCount={4}
+              heading="Products"
+              reveal={false}
+            />
             <Pagination
               page={result.page}
               pageCount={result.pageCount}

@@ -718,3 +718,25 @@ Full re-review against the specification's security (§14) and reliability (§15
 - Migration `20261109090000_phone_otp_signin` (additive). Seed gives the demo customer `9845012345`.
 - Tests: integration +19 (`phone-auth.test.ts`), E2E +4 (`phone-login.spec.ts`); full suites green —
   unit + integration 458, E2E 64.
+
+## Brand theme and motion redesign ✅
+
+- **Brand identity from the Shayvera logo:** the lotus mark and wordmark were traced to small vector files
+  (`public/brand/mark.svg`, `wordmark.svg`, `logo-full.svg`); favicon, app icons and the link-preview image
+  are generated from them. Palette re-based on the logo: lotus green (primary), saffron (accent), leaf lime
+  (highlights), on warm ivory; footer and promo use a deep green.
+- **Motion system, CSS only (no animation library, no extra JavaScript):** hover lift + image zoom on product
+  and category cards, drawing link underlines, nav dots, button press/arrow nudge; scroll-driven reveals for
+  sections below the fold, a reading-progress bar, a header that settles on scroll, slow parallax on hero
+  images, a brand ticker, and a quick cross-fade between pages (React `<ViewTransition>`). Hover effects only
+  on pointer devices; all motion off for "reduce motion"; browsers without scroll-driven animations show
+  everything statically.
+- **Performance care:** Geist Mono dropped (system monospace) — fonts 107 → 83 KB; JavaScript unchanged
+  (~226–245 KB per page); no layout shift (CLS 0). Grids at the top of listing pages don't fade in (it delayed
+  the largest paint); header blur kept at the previous strength (a stronger blur cost ~0.1 s first paint on
+  mobile). Measured against the previous design on the same machine (production build, 3 runs, median):
+  JavaScript and total bytes unchanged, layout shift 0, first paint +0.02–0.1 s; largest paint +0.03–0.16 s
+  (worst: mobile /shop at 4× CPU throttle, 0.63 → 0.80 s). Every page stays under 0.8 s, far inside the 2.5 s
+  "good" threshold.
+- Accessibility: brand orange and muted text darkened to keep AA contrast; the axe suite now waits for entrance
+  animations to finish before scanning. All 64 E2E tests (incl. 21 axe scans) and lint pass.

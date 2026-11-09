@@ -7,6 +7,18 @@ import { ADMIN, CUSTOMER, addProductToCart, login } from "./helpers";
  * covers landmarks, heading order and page headings); minor ones are printed for review.
  */
 const scan = async (page: Page) => {
+  // Let entrance animations (fade-ins, page transitions) finish: users read the settled page, and a
+  // mid-fade element would be judged on blended colours. Infinite/scroll-linked animations are ignored.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every(
+        (a) =>
+          a.playState !== "running" ||
+          !(a.timeline instanceof DocumentTimeline) ||
+          a.effect?.getComputedTiming().iterations === Infinity,
+      ),
+  );
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
     .analyze();

@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import { SiteFooter } from "@/components/store/site-footer";
 import { SiteHeader } from "@/components/store/site-header";
 import { WishlistBootstrap } from "@/components/store/wishlist";
@@ -18,7 +19,8 @@ export default async function StoreLayout({ children }: LayoutProps<"/">) {
       </a>
       <SiteHeader />
       <main id="main" className="flex-1">
-        {children}
+        {/* Route changes cross-fade (see ::view-transition-*(.page) in globals.css). */}
+        <ViewTransition default="page">{children}</ViewTransition>
       </main>
       <SiteFooter />
     </>

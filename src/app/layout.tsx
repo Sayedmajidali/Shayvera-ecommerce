@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { siteConfig } from "@/lib/site";
 import "./globals.css";
 
 const sans = Geist({ variable: "--font-sans-family", subsets: ["latin"], display: "swap" });
-const mono = Geist_Mono({ variable: "--font-mono-family", subsets: ["latin"], display: "swap" });
 const display = Fraunces({
   variable: "--font-display-family",
   subsets: ["latin"],
@@ -31,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#faf8f4",
+  themeColor: "#0c764e",
   width: "device-width",
   initialScale: 1,
 };
@@ -41,7 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en-IN"
       data-scroll-behavior="smooth"
-      className={`${sans.variable} ${mono.variable} ${display.variable}`}
+      className={`${sans.variable} ${display.variable}`}
     >
       <body className="flex min-h-dvh flex-col">
         {children}
