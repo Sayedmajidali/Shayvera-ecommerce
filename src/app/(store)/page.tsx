@@ -4,6 +4,7 @@ import { ArrowRight, Check, Leaf, Quote, RotateCcw, ShieldCheck, Truck } from "l
 import { Button } from "@/components/ui/button";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { ProductGrid } from "@/components/store/product-card";
+import { RevealText } from "@/components/motion/reveal-text";
 import { RatingStars } from "@/components/store/rating-stars";
 import { formatINR } from "@/lib/money";
 import { getHomeData } from "@/server/modules/catalog/queries";
@@ -25,7 +26,7 @@ function SectionHeading({
   cta?: string;
 }) {
   return (
-    <div className="reveal mb-8 flex items-end justify-between gap-4 sm:mb-10">
+    <div data-reveal className="mb-8 flex items-end justify-between gap-4 sm:mb-10">
       <div>
         <p className="text-brand flex items-center gap-2 text-xs font-semibold tracking-[0.22em] uppercase">
           <span className="bg-leaf h-px w-6" aria-hidden />
@@ -96,17 +97,23 @@ export default async function HomePage() {
           width={440}
           height={296}
           unoptimized
-          className="animate-float pointer-events-none absolute -top-10 -left-24 hidden w-[420px] opacity-[0.05] select-none lg:block"
+          className="parallax-slow pointer-events-none absolute -top-10 -left-24 hidden w-[420px] opacity-[0.05] select-none lg:block"
+        />
+        <div
+          className="parallax-slow bg-leaf/20 pointer-events-none absolute top-1/3 right-[8%] hidden size-72 rounded-full blur-3xl lg:block"
+          aria-hidden
         />
         <div className="container-page grid items-center gap-12 pt-10 pb-16 sm:pt-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pb-24">
-          <div className="animate-fade-up">
-            <p className="border-primary/15 bg-card/70 text-primary inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.2em] uppercase backdrop-blur">
+          <div>
+            <p className="animate-fade-up border-primary/15 bg-card/70 text-primary inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.2em] uppercase backdrop-blur">
               <span className="bg-leaf size-1.5 rounded-full" aria-hidden />
               Spices · Dry fruits · Makhana · Herbal
             </p>
-            <h1 className="heading-display mt-6 text-[2.75rem] leading-[1.04] sm:text-6xl xl:text-7xl">
-              Rooted in trust,{" "}
-              <span className="relative inline-block">
+            <h1 className="reveal-words reveal-words-load heading-display mt-6 text-[2.75rem] leading-[1.04] sm:text-6xl xl:text-7xl">
+              <span className="rw" style={{ "--w": 0 } as React.CSSProperties}>
+                Rooted in trust,
+              </span>{" "}
+              <span className="rw relative" style={{ "--w": 3 } as React.CSSProperties}>
                 <em className="text-brand not-italic">crafted with care.</em>
                 <svg
                   viewBox="0 0 300 20"
@@ -126,11 +133,17 @@ export default async function HomePage() {
                 </svg>
               </span>
             </h1>
-            <p className="text-muted-foreground mt-7 max-w-lg text-lg leading-8">
+            <p
+              className="animate-fade-up text-muted-foreground mt-7 max-w-lg text-lg leading-8"
+              style={{ animationDelay: "380ms" }}
+            >
               Simple, authentic food made from ingredients we can trust — carefully selected,
               processed with care and hygienically packed for Indian kitchens.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div
+              className="animate-fade-up mt-8 flex flex-wrap gap-3"
+              style={{ animationDelay: "500ms" }}
+            >
               <Button asChild size="lg">
                 <Link href="/shop">
                   Shop the pantry <ArrowRight />
@@ -140,7 +153,10 @@ export default async function HomePage() {
                 <Link href="/about">Our promise</Link>
               </Button>
             </div>
-            <ul className="text-muted-foreground mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+            <ul
+              className="animate-fade-up text-muted-foreground mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm"
+              style={{ animationDelay: "620ms" }}
+            >
               {[
                 "Hygienically packed",
                 "Carefully sourced",
@@ -207,7 +223,7 @@ export default async function HomePage() {
 
       {/* Value props */}
       <section className="container-page py-14">
-        <div className="reveal-stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div data-reveal-stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {[
             {
               icon: Truck,
@@ -263,7 +279,7 @@ export default async function HomePage() {
             href="/shop"
             cta="All products"
           />
-          <div className="reveal-stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <div data-reveal-stagger className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {featuredCategories.map((c) => (
               <Link
                 key={c.slug}
@@ -281,9 +297,14 @@ export default async function HomePage() {
                 )}
                 <div className="from-deep/85 via-deep/10 absolute inset-0 bg-gradient-to-t to-transparent transition-opacity duration-500 group-hover:opacity-90" />
                 <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 p-4 text-white sm:p-5">
-                  <div>
+                  <div className="transition-transform duration-500 ease-[var(--ease-out)] group-hover:-translate-y-1">
                     <h3 className="heading-display text-xl sm:text-2xl">{c.name}</h3>
-                    <p className="mt-1 text-sm text-white/80">{c._count.products} products</p>
+                    <p className="mt-1 text-sm text-white/80">
+                      {c._count.products} products
+                      <span className="ml-1.5 inline-block -translate-x-1 opacity-0 transition duration-300 group-hover:translate-x-0 group-hover:opacity-100">
+                        · Explore
+                      </span>
+                    </p>
                   </div>
                   <span className="group-hover:bg-brand flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 backdrop-blur transition-[background-color,transform] duration-300 group-hover:-rotate-45">
                     <ArrowRight className="size-4" aria-hidden />
@@ -305,7 +326,10 @@ export default async function HomePage() {
 
       {/* Promo banner */}
       <section className="container-page pb-20">
-        <div className="reveal bg-deep-aura text-deep-foreground relative overflow-hidden rounded-[2rem] px-6 py-14 sm:px-12 lg:px-16">
+        <div
+          data-reveal
+          className="bg-deep-aura text-deep-foreground relative overflow-hidden rounded-[2rem] px-6 py-14 sm:px-12 lg:px-16"
+        >
           <Image
             src="/brand/mark.svg"
             alt=""
@@ -319,9 +343,10 @@ export default async function HomePage() {
               <p className="text-leaf text-xs font-semibold tracking-[0.25em] uppercase">
                 Welcome offer
               </p>
-              <h2 className="heading-display mt-3 text-4xl sm:text-5xl">
-                10% off your first order
-              </h2>
+              <RevealText
+                text="10% off your first order"
+                className="heading-display mt-3 text-4xl sm:text-5xl"
+              />
               <p className="mt-4 max-w-md text-white/75">
                 Use code{" "}
                 <span className="rounded-md border border-dashed border-white/40 bg-white/10 px-2 py-0.5 font-mono font-semibold text-white">
@@ -356,7 +381,7 @@ export default async function HomePage() {
         <section className="bg-card border-y py-20">
           <div className="container-page">
             <SectionHeading eyebrow="Kind words" title="From our customers" />
-            <div className="reveal-stagger grid gap-5 md:grid-cols-3">
+            <div data-reveal-stagger className="grid gap-5 md:grid-cols-3">
               {testimonials.map((t) => (
                 <figure
                   key={t.id}
@@ -388,7 +413,10 @@ export default async function HomePage() {
 
       {/* Newsletter */}
       <section className="container-page pt-20">
-        <div className="reveal bg-leaf-soft/60 border-leaf/30 relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border px-6 py-12 text-center sm:px-12">
+        <div
+          data-reveal
+          className="bg-leaf-soft/60 border-leaf/30 relative mx-auto max-w-4xl overflow-hidden rounded-[2rem] border px-6 py-12 text-center sm:px-12"
+        >
           <Image
             src="/brand/mark.svg"
             alt=""
@@ -397,10 +425,11 @@ export default async function HomePage() {
             unoptimized
             className="mx-auto h-11 w-auto"
           />
-          <h2 className="heading-display mt-4 text-3xl sm:text-4xl">
-            Recipes & offers from our kitchen
-          </h2>
-          <p className="text-muted-foreground mt-3">
+          <RevealText
+            text="Recipes & offers from our kitchen"
+            className="heading-display mt-4 text-3xl sm:text-4xl"
+          />
+          <p data-reveal data-reveal-delay="250" className="text-muted-foreground mt-3">
             New harvests, simple recipes and members-only offers — once a month.
           </p>
           <div className="mt-6 flex justify-center">

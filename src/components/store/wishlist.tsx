@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { toast } from "sonner";
@@ -62,6 +62,8 @@ export function WishlistButton({
   const router = useRouter();
   const pathname = usePathname();
   const saved = ids.has(productId);
+  // Bumped on each toggle so the heart pops only when the user acts (not on page load).
+  const [pop, setPop] = useState(0);
 
   const toggle = async () => {
     if (!signedIn) {
@@ -69,6 +71,7 @@ export function WishlistButton({
       return;
     }
     // Optimistic update, rolled back on failure.
+    setPop((p) => p + 1);
     setIds((s) => (saved ? s.delete(productId) : s.add(productId)));
     try {
       if (saved) await apiFetch(`/api/account/wishlist/${productId}`, { method: "DELETE" });
@@ -89,11 +92,19 @@ export function WishlistButton({
         aria-pressed={saved}
         aria-label={label}
         className={cn(
-          "bg-card hover:border-foreground/40 inline-flex h-11 items-center justify-center gap-2 rounded-full border px-5 text-sm font-medium transition",
+          "bg-card hover:border-foreground/40 inline-flex h-11 items-center justify-center gap-2 rounded-full border px-5 text-sm font-medium transition active:scale-95",
           className,
         )}
       >
-        <Heart className={cn("size-4", saved && "fill-brand text-brand")} aria-hidden />
+        <Heart
+          key={pop}
+          className={cn(
+            "size-4 transition-colors",
+            saved && "fill-brand text-brand",
+            pop > 0 && "animate-heart-pop",
+          )}
+          aria-hidden
+        />
         {saved ? "Saved" : "Save"}
       </button>
     );
@@ -105,12 +116,17 @@ export function WishlistButton({
       aria-pressed={saved}
       aria-label={label}
       className={cn(
-        "bg-background/90 hover:bg-background flex size-9 items-center justify-center rounded-full shadow-sm backdrop-blur transition",
+        "bg-background/90 hover:bg-background focus-visible:ring-ring/40 flex size-9 items-center justify-center rounded-full shadow-sm backdrop-blur transition outline-none hover:scale-105 focus-visible:ring-[3px] active:scale-90",
         className,
       )}
     >
       <Heart
-        className={cn("size-4", saved ? "fill-brand text-brand" : "text-foreground")}
+        key={pop}
+        className={cn(
+          "size-4 transition-colors",
+          saved ? "fill-brand text-brand" : "text-foreground",
+          pop > 0 && "animate-heart-pop",
+        )}
         aria-hidden
       />
     </button>

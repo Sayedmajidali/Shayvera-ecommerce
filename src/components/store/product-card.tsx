@@ -6,6 +6,7 @@ import { AddToCartButton } from "@/components/store/add-to-cart-button";
 import { Price } from "@/components/store/price";
 import { RatingStars } from "@/components/store/rating-stars";
 import { WishlistButton } from "@/components/store/wishlist";
+import { QuickViewButton } from "@/components/store/quick-view-store";
 import type { ProductCardData } from "@/server/modules/catalog/queries";
 
 export function ProductCard({
@@ -67,16 +68,18 @@ export function ProductCard({
       </Link>
       <div className="absolute top-5 right-5 flex flex-col items-end gap-2">
         <WishlistButton productId={product.id} productName={product.name} />
-        {product.defaultVariantId && product.inStock && (
-          <div className="opacity-100 transition-[opacity,transform] duration-300 ease-[var(--ease-out)] md:translate-y-2 md:opacity-0 md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100 md:group-hover:translate-y-0 md:group-hover:opacity-100">
+        {/* Revealed on hover/focus with pointer devices; always visible on touch screens. */}
+        <div className="flex flex-col items-end gap-2 transition-[opacity,transform] duration-300 ease-[var(--ease-out)] [@media(hover:hover)]:translate-x-2 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:translate-x-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:translate-x-0 [@media(hover:hover)]:group-hover:opacity-100">
+          <QuickViewButton slug={product.slug} name={product.name} />
+          {product.defaultVariantId && product.inStock && (
             <AddToCartButton
               variantId={product.defaultVariantId}
               compact
               label={`Add ${product.name} to cart`}
               className="shadow-soft"
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <div className="mt-3 flex flex-1 flex-col gap-1 px-1.5">
         <p className="text-primary text-[11px] font-medium tracking-wider uppercase">
@@ -125,8 +128,8 @@ export function ProductGrid({
     <div
       className={cn(
         "grid grid-cols-2 gap-x-3 gap-y-6 sm:gap-x-4 md:grid-cols-3 lg:gap-x-5 lg:gap-y-8 xl:grid-cols-4",
-        reveal && "reveal-stagger",
       )}
+      data-reveal-stagger={reveal ? "" : undefined}
     >
       {products.map((p, i) => (
         <ProductCard key={p.id} product={p} priority={i < priorityCount} />

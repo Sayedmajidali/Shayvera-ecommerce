@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { formatINR } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +23,9 @@ export function SearchBox({
   const [items, setItems] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [loading, setLoading] = useState(false);
+  /** The term the current `items` belong to (to tell "no results" from "not searched yet"). */
+  const [resultsFor, setResultsFor] = useState<string | null>(null);
   const listId = useId();
   const boxRef = useRef<HTMLDivElement>(null);
 
@@ -37,11 +40,13 @@ export function SearchBox({
         });
         if (res.ok) {
           setItems((await res.json()).data);
+          setResultsFor(term);
           setOpen(true);
           setActive(-1);
         }
+        setLoading(false);
       } catch {
-        /* aborted */
+        /* aborted: a newer search is under way */
       }
     }, 200);
     return () => {
@@ -64,7 +69,10 @@ export function SearchBox({
     router.push(href);
   };
 
-  const showList = open && q.trim().length >= 2 && items.length > 0;
+  const term = q.trim();
+  const showList = open && term.length >= 2 && items.length > 0;
+  const showEmpty =
+    open && !loading && term.length >= 2 && resultsFor === term && items.length === 0;
 
   return (
     <div ref={boxRef} className={cn("relative", className)}>
@@ -91,7 +99,11 @@ export function SearchBox({
           autoFocus={autoFocus}
           onChange={(e) => {
             setQ(e.target.value);
-            if (e.target.value.trim().length < 2) setItems([]);
+            const next = e.target.value.trim();
+            if (next.length < 2) {
+              setItems([]);
+              setLoading(false);
+            } else setLoading(true);
           }}
           onFocus={() => items.length && setOpen(true)}
           onKeyDown={(e) => {
@@ -112,14 +124,20 @@ export function SearchBox({
           aria-autocomplete="list"
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
           maxLength={100}
-          className="border-input bg-card placeholder:text-muted-foreground/80 focus-visible:border-ring focus-visible:ring-ring/25 h-10 w-full rounded-full border pr-4 pl-10 text-sm outline-none focus-visible:ring-[3px] [&::-webkit-search-cancel-button]:hidden"
+          className="border-input bg-card placeholder:text-muted-foreground/80 focus-visible:border-ring focus-visible:ring-ring/25 hover:border-primary/30 h-10 w-full rounded-full border pr-10 pl-10 text-sm transition-[border-color,box-shadow] duration-200 outline-none focus-visible:ring-[3px] [&::-webkit-search-cancel-button]:hidden"
         />
+        {loading && (
+          <Loader2
+            className="text-muted-foreground absolute top-1/2 right-3.5 size-4 -translate-y-1/2 animate-spin"
+            aria-label="Searching"
+          />
+        )}
       </form>
       {showList && (
         <ul
           id={listId}
           role="listbox"
-          className="bg-popover shadow-lift absolute top-12 right-0 left-0 z-50 overflow-hidden rounded-xl border p-1.5"
+          className="bg-popover shadow-lift animate-in fade-in-0 slide-in-from-top-2 absolute top-12 right-0 left-0 z-50 overflow-hidden rounded-xl border p-1.5 duration-200"
         >
           {items.map((s, i) => (
             <li
@@ -133,7 +151,7 @@ export function SearchBox({
               }}
               onMouseEnter={() => setActive(i)}
               className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-lg p-2",
+                "flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors duration-150",
                 i === active && "bg-accent",
               )}
             >
@@ -164,6 +182,17 @@ export function SearchBox({
             See all results for “{q.trim()}”
           </li>
         </ul>
+      )}
+      {showEmpty && (
+        <div
+          role="status"
+          className="bg-popover shadow-lift animate-in fade-in-0 slide-in-from-top-2 absolute top-12 right-0 left-0 z-50 rounded-xl border p-4 text-sm duration-200"
+        >
+          <p className="font-medium">No products match “{term}”</p>
+          <p className="text-muted-foreground mt-1">
+            Try another word, like “almonds” or “masala”.
+          </p>
+        </div>
       )}
     </div>
   );

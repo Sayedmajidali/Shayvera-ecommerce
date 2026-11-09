@@ -1,4 +1,6 @@
 import { ViewTransition } from "react";
+import { RevealObserver } from "@/components/motion/reveal-observer";
+import { StoreOverlays } from "@/components/store/store-overlays";
 import { SiteFooter } from "@/components/store/site-footer";
 import { SiteHeader } from "@/components/store/site-header";
 import { WishlistBootstrap } from "@/components/store/wishlist";
@@ -23,6 +25,8 @@ export default async function StoreLayout({ children }: LayoutProps<"/">) {
         <ViewTransition default="page">{children}</ViewTransition>
       </main>
       <SiteFooter />
+      <RevealObserver />
+      <StoreOverlays />
     </>
   );
 }

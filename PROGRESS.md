@@ -740,3 +740,44 @@ Full re-review against the specification's security (§14) and reliability (§15
   "good" threshold.
 - Accessibility: brand orange and muted text darkened to keep AA contrast; the axe suite now waits for entrance
   animations to finish before scanning. All 64 E2E tests (incl. 21 axe scans) and lint pass.
+
+## Premium interactions: reveals, cart drawer, quick view, gallery ✅
+
+All nine requested enhancements, built on the existing CSS motion system — **no animation library
+added** (Motion/GSAP were not needed: CSS transitions/keyframes + one IntersectionObserver cover every
+effect, keeping JavaScript within +3–5 KB per page).
+
+1. **Scroll reveals** — `RevealObserver` (one IntersectionObserver for the store) fades/slides sections up
+   once, the first time they enter the viewport; grids stagger per row. Fail-safe: only elements the
+   script has marked `data-reveal-pending` are hidden, so content is visible without JavaScript, before
+   hydration, for late-streamed content and with reduced motion; anything on screen at load is never hidden.
+2. **Product cards** — lift + shadow, second image cross-fade, zoom; Quick View / wishlist / add actions
+   slide in on hover or focus (always visible on touch screens); add button shows a spinner, then
+   "Added ✓", the cart badge pops and the cart drawer opens.
+3. **Gallery** — thumbnails with active ring, cross-fade, prev/next arrows and counter, 2× cursor-following
+   magnifier on fine pointers, touch swipe, fullscreen viewer (Radix Dialog) with arrow-key navigation,
+   thumbnail strip and focus return. `object-cover`/`object-contain` with fixed aspect ratios; responsive
+   `sizes`.
+4. **Sticky header** — `HeaderShell` sets `data-scrolled` (passive, rAF-throttled) → deeper background and
+   shadow, logo compacts by `scale` only (header height constant: no layout shift); wishlist icon added;
+   active category link marked with `aria-current` and a dot indicator.
+5. **Cart drawer** — Radix Sheet (focus trap, Escape/backdrop close, scroll lock, focus returns to the
+   opener). Contents and totals from `GET /api/cart` (server-priced); quantity/remove via the existing item
+   endpoints; removal slides out with an "Undo" toast; loading skeleton, error-with-retry and empty states;
+   free-shipping hint; Checkout / View cart / Continue shopping. Opens from the header icon (still a real
+   `/cart` link) and after adding a product. Loaded lazily on first use.
+6. **Hero parallax** — background lotus and glow drift on scroll (scroll-driven CSS, desktop only, off for
+   reduced motion); hero images drift within their frames; floating quote card.
+7. **Categories** — staggered entrance, image zoom, deepening overlay, text lift with "· Explore", rotating
+   arrow; whole card clickable.
+8. **Text reveals** (selective) — hero headline line-by-line on load; promo and newsletter headings
+   word-by-word on scroll (`RevealText`, real text in normal flow); supporting copy follows with a delay.
+9. **Micro-interactions** — button press scale + hover shadow, arrow nudge; wishlist heart pop (only on
+   user action); cart badge pop; drawer quantity/removal feedback; nav dot indicator; search panel slides
+   in with a spinner while searching and a "No products match" state; inputs ease their border/ring and
+   nudge when invalid; field errors slide in.
+
+Tests: new `tests/e2e/interactions.spec.ts` (drawer add/quantity/remove/Escape/scroll-lock/focus return,
+quick view → drawer, gallery next/fullscreen/keyboard, reveal + header state, reduced motion) — E2E 70/70,
+unit 185, lint/typecheck/build clean. Accessibility suite (21 axe scans) passes; it waits for entrance
+animations to settle. JS: `/` 229 KB, `/shop` 241, product 235, cart 230, login 248 (budget 250).
