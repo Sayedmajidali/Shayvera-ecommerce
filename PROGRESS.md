@@ -781,3 +781,16 @@ Tests: new `tests/e2e/interactions.spec.ts` (drawer add/quantity/remove/Escape/s
 quick view → drawer, gallery next/fullscreen/keyboard, reveal + header state, reduced motion) — E2E 70/70,
 unit 185, lint/typecheck/build clean. Accessibility suite (21 axe scans) passes; it waits for entrance
 animations to settle. JS: `/` 229 KB, `/shop` 241, product 235, cart 230, login 248 (budget 250).
+
+## React Bits: SplitText ✅
+
+- Registry `@react-bits` added to `components.json`; installed with
+  `npx shadcn@latest add @react-bits/SplitText-TS-TW` (TypeScript + Tailwind variant of SplitText, chosen over
+  JS-CSS to match the project) → `src/components/react-bits/split-text.tsx` (strict-TS fixes only).
+- New dependencies, pinned: `gsap@3.15.1`, `@gsap/react@2.1.2` (GSAP "Standard no-charge" licence, which
+  includes SplitText and ScrollTrigger for commercial sites).
+- `SplitHeading` (components/motion) renders the plain heading on the server and swaps in SplitText only when
+  the heading is ~400px from the viewport, so GSAP (~49 KB gz) is never in a page's initial JavaScript, text is
+  readable without JS, and reduced-motion visitors never download it. Used on the home page promo
+  ("10% off…", letters rise) and newsletter heading (words blur in). The hero keeps the CSS line reveal (LCP).
+- E2E: lazy-load + split + heading semantics test; suite 71/71; page JS unchanged (`/` 229 KB).

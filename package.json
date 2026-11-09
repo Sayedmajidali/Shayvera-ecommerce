@@ -33,10 +33,12 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@gsap/react": "2.1.2",
     "@prisma/client": "6.19.3",
     "better-auth": "1.7.13",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "gsap": "3.15.1",
     "lucide-react": "1.69.0",
     "next": "16.4.3",
     "nodemailer": "10.2.1",

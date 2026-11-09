@@ -4,7 +4,7 @@ import { ArrowRight, Check, Leaf, Quote, RotateCcw, ShieldCheck, Truck } from "l
 import { Button } from "@/components/ui/button";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { ProductGrid } from "@/components/store/product-card";
-import { RevealText } from "@/components/motion/reveal-text";
+import { SplitHeading } from "@/components/motion/split-heading";
 import { RatingStars } from "@/components/store/rating-stars";
 import { formatINR } from "@/lib/money";
 import { getHomeData } from "@/server/modules/catalog/queries";
@@ -343,9 +343,11 @@ export default async function HomePage() {
               <p className="text-leaf text-xs font-semibold tracking-[0.25em] uppercase">
                 Welcome offer
               </p>
-              <RevealText
+              <SplitHeading
                 text="10% off your first order"
                 className="heading-display mt-3 text-4xl sm:text-5xl"
+                splitType="chars"
+                effect="rise"
               />
               <p className="mt-4 max-w-md text-white/75">
                 Use code{" "}
@@ -425,9 +427,13 @@ export default async function HomePage() {
             unoptimized
             className="mx-auto h-11 w-auto"
           />
-          <RevealText
+          <SplitHeading
             text="Recipes & offers from our kitchen"
             className="heading-display mt-4 text-3xl sm:text-4xl"
+            splitType="words"
+            effect="blur"
+            textAlign="center"
+            delay={70}
           />
           <p data-reveal data-reveal-delay="250" className="text-muted-foreground mt-3">
             New harvests, simple recipes and members-only offers — once a month.

@@ -110,3 +110,20 @@ test.describe("with reduced motion", () => {
     await expect(page.getByRole("heading", { name: "Bestsellers" })).toBeVisible();
   });
 });
+
+test("React Bits SplitText loads lazily and animates the promo heading", async ({ page }) => {
+  const scripts: string[] = [];
+  page.on("response", (r) => {
+    if (r.request().resourceType() === "script") scripts.push(r.url());
+  });
+  await page.goto("/");
+  const heading = page.getByRole("heading", { name: "10% off your first order" });
+  await expect(heading).toBeVisible(); // readable before any animation code exists
+  expect(page.locator(".split-char")).toHaveCount(0);
+  const before = scripts.length;
+  await heading.scrollIntoViewIfNeeded();
+  // Characters are split once the heading approaches, and it is still announced as one heading.
+  await expect.poll(() => page.locator(".split-char").count()).toBeGreaterThan(10);
+  await expect(page.getByRole("heading", { name: "10% off your first order" })).toBeVisible();
+  expect(scripts.length).toBeGreaterThan(before); // GSAP arrived on demand
+});
