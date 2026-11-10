@@ -50,7 +50,7 @@ describe("removing test orders", () => {
     const a = await codOrder(v, 3);
     const b = await codOrder(v, 1);
     for (const o of [a, b])
-      await updateOrderStatusAdmin(o.id, { status: "READY_TO_SHIP" }, { id: user.id });
+      await updateOrderStatusAdmin(o.id, { status: "READY_TO_SHIP", note: null }, { id: user.id });
     await drainJobs();
     expect(await onHand(v)).toBe(6); // packed → stock consumed
 

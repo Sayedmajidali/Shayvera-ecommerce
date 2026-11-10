@@ -55,7 +55,16 @@ describe("registration & login", () => {
       password: TEST_PASSWORD,
       name: "X",
     });
-    expect(dup.ok).toBe(false);
+    // Requiring verification makes duplicate sign-ups look like success (no account enumeration):
+    // no second account is created, and the real owner gets an "account exists" email.
+    expect(dup.ok).toBe(true);
+    expect((await dup.json()).token).toBeNull();
+    expect(await db.user.count({ where: { email: "dup@example.com" } })).toBe(1);
+    expect(
+      await db.outboundEmail.count({
+        where: { to: "dup@example.com", template: "auth-account-exists" },
+      }),
+    ).toBe(1);
     const weak = await authRequest("/sign-up/email", {
       email: "weak@example.com",
       password: "123",
@@ -96,7 +105,9 @@ describe("password reset", () => {
       redirectTo: "/reset-password",
     });
     expect(req.ok).toBe(true);
-    const email = await db.outboundEmail.findFirstOrThrow({ where: { to: "reset@example.com" } });
+    const email = await db.outboundEmail.findFirstOrThrow({
+      where: { to: "reset@example.com", template: "password-reset" },
+    });
     const token = email.text.match(/reset-password\/([^?\s]+)/)?.[1];
     expect(token).toBeTruthy();
 

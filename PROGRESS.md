@@ -975,3 +975,24 @@ login 248 (budget 250).
     site-images — 50 passed.
 - Admin: "Back to homepage" button at the top of the sidebar and "Homepage" in the phone header (replaces the
   small "View store" link at the bottom); the menu list scrolls so "Sign out" stays visible.
+
+## Email codes for sign-up and password reset; test-order cleanup
+
+- **Sign-up verification:** Better Auth `emailOTP` plugin (6 digits, 10 min, 5 attempts, stored hashed).
+  New email/password accounts get a code and must confirm it before signing in
+  (`requireEmailVerification`; verifying signs them in). Signing in unverified sends a fresh code and the
+  UI shows the code step. Required whenever real email is configured (SMTP) and in dev/test; can be forced
+  with `REQUIRE_EMAIL_VERIFICATION`. Duplicate sign-ups look successful (no account enumeration) and the
+  real owner gets an "account exists" email.
+- **Forgot password:** email → 6-digit code + new password (`/email-otp/request-password-reset`,
+  `/email-otp/reset-password`; same password rules; other sessions revoked; never reveals whether an email
+  has an account). Link-based reset remains only for staff invitations.
+- Disabled: passwordless email sign-in, email change by code, the deprecated forget-password route.
+  Codes are branded emails; the sent-email record stores a placeholder instead of the code.
+- Migration `20261111120000_verify_existing_emails` marks pre-existing accounts verified; any password reset
+  (code or invite link) marks the email verified, so staff invites keep working.
+- Tests: new `email-otp.test.ts` (7) + E2E `email-otp.spec.ts` (2); the shared sign-up helpers now confirm the
+  emailed code. Full suites: 505 unit/integration, 80 E2E.
+- **`npm run orders:purge`**: preview-first removal of test orders (releases held stock, puts back stock of
+  shipped test orders, reduces sales/coupon counts, removes order-only records, optional numbering reset when
+  no orders remain). 4 integration tests.

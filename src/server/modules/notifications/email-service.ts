@@ -73,12 +73,19 @@ function smtpProvider(): EmailProvider {
       });
       // Keep a record (no secrets) so support can see what was sent; failures here never block.
       await db.outboundEmail
-        .create({ data: { ...message, status: "SENT" } })
+        .create({ data: { ...redactForRecord(message), status: "SENT" } })
         .catch((error) => logger.warn("Could not record sent email", { error }));
       return { provider: "smtp", messageId: info.messageId ?? null };
     },
   };
   return smtp;
+}
+
+/** One-time codes are delivered but never kept in the sent-email record. */
+function redactForRecord(message: EmailMessage): EmailMessage {
+  if (!/^auth-(email-verification|forget-password)$/.test(message.template)) return message;
+  const note = "[One-time code email — the content is not stored]";
+  return { ...message, text: note, html: `<p>${note}</p>` };
 }
 
 export function emailProvider(): EmailProvider {

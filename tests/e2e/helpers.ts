@@ -55,9 +55,32 @@ export async function register(page: Page, name: string) {
   await page.getByLabel("Full name").fill(name);
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill("Shopper123!");
+  const since = new Date(Date.now() - 2000);
   await page.getByRole("button", { name: "Create account" }).click();
+  await page.getByLabel("6-digit code").fill(await emailCode(email, "email-verification", since));
+  await page.getByRole("button", { name: "Verify & continue" }).click();
   await page.waitForURL(/\/account/);
   return email;
+}
+
+/** Reads the latest 6-digit code emailed to `email` (dev outbox). */
+export async function emailCode(
+  email: string,
+  purpose: "email-verification" | "forget-password",
+  since: Date,
+) {
+  let code = "";
+  await expect
+    .poll(async () => {
+      const mail = await db.outboundEmail.findFirst({
+        where: { to: email, template: `auth-${purpose}`, createdAt: { gte: since } },
+        orderBy: { createdAt: "desc" },
+      });
+      code = /Your code: (\d{6})/.exec(mail?.text ?? "")?.[1] ?? "";
+      return code;
+    })
+    .toMatch(/^\d{6}$/);
+  return code;
 }
 
 export async function addProductToCart(

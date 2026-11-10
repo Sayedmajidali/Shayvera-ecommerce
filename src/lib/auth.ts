@@ -4,17 +4,29 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { phoneNumber } from "better-auth/plugins/phone-number";
+import { emailOTP } from "better-auth/plugins/email-otp";
 import { normalizeIndianPhone, phonePlaceholderEmail } from "@/lib/india";
 import { db } from "@/server/platform/db";
 import { sendEmail, escapeHtml } from "@/server/modules/notifications/email-service";
 import { isPhoneOtpEnabled, sendSms } from "@/server/modules/notifications/sms-service";
+import {
+  AUTH_CODE_MINUTES,
+  renderAccountExistsEmail,
+  renderAuthCodeEmail,
+} from "@/server/modules/notifications/auth-emails";
+import { logger } from "@/server/platform/logger";
 
 const appUrl =
   process.env.BETTER_AUTH_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 const isProd = process.env.NODE_ENV === "production";
 
 /** Server-side password policy (the UI mirrors it, but the server is authoritative). */
-const PASSWORD_PATHS = new Set(["/sign-up/email", "/reset-password", "/change-password"]);
+const PASSWORD_PATHS = new Set([
+  "/sign-up/email",
+  "/reset-password",
+  "/change-password",
+  "/email-otp/reset-password",
+]);
 function assertStrongPassword(pw: unknown) {
   if (typeof pw !== "string") return;
   if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) {
@@ -32,7 +44,23 @@ const DISABLED_PATHS = new Set([
   "/sign-in/phone-number",
   "/phone-number/request-password-reset",
   "/phone-number/reset-password",
+  // Email codes are used only to verify a new account and to reset a password.
+  "/sign-in/email-otp",
+  "/forget-password/email-otp",
+  "/email-otp/check-verification-otp",
+  "/email-otp/request-email-change",
+  "/email-otp/change-email",
 ]);
+
+/**
+ * New email accounts must confirm their address with a code before they can sign in. Needs a real
+ * email service in production; without one (dev-outbox) production keeps accounts usable unverified
+ * rather than locking every new customer out. Tests can force it with REQUIRE_EMAIL_VERIFICATION.
+ */
+const requireEmailVerification =
+  process.env.REQUIRE_EMAIL_VERIFICATION === "true" ||
+  (process.env.REQUIRE_EMAIL_VERIFICATION !== "false" &&
+    (process.env.EMAIL_PROVIDER === "smtp" || !isProd));
 
 /** Per-number OTP throttle on top of the per-IP rate limit, so one number cannot be SMS-bombed. */
 const OTP_RESEND_SECONDS = 30;
@@ -75,9 +103,19 @@ export const auth = betterAuth({
     minPasswordLength: 8,
     maxPasswordLength: 128,
     autoSignIn: true,
-    // No production email service yet; verification is offered but not required.
-    requireEmailVerification: false,
+    requireEmailVerification,
     revokeSessionsOnPasswordReset: true,
+    // Sign-up with an existing email looks successful (no account enumeration): tell the owner.
+    onExistingUserSignUp: async ({ user }) => {
+      await sendEmail(await renderAccountExistsEmail(user.email, appUrl));
+    },
+    // Receiving the reset email/code proves the address (this also covers staff invitations).
+    onPasswordReset: async ({ user }) => {
+      await db.user.updateMany({
+        where: { id: user.id, emailVerified: false },
+        data: { emailVerified: true },
+      });
+    },
     resetPasswordTokenExpiresIn: 60 * 30,
     sendResetPassword: async ({ user, url }) => {
       // Staff invitations reuse this flow; their callback URL carries `invite=1`.
@@ -100,6 +138,11 @@ export const auth = betterAuth({
         html: `<p>Hi ${escapeHtml(user.name)},</p><p>Use the link below to reset your password. It expires in 30 minutes.</p><p><a href="${escapeHtml(url)}">Reset password</a></p><p>If you didn't request this, you can ignore this email.</p>`,
       });
     },
+  },
+  emailVerification: {
+    // Unverified accounts that try to sign in get a fresh code (the email-otp plugin sends it).
+    sendOnSignIn: true,
+    autoSignInAfterVerification: true,
   },
   user: {
     additionalFields: {
@@ -125,6 +168,11 @@ export const auth = betterAuth({
       "/request-password-reset": { window: 300, max: 5 },
       "/reset-password": { window: 300, max: 10 },
       "/phone-number/send-otp": { window: 60, max: 3 },
+      "/email-otp/send-verification-otp": { window: 60, max: 3 },
+      "/send-verification-email": { window: 60, max: 3 },
+      "/email-otp/verify-email": { window: 60, max: 10 },
+      "/email-otp/request-password-reset": { window: 300, max: 5 },
+      "/email-otp/reset-password": { window: 300, max: 10 },
       "/phone-number/verify": { window: 60, max: 10 },
     },
   },
@@ -188,6 +236,24 @@ export const auth = betterAuth({
           where: { id: user.id, phone: null },
           data: { phone: normalizeIndianPhone(verified) },
         });
+      },
+    }),
+    emailOTP({
+      otpLength: 6,
+      expiresIn: AUTH_CODE_MINUTES * 60,
+      allowedAttempts: 5,
+      storeOTP: "hashed",
+      // Sign-up sends a verification code; the default verification email becomes a code too.
+      sendVerificationOnSignUp: true,
+      overrideDefaultEmailVerification: true,
+      // Codes never create accounts on their own (sign-up needs a name and password).
+      disableSignUp: true,
+      sendVerificationOTP: async ({ email, otp, type }) => {
+        if (type !== "email-verification" && type !== "forget-password") return;
+        if (!isProd && process.env.EMAIL_PROVIDER !== "smtp")
+          // Development only: shown in the server console so you can finish the flow locally.
+          logger.info(`Email code for ${email}: ${otp} (${type})`);
+        await sendEmail(await renderAuthCodeEmail(email, otp, type));
       },
     }),
     nextCookies(),

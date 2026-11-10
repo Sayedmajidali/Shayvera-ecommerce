@@ -26,11 +26,30 @@ export function cookieFrom(res: Response): string {
   return cookies.map((c) => c.split(";")[0]).join("; ");
 }
 
+/** The latest 6-digit code emailed to `email` for `purpose` (read from the dev outbox). */
+export async function latestEmailCode(
+  email: string,
+  purpose: "email-verification" | "forget-password" = "email-verification",
+) {
+  const mail = await db.outboundEmail.findFirst({
+    where: { to: email.toLowerCase(), template: `auth-${purpose}` },
+    orderBy: { createdAt: "desc" },
+  });
+  const code = mail?.text.match(/Your code: (\d{6})/)?.[1];
+  if (!code) throw new Error(`no ${purpose} code emailed to ${email}`);
+  return code;
+}
+
+/** Signs up like a customer: create the account, then confirm the emailed code (signs in). */
 export async function registerCustomer(email: string, name = "Test Customer") {
   const res = await authRequest("/sign-up/email", { email, password: TEST_PASSWORD, name });
   if (!res.ok) throw new Error(`sign-up failed: ${res.status} ${await res.text()}`);
+  const otp = await latestEmailCode(email);
+  const verified = await authRequest("/email-otp/verify-email", { email, otp });
+  if (!verified.ok)
+    throw new Error(`verification failed: ${verified.status} ${await verified.text()}`);
   const user = await db.user.findUniqueOrThrow({ where: { email } });
-  return { user, cookie: cookieFrom(res) };
+  return { user, cookie: cookieFrom(verified) };
 }
 
 export async function signIn(email: string, password = TEST_PASSWORD) {

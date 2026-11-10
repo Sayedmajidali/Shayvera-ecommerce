@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,10 +42,170 @@ async function mergeGuestCart() {
   }
 }
 
+type AuthErr = { status?: number; code?: string; message?: string } | null | undefined;
+
+function codeErrorMessage(error: AuthErr): string {
+  switch (error?.code) {
+    case "OTP_EXPIRED":
+      return "This code has expired. Send a new one.";
+    case "TOO_MANY_ATTEMPTS":
+      return "Too many wrong attempts. Send a new code.";
+    case "INVALID_OTP":
+      return "That code is incorrect. Check the email and try again.";
+  }
+  if (error?.status === 429) return "Too many attempts. Please wait a minute and try again.";
+  return error?.message ?? "Could not verify the code.";
+}
+
+const RESEND_SECONDS = 30;
+
+/** Six-digit code field (one-time-code autofill, numbers only). */
+function CodeInput({ invalid }: { invalid?: boolean }) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor="code">6-digit code</Label>
+      <Input
+        id="code"
+        name="code"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="[0-9]*"
+        maxLength={6}
+        autoFocus
+        required
+        aria-invalid={invalid}
+        className="h-12 text-center font-mono text-xl tracking-[0.5em]"
+        onInput={(e) => {
+          const el = e.currentTarget;
+          el.value = el.value.replace(/\D/g, "").slice(0, 6);
+        }}
+      />
+    </div>
+  );
+}
+
+/** "Resend code" with a short cooldown. */
+function ResendCode({ onResend }: { onResend: () => Promise<boolean> }) {
+  const [wait, setWait] = useState(RESEND_SECONDS);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(t);
+  }, [wait]);
+  return (
+    <p className="text-muted-foreground text-center text-sm">
+      {wait > 0 ? (
+        <>Didn’t get it? You can resend in {wait}s</>
+      ) : (
+        <button
+          type="button"
+          disabled={busy}
+          className="text-foreground underline-offset-4 hover:underline disabled:opacity-50"
+          onClick={async () => {
+            setBusy(true);
+            if (await onResend()) setWait(RESEND_SECONDS);
+            setBusy(false);
+          }}
+        >
+          Resend code
+        </button>
+      )}
+    </p>
+  );
+}
+
+/**
+ * Confirms a new account's email with the code we sent. Verifying signs the customer in
+ * (autoSignInAfterVerification), so this finishes sign-up / sign-in.
+ */
+function VerifyEmailStep({
+  email,
+  next,
+  onBack,
+  fromSignUp = false,
+}: {
+  email: string;
+  next?: string;
+  onBack: () => void;
+  fromSignUp?: boolean;
+}) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  return (
+    <form
+      className="grid gap-5"
+      noValidate
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const otp = String(new FormData(e.currentTarget).get("code") ?? "");
+        if (!/^\d{6}$/.test(otp)) return setError("Enter the 6-digit code from the email.");
+        setPending(true);
+        setError(null);
+        const { error } = await authClient.emailOtp.verifyEmail({ email, otp });
+        if (error) {
+          setPending(false);
+          return setError(codeErrorMessage(error));
+        }
+        await mergeGuestCart();
+        router.push(safeRedirectPath(next, "/account"));
+        router.refresh();
+      }}
+    >
+      <div className="bg-leaf-soft rounded-xl px-4 py-3 text-sm" role="status">
+        We’ve emailed a 6-digit code to <span className="font-medium">{email}</span>. Enter it below
+        to verify your email. Check your spam folder if you don’t see it.
+      </div>
+      <CodeInput invalid={!!error} />
+      <FieldError message={error ?? undefined} />
+      <Button type="submit" size="lg" disabled={pending}>
+        {pending && <Loader2 className="animate-spin" />} Verify &amp; continue
+      </Button>
+      <ResendCode
+        onResend={async () => {
+          const { error } = await authClient.emailOtp.sendVerificationOtp({
+            email,
+            type: "email-verification",
+          });
+          if (error) setError(codeErrorMessage(error));
+          return !error;
+        }}
+      />
+      {fromSignUp && (
+        <p className="text-muted-foreground text-center text-xs">
+          Already have an account with this email?{" "}
+          <Link href="/login" className="text-foreground underline-offset-4 hover:underline">
+            Sign in
+          </Link>{" "}
+          or{" "}
+          <Link
+            href="/forgot-password"
+            className="text-foreground underline-offset-4 hover:underline"
+          >
+            reset your password
+          </Link>
+          .
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={onBack}
+        className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+      >
+        Use a different email
+      </button>
+    </form>
+  );
+}
+
 export function LoginForm({ next }: { next?: string }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [unverified, setUnverified] = useState<string | null>(null);
+  if (unverified)
+    return <VerifyEmailStep email={unverified} next={next} onBack={() => setUnverified(null)} />;
   return (
     <form
       className="grid gap-5"
@@ -54,10 +214,17 @@ export function LoginForm({ next }: { next?: string }) {
         const fd = new FormData(e.currentTarget);
         setPending(true);
         setError(null);
+        const email = String(fd.get("email")).trim();
         const { data, error } = await authClient.signIn.email({
-          email: String(fd.get("email")),
+          email,
           password: String(fd.get("password")),
         });
+        if (error?.code === "EMAIL_NOT_VERIFIED") {
+          // A fresh code was emailed (sendOnSignIn): confirm it to finish signing in.
+          setPending(false);
+          setUnverified(email.toLowerCase());
+          return;
+        }
         if (error) {
           setPending(false);
           setError(
@@ -111,6 +278,11 @@ export function RegisterForm({ next }: { next?: string }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [verifying, setVerifying] = useState<string | null>(null);
+  if (verifying)
+    return (
+      <VerifyEmailStep email={verifying} next={next} onBack={() => setVerifying(null)} fromSignUp />
+    );
   return (
     <form
       className="grid gap-5"
@@ -130,7 +302,13 @@ export function RegisterForm({ next }: { next?: string }) {
         if (Object.keys(fieldErrors).length) return;
         setPending(true);
         setError(null);
-        const { error } = await authClient.signUp.email({ name, email, password });
+        const { data, error } = await authClient.signUp.email({ name, email, password });
+        if (!error && !data?.token) {
+          // Email verification is required: a code has been sent; confirm it to finish.
+          setPending(false);
+          setVerifying(email.toLowerCase());
+          return;
+        }
         if (error) {
           setPending(false);
           setError(
@@ -211,39 +389,105 @@ export function RegisterForm({ next }: { next?: string }) {
 }
 
 export function ForgotPasswordForm() {
-  const [sent, setSent] = useState(false);
+  const router = useRouter();
+  const [email, setEmail] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  if (sent) {
+
+  const requestCode = async (address: string) => {
+    const { error } = await authClient.emailOtp.requestPasswordReset({ email: address });
+    if (error?.status === 429) {
+      setError("Too many requests. Please try again later.");
+      return false;
+    }
+    if (error) {
+      setError(error.message ?? "Could not send the code. Please try again.");
+      return false;
+    }
+    return true;
+  };
+
+  if (!email) {
     return (
-      <div className="flex flex-col items-center text-center">
-        <CheckCircle2 className="text-success size-10" />
-        <p className="text-muted-foreground mt-4 text-sm">
-          If an account exists for that email, a reset link is on its way. The link expires in 30
-          minutes.
-        </p>
-      </div>
+      <form
+        className="grid gap-5"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const address = String(new FormData(e.currentTarget).get("email") ?? "")
+            .trim()
+            .toLowerCase();
+          if (!/^\S+@\S+\.\S+$/.test(address)) return setError("Enter a valid email address");
+          setPending(true);
+          setError(null);
+          const ok = await requestCode(address);
+          setPending(false);
+          if (ok) setEmail(address);
+        }}
+      >
+        <div className="grid gap-2">
+          <Label htmlFor="email">Email</Label>
+          <Input id="email" name="email" type="email" autoComplete="email" required />
+        </div>
+        {error && (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        )}
+        <Button type="submit" size="lg" disabled={pending}>
+          {pending && <Loader2 className="animate-spin" />} Send code
+        </Button>
+      </form>
     );
   }
+
   return (
     <form
       className="grid gap-5"
+      noValidate
       onSubmit={async (e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
+        const otp = String(fd.get("code") ?? "");
+        const password = String(fd.get("password") ?? "");
+        if (!/^\d{6}$/.test(otp)) return setError("Enter the 6-digit code from the email.");
+        const problem = passwordProblem(password);
+        if (problem) return setError(problem);
+        if (password !== String(fd.get("confirm"))) return setError("Passwords do not match");
         setPending(true);
-        const { error } = await authClient.requestPasswordReset({
-          email: String(fd.get("email")),
-          redirectTo: "/reset-password",
-        });
+        setError(null);
+        const { error } = await authClient.emailOtp.resetPassword({ email, otp, password });
         setPending(false);
-        if (error && error.status === 429) setError("Too many requests. Please try again later.");
-        else setSent(true);
+        if (error) {
+          return setError(
+            error.code === "USER_NOT_FOUND"
+              ? "That code is incorrect. Check the email and try again."
+              : codeErrorMessage(error),
+          );
+        }
+        router.push("/login?reset=1");
       }}
     >
+      <div className="bg-leaf-soft rounded-xl px-4 py-3 text-sm" role="status">
+        If an account exists for <span className="font-medium">{email}</span>, we’ve emailed it a
+        6-digit code. It expires in 10 minutes.
+      </div>
+      <CodeInput invalid={!!error} />
       <div className="grid gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input id="email" name="email" type="email" autoComplete="email" required />
+        <Label htmlFor="password">New password</Label>
+        <PasswordInput
+          id="password"
+          name="password"
+          autoComplete="new-password"
+          required
+          aria-describedby="new-pw-hint"
+        />
+        <p id="new-pw-hint" className="text-muted-foreground text-xs">
+          At least 8 characters with a letter and a number.
+        </p>
+      </div>
+      <div className="grid gap-2">
+        <Label htmlFor="confirm">Confirm new password</Label>
+        <PasswordInput id="confirm" name="confirm" autoComplete="new-password" required />
       </div>
       {error && (
         <p role="alert" className="text-destructive text-sm">
@@ -251,8 +495,19 @@ export function ForgotPasswordForm() {
         </p>
       )}
       <Button type="submit" size="lg" disabled={pending}>
-        {pending && <Loader2 className="animate-spin" />} Send reset link
+        {pending && <Loader2 className="animate-spin" />} Reset password
       </Button>
+      <ResendCode onResend={() => requestCode(email)} />
+      <button
+        type="button"
+        onClick={() => {
+          setEmail(null);
+          setError(null);
+        }}
+        className="text-muted-foreground text-sm underline-offset-4 hover:underline"
+      >
+        Use a different email
+      </button>
     </form>
   );
 }

@@ -20,6 +20,8 @@ export const e2eEnv = {
   // Webhooks and emails are processed by background jobs; run them inside the test server.
   JOB_RUNNER: "inline",
   E2E_TEST_MODE: "true",
+  // The dev outbox stands in for email here; new accounts must still confirm the emailed code.
+  REQUIRE_EMAIL_VERIFICATION: "true",
   RAZORPAY_KEY_ID: "rzp_test_e2e",
   RAZORPAY_KEY_SECRET: "e2e_key_secret",
   RAZORPAY_WEBHOOK_SECRET: "e2e_webhook_secret",
