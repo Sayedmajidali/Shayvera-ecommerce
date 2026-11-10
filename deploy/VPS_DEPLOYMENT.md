@@ -256,14 +256,24 @@ Restoring: `scripts/ops/db-restore.sh` (restores into an empty database).
 
 ## 12. Updating the site later
 
+Push your changes to GitHub, then on the server:
+
 ```bash
-cd ~/shayvera
-git pull
-dc up -d --build
+bash ~/shayvera/scripts/ops/deploy.sh
 ```
 
-This rebuilds, applies new database migrations automatically (the `migrate` service), and restarts the
-website. Data and uploaded images are kept. Expect a short (seconds) blip while the web container restarts.
+The script backs up the database (to `~/shayvera-backups`, newest 10 kept), downloads the new code, builds
+the new version while the old one keeps serving, applies database migrations, restarts web + worker and
+waits until the site is healthy. If the new version does not become healthy, it puts the previous version
+back automatically. If it finds nothing new, it changes nothing.
+
+| Option       | What it does                                                        |
+| ------------ | ------------------------------------------------------------------- |
+| _(none)_     | Update to the latest code on GitHub                                 |
+| `--force`    | Rebuild and restart even if there is no new code                    |
+| `--rollback` | Go back to the version before the last update (run again to return) |
+
+Every run is logged to `~/shayvera/deploy.log`. Settings-only changes (`.env.production`) need just `dc up -d`.
 
 ## 13. Everyday commands
 

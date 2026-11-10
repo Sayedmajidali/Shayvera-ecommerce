@@ -52,3 +52,7 @@ next-env.d.ts
 /blob-report/
 /playwright/.cache/
 coverage
+
+# Deploy script state (server only)
+deploy.log
+.deploy-previous

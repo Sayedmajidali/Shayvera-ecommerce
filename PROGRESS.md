@@ -860,3 +860,15 @@ login 248 (budget 250).
 - **Fix:** the `migrate` service now mounts the `uploads` volume. Before, `docker compose run --rm migrate npm
   run db:seed` (or the catalogue import) wrote product images into a throwaway container, so they were missing
   on the site.
+
+## One-command deploys (`scripts/ops/deploy.sh`)
+
+- Run on the server after pushing to GitHub: pre-deploy database backup (newest 10 kept) → fast-forward to
+  `origin/<branch>` → build while the old version serves → `up -d` (migrations, restart) → wait for the web
+  container's health check and `/api/health` "ok". On build failure nothing changes; on start or health failure
+  the previous images (kept under a `:previous` tag) and code are restored automatically. `--force` rebuilds
+  without new commits, `--rollback` returns to the previous version (and back). Refuses to run if files were
+  edited on the server or the checkout is detached.
+- Tested against the production compose stack with a local git remote (sandbox builds used prebuilt base
+  images because the build network is restricted here): first deploy, "already up to date", update with backup,
+  rollback, re-update, and a deliberately broken release that was rolled back automatically with the site healthy.
