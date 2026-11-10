@@ -22,6 +22,7 @@
     "catalog:import-woo": "tsx --conditions=react-server scripts/import-woocommerce.ts",
     "catalog:import-csv": "tsx --conditions=react-server scripts/import-catalog-csv.ts",
     "email:test": "tsx --conditions=react-server scripts/email-test.ts",
+    "payments:verify": "tsx --conditions=react-server scripts/payments-verify.ts",
     "shipping:verify": "tsx --conditions=react-server scripts/shipping-verify.ts",
     "jobs:reconcile": "tsx --conditions=react-server scripts/reconcile-payments.ts",
     "worker": "tsx --conditions=react-server scripts/worker.ts",

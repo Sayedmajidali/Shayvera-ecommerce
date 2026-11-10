@@ -939,3 +939,13 @@ login 248 (budget 250).
   payment method, delivery address, "View/Track your order" button, invoice link after delivery.
 - Tests: 3 integration tests (content, free shipping/past ETA, HTML escaping); full suite 490 passing.
   Previewed at 700px and 375px. Not checked in real Gmail/Outlook clients from here.
+
+## Razorpay setup tooling
+
+- `npm run payments:verify`: read-only key check (`GET /v1/payments?count=1` with the key pair) that reports
+  test/live mode and whether the webhook secret is set. Verified against the real Razorpay API: invalid keys
+  get the clear 401 message; network failures show their cause.
+- `scripts/ops/set-razorpay.sh` (server): prompts for Key Id + Key Secret (hidden), validates their format,
+  asks for an explicit "LIVE" confirmation for live keys, creates a webhook secret (keeps an existing one on
+  re-runs), backs up and writes `.env.production` single-quoted, prints the webhook URL/secret/events,
+  restarts and runs `payments:verify`. All prompt paths exercised against a scratch env file.
