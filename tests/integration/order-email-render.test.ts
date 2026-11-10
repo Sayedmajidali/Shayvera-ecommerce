@@ -62,3 +62,21 @@ describe("order emails (branded layout)", () => {
     expect(m.html).toContain("&lt;b&gt;Eve&lt;/b&gt;");
   });
 });
+
+describe("order email wording by stage", () => {
+  it("after delivery the COD total reads 'Paid on delivery' and the address 'Delivered to'", async () => {
+    const p = await makeProduct({ name: "Chia Seeds", price: 6_500, stock: 5 });
+    const cookie = await cartWith(p.variants[0]!.id);
+    const { json } = await checkout(cookie, checkoutBody());
+    const order = await db.order.findUniqueOrThrow({
+      where: { orderNumber: json.data.orderNumber },
+    });
+    const delivered = (await renderOrderEmail(order.id, "delivered"))!;
+    expect(delivered.text).toContain("Paid on delivery:");
+    expect(delivered.text).toContain("Delivered to:");
+    expect(delivered.text).not.toContain("To pay on delivery");
+    const cancelled = (await renderOrderEmail(order.id, "cancelled"))!;
+    expect(cancelled.text).toContain("Order total:");
+    expect(cancelled.text).toContain("Shipping address:");
+  });
+});

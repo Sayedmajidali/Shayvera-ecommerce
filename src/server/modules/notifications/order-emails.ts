@@ -154,7 +154,13 @@ export async function renderOrderEmail(
   if (order.taxPaise > 0 && !order.pricesIncludeTax)
     rows.push({ label: "GST", value: formatINR(order.taxPaise) });
   rows.push({
-    label: cod ? "To pay on delivery" : "Total paid",
+    label: !cod
+      ? "Total paid"
+      : kind === "delivered" || kind === "returned" || kind === "refunded"
+        ? "Paid on delivery"
+        : kind === "cancelled"
+          ? "Order total"
+          : "To pay on delivery",
     value: formatINR(order.totalPaise),
     strong: true,
   });
@@ -189,7 +195,17 @@ export async function renderOrderEmail(
     ...(showSummary
       ? ["", ...rows.map((r) => `${r.label}: ${r.value}`), ...(gstNote ? [gstNote] : [])]
       : []),
-    ...(showSummary && addressLines.length ? ["", "Delivering to:", ...addressLines] : []),
+    ...(showSummary && addressLines.length
+      ? [
+          "",
+          kind === "delivered"
+            ? "Delivered to:"
+            : kind === "cancelled"
+              ? "Shipping address:"
+              : "Delivering to:",
+          ...addressLines,
+        ]
+      : []),
     "",
     `View your order: ${url}`,
     ...(showInvoice ? [`Invoice ${order.invoice!.invoiceNumber}: ${invoiceUrl}`] : []),
@@ -243,7 +259,7 @@ ${
 }
 ${
   showSummary && addressLines.length
-    ? `${emailSectionTitle("Delivering to")}<p style="margin:0;font-size:14px;line-height:1.55">${addressLines.map((l) => escapeHtml(l)).join("<br>")}</p>`
+    ? `${emailSectionTitle(kind === "delivered" ? "Delivered to" : kind === "cancelled" ? "Shipping address" : "Delivering to")}<p style="margin:0;font-size:14px;line-height:1.55">${addressLines.map((l) => escapeHtml(l)).join("<br>")}</p>`
     : ""
 }
 <div style="margin-top:26px">${emailButton(url, kind === "shipped" || kind === "out_for_delivery" ? "Track your order" : "View your order")}</div>
