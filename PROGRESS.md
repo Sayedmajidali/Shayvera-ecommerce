@@ -960,3 +960,18 @@ login 248 (budget 250).
   own refund via `notes.refundId`; duplicate-payment refunds stay with their job. Redeliveries are no-ops.
 - Razorpay API errors now log and show `field`/`reason` (its description is often just "invalid request
   sent"). Tests: +3 integration, +1 unit.
+
+## Smoother scrolling + admin "Back to homepage"
+
+- Measured (Playwright + CDP traces, 390px phone with 4× CPU throttle): no layout shifts or long tasks, but
+  continuous main-thread work from always-on animation loops. Fixes:
+  - ScrollVelocity ticker skipped its frame work only under reduced motion → now also when off screen.
+  - ShinyText kept sweeping after leaving the screen → stops; the visibility observer restarts it.
+  - `useEnhance(…, { finePointer: true })`: touch devices keep the plain/CSS versions of mouse-driven or
+    per-frame-JS effects (StarBorder CTA, TiltedCard, SpotlightCard, scroll-linked ticker → CSS marquee,
+    LogoLoop → static badges). Desktop with a mouse is unchanged.
+  - Results (phone): idle work at the top 1,935 → 75 ms per 3 s; slow frames while scrolling 33.5 → 11.7;
+    p95 frame 75 → 33 ms. E2E: react-bits, interactions, admin, accessibility, responsive, performance,
+    site-images — 50 passed.
+- Admin: "Back to homepage" button at the top of the sidebar and "Homepage" in the phone header (replaces the
+  small "View store" link at the bottom); the menu list scrolls so "Sign out" stays visible.

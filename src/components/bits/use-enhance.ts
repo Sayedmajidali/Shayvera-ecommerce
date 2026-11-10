@@ -12,13 +12,21 @@ export type EnhanceWhen = "near" | "interaction" | "always";
  * - "interaction": the visitor first scrolls, moves the pointer, touches or types;
  * - "always": right after hydration.
  * With `decorative` (default) visitors who prefer reduced motion keep the plain version.
+ * With `finePointer`, touch devices (phones, tablets) also keep the plain version: used for effects
+ * that react to a mouse, or that do per-frame JavaScript work which would compete with touch scrolling.
  */
-export function useEnhance<T extends HTMLElement>(when: EnhanceWhen = "near", decorative = true) {
+export function useEnhance<T extends HTMLElement>(
+  when: EnhanceWhen = "near",
+  decorative = true,
+  opts: { finePointer?: boolean } = {},
+) {
+  const finePointer = opts.finePointer ?? false;
   const ref = useRef<T>(null);
   const [on, setOn] = useState(false);
 
   useEffect(() => {
     if (decorative && !window.matchMedia("(prefers-reduced-motion: no-preference)").matches) return;
+    if (finePointer && !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
     if (when === "always") {
       const t = setTimeout(() => setOn(true), 0);
       return () => clearTimeout(t);
@@ -45,7 +53,7 @@ export function useEnhance<T extends HTMLElement>(when: EnhanceWhen = "near", de
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [when, decorative]);
+  }, [when, decorative, finePointer]);
 
   return [ref, on] as const;
 }

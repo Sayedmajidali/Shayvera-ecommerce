@@ -282,6 +282,13 @@ const ShinyText = ({
         sweep(state.pos ?? nearest(), nearest(), now);
       }
       if (state.phase === "sweep") {
+        if (!state.visible && s.trigger === "loop") {
+          // Off screen: stop here; the visibility observer restarts the loop when it is seen again.
+          state.phase = "idle";
+          state.pos = null;
+          draw();
+          return;
+        }
         if (s.pauseOnHover && state.inside) {
           state.start += dt * 1000;
           raf = requestAnimationFrame(tick);

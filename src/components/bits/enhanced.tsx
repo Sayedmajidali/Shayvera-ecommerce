@@ -27,7 +27,7 @@ const SAFFRON = "#cc6824";
 
 /** Primary call-to-action with a light travelling around its border (StarBorder). */
 export function StarCta({ href, children }: { href: string; children: ReactNode }) {
-  const [ref, on] = useEnhance<HTMLSpanElement>("interaction");
+  const [ref, on] = useEnhance<HTMLSpanElement>("interaction", true, { finePointer: true });
   const plainClass =
     "bg-primary text-primary-foreground inline-flex h-12 items-center gap-2 rounded-full px-7 text-[15px] font-medium shadow-xs transition hover:shadow-[0_10px_24px_-10px_var(--primary)] active:scale-[0.97] [&_svg]:size-4 [&_svg]:transition-transform hover:[&_svg]:translate-x-1";
   const plain = (
@@ -96,7 +96,7 @@ export function Shiny({
 
 /** Card lit by a spotlight that follows the pointer (SpotlightCard). */
 export function Spotlight({ className, children }: { className?: string; children: ReactNode }) {
-  const [ref, on] = useEnhance<HTMLDivElement>("near");
+  const [ref, on] = useEnhance<HTMLDivElement>("near", true, { finePointer: true });
   const plain = <div className={cn("bg-card rounded-2xl border", className)}>{children}</div>;
   return (
     <div ref={ref} className="h-full">
@@ -129,7 +129,7 @@ export function TiltTile({
   className?: string;
   children: ReactNode;
 }) {
-  const [ref, on] = useEnhance<HTMLAnchorElement>("near");
+  const [ref, on] = useEnhance<HTMLAnchorElement>("near", true, { finePointer: true });
   return (
     <Link ref={ref} href={href} className={cn("group block", className)}>
       {on ? (
@@ -167,7 +167,8 @@ export type TrustItem = { label: string; icon: ReactNode };
 
 /** Continuously looping strip of trust badges (LogoLoop). */
 export function TrustLoop({ items }: { items: TrustItem[] }) {
-  const [ref, on] = useEnhance<HTMLDivElement>("near");
+  // Touch devices get the static row: the moving strip is a per-frame JavaScript loop.
+  const [ref, on] = useEnhance<HTMLDivElement>("near", true, { finePointer: true });
   const badge = (it: TrustItem) => (
     <span className="text-foreground/80 inline-flex items-center gap-2 text-sm font-medium whitespace-nowrap">
       <span className="text-primary [&_svg]:size-5">{it.icon}</span>
@@ -214,7 +215,9 @@ function StaticTrust({
 
 /** Brand ticker that speeds up and skews with scroll velocity (ScrollVelocity); CSS marquee first. */
 export function VelocityTicker({ words, fallback }: { words: string; fallback: ReactNode }) {
-  const [ref, on] = useEnhance<HTMLDivElement>("interaction");
+  // Touch devices keep the CSS marquee (runs on the compositor): the scroll-linked version does
+  // JavaScript work on every scroll frame, which competes with finger scrolling.
+  const [ref, on] = useEnhance<HTMLDivElement>("interaction", true, { finePointer: true });
   return (
     <div ref={ref} className="bg-deep text-deep-foreground overflow-hidden" aria-hidden>
       {on ? (

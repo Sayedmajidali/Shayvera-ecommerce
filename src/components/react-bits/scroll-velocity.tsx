@@ -4,7 +4,7 @@
  */
 "use client";
 
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   motion,
   useAnimationFrame,
@@ -162,6 +162,19 @@ function VelocityText({
   const copyRef = useRef<HTMLSpanElement>(null);
   const copyWidth = useElementWidth(copyRef);
 
+  // Only animate while on screen: off-screen frames would still update styles every frame.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const onScreen = useRef(true);
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([entry]) => {
+      onScreen.current = !!entry?.isIntersecting;
+    });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
   const x = useTransform(baseX, (v) => {
     if (copyWidth === 0) return "0px";
     return `${wrap(-copyWidth, 0, v)}px`;
@@ -180,7 +193,7 @@ function VelocityText({
   });
 
   useAnimationFrame((t, delta) => {
-    if (reduceMotion) return;
+    if (reduceMotion || !onScreen.current) return;
 
     const grab = drag.current;
     const seconds = Math.min(delta, 64) / 1000;
@@ -301,6 +314,7 @@ function VelocityText({
 
   return (
     <div
+      ref={rootRef}
       className={`${parallaxClassName} relative overflow-hidden`}
       style={{
         ...(draggable

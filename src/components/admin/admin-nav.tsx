@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LogOut, Menu, Store } from "lucide-react";
+import { ArrowLeft, LogOut, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
@@ -44,12 +44,6 @@ function Footer({ name, email }: { name: string; email: string }) {
   const router = useRouter();
   return (
     <div className="mt-auto space-y-1 border-t pt-4">
-      <Link
-        href="/"
-        className="text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
-      >
-        <Store className="size-4" /> View store
-      </Link>
       <button
         type="button"
         onClick={async () => {
@@ -74,11 +68,18 @@ function Footer({ name, email }: { name: string; email: string }) {
 export function AdminSidebar({ name, email, permissions }: NavProps) {
   return (
     <aside className="bg-sidebar sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r p-4 lg:flex">
-      <Link href="/admin" className="heading-display mb-6 px-3 text-xl">
+      <Link href="/admin" className="heading-display mb-4 px-3 text-xl">
         Shayvera<span className="text-brand">.</span>{" "}
         <span className="text-muted-foreground font-sans text-xs">Admin</span>
       </Link>
-      <NavLinks permissions={permissions} />
+      <Button asChild variant="outline" size="sm" className="mb-5 w-full justify-start">
+        <Link href="/">
+          <ArrowLeft /> Back to homepage
+        </Link>
+      </Button>
+      <div className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1">
+        <NavLinks permissions={permissions} />
+      </div>
       <Footer name={name} email={email} />
     </aside>
   );
@@ -103,6 +104,11 @@ export function AdminMobileNav({ name, email, permissions }: NavProps) {
         </SheetContent>
       </Sheet>
       <span className="heading-display text-lg">Shayvera Admin</span>
+      <Button asChild variant="outline" size="sm" className="ml-auto">
+        <Link href="/">
+          <ArrowLeft /> Homepage
+        </Link>
+      </Button>
     </div>
   );
 }
