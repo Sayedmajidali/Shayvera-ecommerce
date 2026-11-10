@@ -87,6 +87,43 @@ describe("RazorpayGateway (fake SDK)", () => {
     );
   });
 
+  it("adds Razorpay's field and reason to a generic refusal", async () => {
+    const gw = gateway({
+      payments: {
+        refund: () =>
+          Promise.reject({
+            statusCode: 400,
+            error: {
+              code: "BAD_REQUEST_ERROR",
+              description: "invalid request sent",
+              field: "speed",
+              reason: "input_validation_failed",
+              source: "business",
+            },
+          }),
+      },
+    });
+    const err = (await gw
+      .refund({ paymentId: "p", amountPaise: 100, notes: {} })
+      .catch((e) => e)) as GatewayError;
+    expect(err.message).toBe(
+      "Razorpay: invalid request sent (field: speed, reason: input_validation_failed)",
+    );
+    const na = gateway({
+      payments: {
+        refund: () =>
+          Promise.reject({
+            statusCode: 400,
+            error: { description: "The amount is invalid", field: "NA", reason: "NA" },
+          }),
+      },
+    });
+    expect(
+      ((await na.refund({ paymentId: "p", amountPaise: 1, notes: {} }).catch((e) => e)) as Error)
+        .message,
+    ).toBe("Razorpay: The amount is invalid");
+  });
+
   it("a hung call times out as an unknown outcome", async () => {
     process.env.RAZORPAY_HTTP_TIMEOUT_MS = "1000";
     const gw = gateway({ payments: { refund: () => new Promise(() => {}) } });

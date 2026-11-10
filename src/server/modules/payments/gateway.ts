@@ -112,21 +112,43 @@ export class RazorpayGateway implements PaymentGateway {
       // A timeout is an unknown outcome (no statusCode below → not definitive): callers reconcile.
       return await withTimeout(fn(), razorpayTimeoutMs(), `Razorpay ${label}`);
     } catch (error) {
-      const e = error as { statusCode?: number; error?: { code?: string; description?: string } };
+      const e = error as {
+        statusCode?: number;
+        error?: {
+          code?: string;
+          description?: string;
+          field?: string | null;
+          reason?: string | null;
+          source?: string | null;
+          step?: string | null;
+        };
+      };
+      const detail = e.error ?? {};
       logger.error("Razorpay API call failed", {
         label,
         statusCode: e.statusCode,
-        code: e.error?.code,
-        description: e.error?.description,
+        code: detail.code,
+        description: detail.description,
+        field: detail.field,
+        reason: detail.reason,
+        source: detail.source,
+        step: detail.step,
       });
       const s = e.statusCode ?? 0;
       const definitive = s >= 400 && s < 500 && s !== 408 && s !== 429;
+      // Razorpay's description is often generic ("invalid request sent"); the field/reason say why.
+      const extra = [
+        detail.field && detail.field !== "NA" ? `field: ${detail.field}` : null,
+        detail.reason && detail.reason !== "NA" ? `reason: ${detail.reason}` : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
       throw new GatewayError(
-        definitive && e.error?.description
-          ? `Razorpay: ${e.error.description}`
+        definitive && detail.description
+          ? `Razorpay: ${detail.description}${extra ? ` (${extra})` : ""}`
           : "The payment provider is unavailable. Please try again.",
         definitive,
-        e.error?.code ?? null,
+        detail.code ?? null,
       );
     }
   }
