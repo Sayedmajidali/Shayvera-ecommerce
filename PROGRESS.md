@@ -914,3 +914,14 @@ login 248 (budget 250).
   {order_ids} (helpsheet step 8). 4 unit tests from the official examples.
 - Not used (not needed yet): NDR actions, wallet balance, wrapper API, Shiprocket invoice (the app issues its
   own GST invoices), product/inventory sync, international.
+
+## Email sending setup
+
+- `npm run email:test -- --to <address>`: sends one message through the configured provider and prints the
+  SMTP server's reply on failure (host shown, credentials never). Checked in dev-outbox mode and against an
+  unreachable SMTP server (clear `ECONNREFUSED [ESOCKET]` error).
+- `scripts/ops/set-email.sh` (server): prompts for mailbox + password (hidden), URL-encodes them into
+  `SMTP_URL` (default Hostinger `smtp.hostinger.com:465`, overridable), writes `EMAIL_PROVIDER/EMAIL_FROM/
+  EMAIL_REPLY_TO` single-quoted, backs up `.env.production`, restarts and sends a test email. Verified the
+  written file and that a password with `@ $ % ^ # & / :` round-trips through the app's URL decoding.
+  Not verified here: a real delivery through Hostinger (needs the mailbox password on the server).

@@ -21,6 +21,7 @@
     "admin:create": "tsx --conditions=react-server scripts/create-admin.ts",
     "catalog:import-woo": "tsx --conditions=react-server scripts/import-woocommerce.ts",
     "catalog:import-csv": "tsx --conditions=react-server scripts/import-catalog-csv.ts",
+    "email:test": "tsx --conditions=react-server scripts/email-test.ts",
     "shipping:verify": "tsx --conditions=react-server scripts/shipping-verify.ts",
     "jobs:reconcile": "tsx --conditions=react-server scripts/reconcile-payments.ts",
     "worker": "tsx --conditions=react-server scripts/worker.ts",
