@@ -1,5 +1,5 @@
 /**
- * DEMO catalog for local development, themed on Shayvera Foods' product range
+ * DEMO catalog for local development, themed on Shayvera Food' product range
  * (spices & masalas, dry fruits, nuts, roasted makhana).
  * Product names, prices, stock, GST rates and HSN codes are PLACEHOLDERS — replace them with the
  * business's real catalog in Admin → Products, and have tax codes reviewed by an accountant.
@@ -111,7 +111,7 @@ const w = (weight: string, price: number, stock: number, compareAt?: number): Se
 });
 
 const DRY = "Store in a cool, dry place away from direct sunlight. Keep airtight after opening.";
-const BRAND = "Shayvera Foods";
+const BRAND = "Shayvera Food";
 
 export const products: SeedProduct[] = [
   // ── Whole spices ──

@@ -11,7 +11,7 @@ import { getStoreStats } from "@/server/modules/catalog/store-stats";
 export const metadata: Metadata = {
   title: "About us",
   description:
-    "Shayvera Foods — Rooted in Trust, Crafted with Care. Spices, masalas, dry fruits, nuts and roasted makhana made from ingredients we can trust.",
+    "Shayvera Food — Rooted in Trust, Crafted with Care. Spices, masalas, dry fruits, nuts and roasted makhana made from ingredients we can trust.",
   alternates: { canonical: "/about" },
 };
 
@@ -52,12 +52,12 @@ export default async function AboutPage() {
   ].filter((f) => f.value > 0);
   return (
     <div className="container-page pb-10">
-      <PageIntro eyebrow="Shayvera Foods" title="Rooted in Trust, Crafted with Care" />
+      <PageIntro eyebrow="Shayvera Food" title="Rooted in Trust, Crafted with Care" />
       {site.aboutBanner && (
         <div className="shadow-soft relative mx-auto mb-12 aspect-[16/7] max-w-5xl overflow-hidden rounded-3xl">
           <Image
             src={site.aboutBanner.url}
-            alt={site.aboutBanner.alt || "Shayvera Foods"}
+            alt={site.aboutBanner.alt || "Shayvera Food"}
             fill
             priority
             sizes="(min-width: 1024px) 1024px, 100vw"
@@ -67,7 +67,7 @@ export default async function AboutPage() {
       )}
       <div className="prose-store mx-auto max-w-2xl">
         <p className="text-foreground text-lg leading-8">
-          Shayvera Foods was born from a belief that food should be simple, authentic and made from
+          Shayvera Food was born from a belief that food should be simple, authentic and made from
           ingredients we can trust. From spices and masalas to dry fruits, nuts and roasted makhana,
           every pack carrying our name represents a promise of careful selection, authentic flavour
           and responsible quality.

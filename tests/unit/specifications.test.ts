@@ -17,7 +17,7 @@ describe("productSpecifications", () => {
     const rows = productSpecifications(base, {
       fssaiLicense: null,
       legalName: null,
-      storeName: "Shayvera Foods",
+      storeName: "Shayvera Food",
     });
     expect(rows.map((r) => r.label)).toEqual([
       "Brand",
@@ -38,14 +38,14 @@ describe("productSpecifications", () => {
   it("shows the FSSAI licence and legal name when configured", () => {
     const rows = productSpecifications(base, {
       fssaiLicense: "12345678901234",
-      legalName: "Shayvera Foods Pvt Ltd",
-      storeName: "Shayvera Foods",
+      legalName: "Shayvera Food Pvt Ltd",
+      storeName: "Shayvera Food",
     });
     expect(rows.find((r) => r.label === "FSSAI Lic. No.")).toMatchObject({
       value: "12345678901234",
       kind: "mono",
     });
-    expect(rows.at(-1)?.value).toBe("Shayvera Foods Pvt Ltd");
+    expect(rows.at(-1)?.value).toBe("Shayvera Food Pvt Ltd");
   });
 });
 
@@ -60,7 +60,7 @@ describe("productSpecifications with attributes", () => {
           { name: "Empty", value: " " },
         ],
       },
-      { fssaiLicense: null, legalName: null, storeName: "Shayvera Foods" },
+      { fssaiLicense: null, legalName: null, storeName: "Shayvera Food" },
     );
     const labels = rows.map((r) => r.label);
     expect(labels.slice(0, 5)).toEqual([

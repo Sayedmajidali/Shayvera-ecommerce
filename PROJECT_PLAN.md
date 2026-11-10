@@ -1,6 +1,6 @@
 # Project Plan — v2 (scalable platform)
 
-Shayvera Foods e-commerce platform. v1 (Phases 0–13, Nov 2026) delivered a working local store. v2 implements
+Shayvera Food e-commerce platform. v1 (Phases 0–13, Nov 2026) delivered a working local store. v2 implements
 the expanded "production-grade, scalable platform" specification on top of it. This file is the roadmap; status
 lives in `PROGRESS.md`.
 

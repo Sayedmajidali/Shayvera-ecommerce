@@ -24,7 +24,7 @@ test("admin replaces the logo; the storefront shows it; reset restores the built
 
   const shopper = await (await browser.newContext()).newPage();
   await shopper.goto("/");
-  const logo = shopper.getByRole("banner").getByRole("link", { name: "Shayvera Foods home" });
+  const logo = shopper.getByRole("banner").getByRole("link", { name: "Shayvera Food home" });
   await expect(logo.locator("img")).toHaveCount(1); // uploaded image replaces mark + wordmark
   await expect(logo.locator("img")).toHaveAttribute("src", /branding/);
 

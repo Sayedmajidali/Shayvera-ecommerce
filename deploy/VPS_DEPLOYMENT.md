@@ -120,7 +120,7 @@ RAZORPAY_WEBHOOK_SECRET="..."          # you choose this in step 9
 # Email — required for real customers (order emails, password reset)
 EMAIL_PROVIDER="smtp"
 SMTP_URL="smtps://USER:PASSWORD@smtp.example.com:465"
-EMAIL_FROM="Shayvera Foods <orders@shayvera.in>"
+EMAIL_FROM="Shayvera Food <orders@shayvera.in>"
 
 # Uploaded images live in a Docker volume on this server
 STORAGE_DRIVER="local"

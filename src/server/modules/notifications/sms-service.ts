@@ -30,7 +30,7 @@ export class SmsDeliveryError extends Error {
 }
 
 function renderText(m: SmsMessage): string {
-  return `${m.vars.otp} is your Shayvera Foods sign-in code. It expires in 5 minutes. Do not share it with anyone.`;
+  return `${m.vars.otp} is your Shayvera Food sign-in code. It expires in 5 minutes. Do not share it with anyone.`;
 }
 
 const devOutbox: SmsProvider = {

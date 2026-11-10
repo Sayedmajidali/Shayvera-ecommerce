@@ -21,7 +21,7 @@ export default function OpengraphImage() {
       }}
     >
       <div style={{ display: "flex", fontSize: 40, letterSpacing: -1 }}>
-        Shayvera Foods<span style={{ color: "#b5643f" }}>.</span>
+        Shayvera Food<span style={{ color: "#b5643f" }}>.</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <div style={{ fontSize: 76, lineHeight: 1.05, letterSpacing: -2, maxWidth: 900 }}>

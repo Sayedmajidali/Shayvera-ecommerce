@@ -4,7 +4,7 @@ import { TrackOrderForm } from "@/components/store/track-order-form";
 
 export const metadata: Metadata = {
   title: "Track your order",
-  description: "Check the status of your Shayvera Foods order with your order number.",
+  description: "Check the status of your Shayvera Food order with your order number.",
   alternates: { canonical: "/track" },
 };
 

@@ -23,7 +23,7 @@ async function latestCode(phoneNumber: string): Promise<string> {
     where: { to: phoneNumber },
     orderBy: { createdAt: "desc" },
   });
-  const code = /^(\d{6}) is your Shayvera Foods sign-in code/.exec(sms.body)?.[1];
+  const code = /^(\d{6}) is your Shayvera Food sign-in code/.exec(sms.body)?.[1];
   if (!code) throw new Error(`no code in SMS body: ${sms.body}`);
   return code;
 }

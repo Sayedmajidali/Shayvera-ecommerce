@@ -1,6 +1,6 @@
-# Shayvera Foods — E-Commerce Platform
+# Shayvera Food — E-Commerce Platform
 
-_Rooted in Trust, Crafted with Care._ A production-grade online store for **Shayvera Foods** — spices and
+_Rooted in Trust, Crafted with Care._ A production-grade online store for **Shayvera Food** — spices and
 masalas, dry fruits, nuts and roasted makhana — with a customer storefront and an admin dashboard in one
 Next.js application, backed by PostgreSQL.
 
@@ -125,7 +125,7 @@ npm run dev
 Open <http://localhost:3000>. Admin dashboard: <http://localhost:3000/admin>.
 Demo customer: `customer@shayvera.local` / `Customer123!`, or sign in on the **Mobile OTP** tab with
 `9845012345`. In development no SMS is sent: the 6-digit code is printed in the `npm run dev` window as
-`[dev-sms] To +919845012345: 123456 is your Shayvera Foods sign-in code…`. Staff always sign in with email and
+`[dev-sms] To +919845012345: 123456 is your Shayvera Food sign-in code…`. Staff always sign in with email and
 password.
 
 > Next.js runs directly on Windows; only PostgreSQL runs in Docker. If `npm run db:up` fails with

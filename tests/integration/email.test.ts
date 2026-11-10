@@ -71,7 +71,7 @@ describe("SMTP email provider", () => {
     try {
       process.env.EMAIL_PROVIDER = "smtp";
       process.env.SMTP_URL = `smtp://mailer:p%40ss@127.0.0.1:${smtp.port}`;
-      process.env.EMAIL_FROM = "Shayvera Foods <orders@shayvera.test>";
+      process.env.EMAIL_FROM = "Shayvera Food <orders@shayvera.test>";
       expect(emailProvider().name).toBe("smtp");
       const result = await deliverEmail({
         to: "asha@example.com",

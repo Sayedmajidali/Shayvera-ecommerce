@@ -31,7 +31,7 @@ export async function Logo({
           tone === "light" && "rounded-xl bg-white/95 px-3 py-2",
           className,
         )}
-        aria-label="Shayvera Foods home"
+        aria-label="Shayvera Food home"
       >
         <Image
           src={custom.url}
@@ -52,7 +52,7 @@ export async function Logo({
     <Link
       href={href}
       className={cn("group/logo inline-flex shrink-0 items-center gap-2", className)}
-      aria-label="Shayvera Foods home"
+      aria-label="Shayvera Food home"
     >
       <Image
         src="/brand/mark.svg"
@@ -84,7 +84,7 @@ export async function Logo({
             tone === "light" ? "text-deep-foreground/70" : "text-brand",
           )}
         >
-          Foods
+          Food
         </span>
       </span>
     </Link>

@@ -18,10 +18,10 @@ command -v python3 >/dev/null || { echo "python3 is required"; exit 1; }
 
 read -rp "Mailbox to send from (e.g. orders@shayvera.in): " MAILBOX
 read -rsp "Mailbox password (hidden): " MAILPASS; echo
-read -rp "Sender name [Shayvera Foods]: " SENDER
+read -rp "Sender name [Shayvera Food]: " SENDER
 read -rp "Replies go to [$MAILBOX]: " REPLY_TO
 read -rp "Send a test email to: " TEST_TO
-SENDER="${SENDER:-Shayvera Foods}"
+SENDER="${SENDER:-Shayvera Food}"
 REPLY_TO="${REPLY_TO:-$MAILBOX}"
 
 valid() { [[ "$1" =~ ^[^[:space:]@\']+@[^[:space:]@\']+\.[^[:space:]@\']+$ ]]; }

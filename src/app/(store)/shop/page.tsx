@@ -7,7 +7,7 @@ import { productListParamsSchema } from "@/server/modules/catalog/queries";
 export const metadata: Metadata = {
   title: "Shop all products",
   description:
-    "Shop Shayvera Foods: whole spices, masalas, dry fruits, nuts and roasted makhana, delivered across India.",
+    "Shop Shayvera Food: whole spices, masalas, dry fruits, nuts and roasted makhana, delivered across India.",
   alternates: { canonical: "/shop" },
 };
 

@@ -119,10 +119,10 @@ export default async function HomePage() {
   const productHero = featured.flatMap((p) => p.images.slice(0, 1)).slice(0, 2);
   const heroImages = [
     site.heroPrimary
-      ? { url: site.heroPrimary.url, alt: site.heroPrimary.alt || "Shayvera Foods" }
+      ? { url: site.heroPrimary.url, alt: site.heroPrimary.alt || "Shayvera Food" }
       : productHero[0],
     site.heroSecondary
-      ? { url: site.heroSecondary.url, alt: site.heroSecondary.alt || "Shayvera Foods" }
+      ? { url: site.heroSecondary.url, alt: site.heroSecondary.alt || "Shayvera Food" }
       : productHero[1],
   ];
   const featuredCategories = categories.filter((c) => c.isFeatured).slice(0, 4);

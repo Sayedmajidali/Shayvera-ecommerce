@@ -23,7 +23,7 @@ async function upsertSettings() {
       id: "default",
       // Business contact, address, state, GSTIN and FSSAI number are intentionally NOT seeded:
       // enter the real details in Admin → Settings (state drives the CGST/SGST vs IGST split).
-      storeName: "Shayvera Foods",
+      storeName: "Shayvera Food",
       supportEmail: "support@example.com",
     },
   });
@@ -102,7 +102,7 @@ async function seedProducts(categoryIds: Record<string, string>) {
       data: {
         slug: p.slug,
         name: p.name,
-        brand: "Shayvera Foods",
+        brand: "Shayvera Food",
         ingredients: p.ingredients,
         shelfLife: p.shelfLife,
         storageInfo: p.storage,

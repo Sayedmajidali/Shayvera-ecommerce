@@ -82,7 +82,7 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
       <AdminPageHeader
         eyebrow="Overview"
         title={`${greeting}${firstName ? `, ${firstName}` : ""}`}
-        description={`Here’s how Shayvera Foods is doing over the ${label}.`}
+        description={`Here’s how Shayvera Food is doing over the ${label}.`}
         actions={<RangeTabs current={range} />}
       />
       {quick.length > 0 && (

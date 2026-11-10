@@ -106,7 +106,7 @@ export const packedWeight = (grams: number) =>
   Math.ceil((grams + Math.max(20, grams * 0.1)) / 10) * 10;
 
 const defaultDescription = (name: string, packs: number[]) =>
-  `${name} from Shayvera Foods, carefully selected and hygienically packed. Available in ${packs
+  `${name} from Shayvera Food, carefully selected and hygienically packed. Available in ${packs
     .map(packName)
     .join(", ")} packs.`;
 
@@ -225,19 +225,19 @@ export async function importCatalogRows(opts: {
               categoryId,
               status: plan.status,
               taxRateBps: plan.taxRateBps,
-              brand: existing.brand ?? "Shayvera Foods",
+              brand: existing.brand ?? "Shayvera Food",
             },
           })
         : await tx.product.create({
             data: {
               name: plan.name,
               slug: plan.slug,
-              brand: "Shayvera Foods",
+              brand: "Shayvera Food",
               description: defaultDescription(
                 plan.name,
                 plan.packs.map((p) => p.grams),
               ),
-              shortDescription: "Carefully selected and hygienically packed by Shayvera Foods.",
+              shortDescription: "Carefully selected and hygienically packed by Shayvera Food.",
               categoryId,
               status: plan.status,
               taxRateBps: plan.taxRateBps,

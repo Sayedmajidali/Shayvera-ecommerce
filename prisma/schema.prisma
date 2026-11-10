@@ -972,7 +972,7 @@ model SiteImage {
 
 model StoreSettings {
   id                         String   @id @default("default")
-  storeName                  String   @default("Shayvera Foods")
+  storeName                  String   @default("Shayvera Food")
   legalName                  String?
   logoUrl                    String?
   supportEmail               String   @default("support@example.com")
