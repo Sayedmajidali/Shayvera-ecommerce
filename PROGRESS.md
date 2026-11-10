@@ -872,3 +872,15 @@ login 248 (budget 250).
 - Tested against the production compose stack with a local git remote (sandbox builds used prebuilt base
   images because the build network is restricted here): first deploy, "already up to date", update with backup,
   rollback, re-update, and a deliberately broken release that was rolled back automatically with the site healthy.
+
+## Nightly backups (`scripts/ops/backup.sh`)
+
+- Database dump (custom format, verified by reading its table of contents back — an unreadable dump is deleted
+  and the run fails) + tar of the uploads volume (gzip-checked), into `~/shayvera-backups` (mode 700/600).
+  Retention 14 days (database) / 7 days (images); refuses to run with < 1 GB free. `--install-cron` writes
+  `/etc/cron.d/shayvera-backup` for ~02:30 IST (handles UTC or IST server clocks); `--list` shows backups.
+- Tested against the production compose stack: backup, verification (also caught a wrong check pattern before
+  release), the cron line run in a bare environment, and a restore into a separate database and volume —
+  products, orders, users, migrations and all 75 image files matched the original. The destructive "replace live
+  data" procedure in `deploy/VPS_DEPLOYMENT.md` §11 was not executed here (its file-wipe step was blocked in the
+  sandbox); its restore commands are the same ones the separate-database test used.

@@ -231,28 +231,50 @@ Then open **Admin → Background jobs → System status**: every integration's m
 
 ## 11. Backups
 
-Database — a nightly dump, keeping 14 days:
+`scripts/ops/backup.sh` backs up the database (checked by reading it back) and every uploaded image into
+`~/shayvera-backups`, keeping 14 days of database and 7 days of image backups. Set it to run nightly
+(about 02:30 India time) and take the first backup now:
 
 ```bash
-mkdir -p ~/backups
-crontab -e
+bash ~/shayvera/scripts/ops/backup.sh --install-cron
+bash ~/shayvera/scripts/ops/backup.sh
+bash ~/shayvera/scripts/ops/backup.sh --list
 ```
 
-Add this line:
+Nightly runs are logged to `~/shayvera-backups/backup.log`. The deploy script also takes a `pre-deploy-…`
+database backup before every update.
 
-```cron
-30 2 * * * cd ~/shayvera && docker compose -f docker-compose.prod.yml --env-file .env.production exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > ~/backups/db-$(date +\%F).dump && find ~/backups -name 'db-*.dump' -mtime +14 -delete
-```
-
-Uploaded images (logo, product photos):
+**Keep copies off the server** — a backup on the server is lost with it. From your PC (PowerShell):
 
 ```bash
-docker run --rm -v shayvera_uploads:/data -v ~/backups:/out alpine tar czf /out/uploads-$(date +%F).tgz -C /data .
+scp -r root@YOUR_SERVER_IP:/root/shayvera-backups ./shayvera-backups
 ```
 
-(The volume name is `<folder>_uploads`; check with `docker volume ls`.) Copy `~/backups` off the server
-regularly (e.g. to your PC, Google Drive or object storage) — a backup on the same server is lost with it.
-Restoring: `scripts/ops/db-restore.sh` (restores into an empty database).
+and keep the hosting provider's VPS snapshots switched on.
+
+### Restoring
+
+Check a backup without touching the live site (restores into a separate database):
+
+```bash
+dc exec -T db createdb -U shayvera shayvera_check
+dc exec -T db pg_restore -U shayvera -d shayvera_check --no-owner --exit-on-error < ~/shayvera-backups/db-YYYYMMDD-HHMMSS.dump
+dc exec -T db psql -U shayvera -d shayvera_check -Atc 'select count(*) from "Order"'
+dc exec -T db dropdb -U shayvera shayvera_check
+```
+
+Replacing live data is a last resort (it discards everything after the backup). Take a fresh backup first,
+then stop the site, recreate the database, restore, and start again:
+
+```bash
+bash ~/shayvera/scripts/ops/backup.sh
+dc stop web worker
+dc exec -T db dropdb -U shayvera shayvera
+dc exec -T db createdb -U shayvera shayvera
+dc exec -T db pg_restore -U shayvera -d shayvera --no-owner --exit-on-error < ~/shayvera-backups/db-YYYYMMDD-HHMMSS.dump
+dc run --rm --no-deps -T migrate sh -c 'tar xzf - -C /app/storage/uploads' < ~/shayvera-backups/uploads-YYYYMMDD-HHMMSS.tgz
+dc up -d
+```
 
 ## 12. Updating the site later
 
