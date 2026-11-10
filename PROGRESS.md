@@ -846,3 +846,17 @@ login 248 (budget 250).
   the default (60 s cache). Default icon/preview files moved from `src/app` to `public/brand` so uploads can
   override them.
 - Tests: integration +6 (`site-images.test.ts`), E2E +2 (`site-images.spec.ts`).
+
+## VPS deployment guide + production stack smoke test
+
+- **`deploy/VPS_DEPLOYMENT.md`**: step-by-step single-server guide (Ubuntu 24.04, Docker, Caddy HTTPS, DNS,
+  `.env.production`, admin creation, optional demo catalogue, webhooks, backups, updates, everyday commands).
+- **Smoke-tested** `Dockerfile` + `docker-compose.prod.yml` with Docker for the first time: images build,
+  migrations apply, seed and `admin:create` run in the `migrate` container, `/api/health` ok with the worker up,
+  admin sign-in, logo upload, product images via the optimizer, and data/uploads survive a full container
+  recreate. Idle memory ≈ 250 MB total. (The sandbox blocks the Alpine package mirror, so the test build skipped
+  the `apk add openssl` step — the base image already ships libssl 3; the real Dockerfile is unchanged.)
+  Not tested: Caddy/TLS, DNS, real SMTP/Razorpay/MSG91/Shiprocket.
+- **Fix:** the `migrate` service now mounts the `uploads` volume. Before, `docker compose run --rm migrate npm
+  run db:seed` (or the catalogue import) wrote product images into a throwaway container, so they were missing
+  on the site.

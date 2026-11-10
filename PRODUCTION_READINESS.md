@@ -120,7 +120,7 @@ Internet ──HTTPS──▶ Reverse proxy / load balancer (TLS, HTTP→HTTPS, 
 
 - **Images**: `Dockerfile` targets `web` (standalone server) and `worker` (also runs migrations).
   `docker-compose.prod.yml` is a single-host, production-like stack (db, migrate, web, worker) for staging and
-  smoke tests. `deploy/Caddyfile.example` is a reverse-proxy example with automatic HTTPS. None of this has been
+  smoke tests. `deploy/Caddyfile.example` is a reverse-proxy example with automatic HTTPS. `deploy/VPS_DEPLOYMENT.md` is the step-by-step single-VPS guide. The images and compose stack were built and smoke-tested with Docker (migrate, seed, admin, sign-in, uploads, restart persistence); TLS/DNS were not. Before this, none of this had been
   run in the build sandbox (no Docker daemon); the first deployment must start with a staging smoke test.
 - **Release steps**: build the image → run `prisma migrate deploy` (the `migrate` service) → start/roll web and
   worker → check `GET /api/health` and System status.
