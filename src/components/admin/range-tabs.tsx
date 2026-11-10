@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export function RangeTabs({ current }: { current: string }) {
   return (
     <div
-      className="bg-muted inline-flex rounded-full p-1 text-sm"
+      className="bg-card inline-flex rounded-full border p-1 text-sm shadow-xs"
       role="tablist"
       aria-label="Date range"
     >
@@ -21,7 +21,7 @@ export function RangeTabs({ current }: { current: string }) {
           className={cn(
             "rounded-full px-3.5 py-1.5",
             current === k
-              ? "bg-card font-medium shadow-xs"
+              ? "bg-primary text-primary-foreground font-medium shadow-xs"
               : "text-muted-foreground hover:text-foreground",
           )}
         >

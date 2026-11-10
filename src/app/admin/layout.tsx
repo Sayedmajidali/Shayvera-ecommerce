@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { AdminSidebar, AdminMobileNav } from "@/components/admin/admin-nav";
+import { AdminSidebar, AdminMobileNav, AdminTopbar } from "@/components/admin/admin-nav";
 import { requireAdminPage } from "@/server/modules/auth/session";
 
 export const metadata: Metadata = {
@@ -11,10 +11,11 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const admin = await requireAdminPage();
   return (
-    <div className="bg-muted/40 flex min-h-dvh">
+    <div className="admin-ui flex min-h-dvh">
       <AdminSidebar name={admin.name} email={admin.email} permissions={admin.permissions} />
       <div className="flex min-w-0 flex-1 flex-col">
         <AdminMobileNav name={admin.name} email={admin.email} permissions={admin.permissions} />
+        <AdminTopbar canSearchOrders={admin.permissions.includes("ORDERS_VIEW")} />
         <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-10">
           {children}
         </main>

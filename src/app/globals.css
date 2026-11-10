@@ -500,3 +500,92 @@
     translate: 3px 0;
   }
 }
+
+/* ───────────────────────── Admin panel (scoped: storefront unaffected) ───────────────────────── */
+@layer components {
+  .admin-ui {
+    background:
+      radial-gradient(1100px 380px at 12% -8%, oklch(0.95 0.035 140 / 0.55), transparent 62%),
+      radial-gradient(900px 340px at 100% 0%, oklch(0.97 0.025 85 / 0.6), transparent 60%),
+      oklch(0.982 0.006 100);
+    --admin-card-shadow:
+      0 1px 2px oklch(0.3 0.05 165 / 0.04), 0 8px 24px -12px oklch(0.3 0.05 165 / 0.12);
+  }
+
+  /* Cards: hairline border, soft depth, generous radius. */
+  .admin-ui [data-slot="card"] {
+    border-color: oklch(0.915 0.014 115);
+    border-radius: 1.125rem;
+    box-shadow: var(--admin-card-shadow);
+  }
+  .admin-ui [data-slot="card-title"] {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  .admin-ui .admin-tile {
+    border-color: oklch(0.915 0.014 115);
+    box-shadow: var(--admin-card-shadow);
+  }
+
+  /* Tables: quiet header band, comfortable rows, hover feedback, aligned figures. */
+  .admin-ui table {
+    font-variant-numeric: tabular-nums;
+  }
+  .admin-ui thead tr {
+    background: oklch(0.975 0.007 105);
+    border-color: oklch(0.925 0.012 115);
+  }
+  .admin-ui thead th {
+    height: 2.5rem;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .admin-ui tbody tr {
+    border-color: oklch(0.94 0.01 115);
+    transition: background-color 150ms ease;
+  }
+  .admin-ui tbody tr:hover {
+    background: oklch(0.975 0.016 140 / 0.65);
+  }
+  .admin-ui tbody td a {
+    text-underline-offset: 3px;
+  }
+
+  /* Form controls sit on white with a soft focus ring. */
+  .admin-ui [data-slot="input"],
+  .admin-ui [data-slot="select-trigger"],
+  .admin-ui textarea {
+    background: var(--card);
+  }
+
+  /* Slim sidebar scrollbar. */
+  .admin-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.85 0.02 120) transparent;
+  }
+
+  .admin-page-enter {
+    animation: admin-enter 260ms var(--ease-out, ease-out) both;
+  }
+}
+
+@keyframes admin-enter {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page-enter {
+    animation: none;
+  }
+}

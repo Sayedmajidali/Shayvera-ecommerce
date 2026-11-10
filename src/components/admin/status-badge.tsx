@@ -50,9 +50,24 @@ const MAP: Record<string, Variant> = {
   ADMIN: "brand",
 };
 
+const DOT: Record<Variant, string> = {
+  default: "bg-foreground/70",
+  secondary: "bg-muted-foreground/60",
+  outline: "bg-muted-foreground/50",
+  brand: "bg-brand",
+  success: "bg-success",
+  warning: "bg-[oklch(0.72_0.15_75)]",
+  destructive: "bg-destructive",
+};
+
+/** Soft, consistent status pill with a colour dot (the text always carries the meaning). */
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
+  const variant = MAP[status] ?? "secondary";
+  // Solid "default" pills read as louder than the rest: show them softly like the others.
+  const soft = variant === "default" ? "secondary" : variant;
   return (
-    <Badge variant={MAP[status] ?? "secondary"} className={className}>
+    <Badge variant={soft} className={className}>
+      <span aria-hidden className={`size-1.5 rounded-full ${DOT[variant]}`} />
       {status
         .replace(/_/g, " ")
         .toLowerCase()

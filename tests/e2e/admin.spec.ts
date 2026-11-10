@@ -8,7 +8,9 @@ test.describe("admin dashboard", () => {
   test.beforeEach(async ({ page }) => login(page, ADMIN, "/admin"));
 
   test("views analytics", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ }),
+    ).toBeVisible();
     await expect(page.getByText("Gross sales", { exact: true })).toBeVisible();
     await expect(page.getByText("Daily gross sales")).toBeVisible();
     await page.getByRole("button", { name: "View as table" }).click();

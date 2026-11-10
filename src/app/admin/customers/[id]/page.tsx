@@ -41,7 +41,7 @@ export default async function CustomerPage({ params }: PageProps<"/admin/custome
       </Link>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">
+          <h1 className="heading-display text-[2rem] leading-tight font-normal">
             {c.name} <StatusBadge status={c.status} className="ml-2 align-middle" />
           </h1>
           <p className="text-muted-foreground text-sm">

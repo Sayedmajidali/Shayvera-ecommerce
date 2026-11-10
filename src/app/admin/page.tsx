@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowRight,
+  BarChart3,
   Boxes,
+  Plus,
+  TicketPercent,
   CircleDollarSign,
   ClipboardList,
   IndianRupee,
@@ -50,65 +54,118 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
   ]);
   const label = `last ${RANGES[range]} days`;
 
+  const hour = Number(
+    new Intl.DateTimeFormat("en-IN", { hour: "numeric", hour12: false, timeZone: "Asia/Kolkata" })
+      .formatToParts(new Date())
+      .find((p) => p.type === "hour")?.value ?? 12,
+  );
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  const firstName = admin.name.trim().split(/\s+/)[0] ?? "";
+  const can = (p: (typeof admin.permissions)[number]) => admin.permissions.includes(p);
+  const quick = [
+    can("ORDERS_VIEW") && {
+      href: "/admin/orders?status=CONFIRMED",
+      label: `Orders to fulfil${s.toShip ? ` (${s.toShip})` : ""}`,
+      icon: Truck,
+    },
+    can("CATALOG_MANAGE") && { href: "/admin/products/new", label: "Add product", icon: Plus },
+    can("COUPONS_MANAGE") && {
+      href: "/admin/coupons",
+      label: "Create coupon",
+      icon: TicketPercent,
+    },
+    can("REPORTS_VIEW") && { href: "/admin/reports", label: "Reports", icon: BarChart3 },
+  ].filter(Boolean) as { href: string; label: string; icon: typeof Truck }[];
+
   return (
     <>
       <AdminPageHeader
-        title="Dashboard"
-        description="Live figures from your store database."
+        eyebrow="Overview"
+        title={`${greeting}${firstName ? `, ${firstName}` : ""}`}
+        description={`Here’s how Shayvera Foods is doing over the ${label}.`}
         actions={<RangeTabs current={range} />}
       />
+      {quick.length > 0 && (
+        <nav aria-label="Quick actions" className="-mt-3 mb-7 flex flex-wrap gap-2">
+          {quick.map(({ href, label: text, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="bg-card hover:border-primary/30 hover:text-primary focus-visible:ring-ring/40 inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm shadow-xs transition outline-none focus-visible:ring-[3px]"
+            >
+              <Icon className="size-4" aria-hidden /> {text}
+            </Link>
+          ))}
+        </nav>
+      )}
       {alerts.length > 0 && (
         <section
           aria-label="Needs attention"
-          className="mb-6 grid gap-2 rounded-xl border p-4 text-sm"
+          className="mb-7 rounded-2xl border border-[oklch(0.88_0.07_80)] bg-[oklch(0.985_0.025_85)] p-4 text-sm sm:p-5"
           data-testid="ops-alerts"
         >
-          <h2 className="flex items-center gap-2 font-medium">
-            <AlertTriangle className="text-warning size-4" aria-hidden /> Needs attention
+          <h2 className="flex items-center gap-2 font-semibold">
+            <span className="bg-warning-soft flex size-7 items-center justify-center rounded-lg">
+              <AlertTriangle className="size-4 text-[oklch(0.55_0.13_70)]" aria-hidden />
+            </span>
+            Needs attention
           </h2>
-          <ul className="grid gap-1.5 sm:grid-cols-2">
+          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {alerts.map((a) => (
               <li key={a.key}>
-                <Link href={a.href} className="flex items-center gap-2 hover:underline">
+                <Link
+                  href={a.href}
+                  className="group/alert bg-card/80 hover:bg-card flex items-center gap-3 rounded-xl border border-transparent px-3 py-2 transition hover:border-[oklch(0.88_0.07_80)]"
+                >
                   <span
                     className={`inline-flex min-w-7 justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${a.severity === "critical" ? "bg-destructive-soft text-destructive" : "bg-warning-soft"}`}
                   >
                     {a.count}
                   </span>
-                  {a.label}
+                  <span className="flex-1">{a.label}</span>
+                  <ArrowRight
+                    className="text-muted-foreground size-4 transition group-hover/alert:translate-x-0.5"
+                    aria-hidden
+                  />
                 </Link>
               </li>
             ))}
           </ul>
         </section>
       )}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatTile
+          size="lg"
           label="Gross sales"
           value={formatINR(s.grossSales)}
           hint={`${s.soldOrders} confirmed orders · ${label}`}
           icon={IndianRupee}
         />
         <StatTile
+          size="lg"
           label="Net revenue"
           value={formatINR(s.netRevenue)}
           hint={`Collected minus refunds · ${label}`}
           icon={CircleDollarSign}
         />
         <StatTile
+          size="lg"
           label="Orders"
           value={String(s.ordersInRange)}
-          hint={`AOV ${formatINR(s.averageOrderValue)}`}
+          hint={`Average order ${formatINR(s.averageOrderValue)}`}
           icon={ShoppingBag}
           href="/admin/orders"
         />
         <StatTile
+          size="lg"
           label="Customers"
           value={String(s.customers)}
           hint={`${s.newCustomers} new · ${label}`}
           icon={Users}
           href="/admin/customers"
         />
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3">
         <StatTile
           label="Awaiting payment"
           value={String(s.pending)}
@@ -140,7 +197,7 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
         <StatTile
           label="Open requests"
           value={String(s.openRequests)}
-          hint="Cancellations & returns to decide"
+          hint="Cancellations & returns"
           icon={Undo2}
           href="/admin/requests"
           tone={s.openRequests ? "warning" : undefined}
@@ -211,9 +268,9 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
             <CardTitle>Recent orders</CardTitle>
             <Link
               href="/admin/orders"
-              className="text-muted-foreground hover:text-foreground text-sm"
+              className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-sm"
             >
-              View all
+              View all <ArrowRight className="size-3.5" aria-hidden />
             </Link>
           </CardHeader>
           <CardContent className="px-0">
@@ -265,9 +322,9 @@ export default async function AdminDashboard({ searchParams }: PageProps<"/admin
             <CardTitle>Low stock</CardTitle>
             <Link
               href="/admin/inventory"
-              className="text-muted-foreground hover:text-foreground text-sm"
+              className="text-muted-foreground hover:text-primary inline-flex items-center gap-1 text-sm"
             >
-              Inventory
+              Inventory <ArrowRight className="size-3.5" aria-hidden />
             </Link>
           </CardHeader>
           <CardContent>

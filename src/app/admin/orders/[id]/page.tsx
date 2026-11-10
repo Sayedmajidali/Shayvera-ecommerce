@@ -94,7 +94,9 @@ export default async function AdminOrderPage({ params }: PageProps<"/admin/order
         <ArrowLeft className="size-4" /> Orders
       </Link>
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">{order.orderNumber}</h1>
+        <h1 className="heading-display text-[2rem] leading-tight font-normal tracking-tight">
+          {order.orderNumber}
+        </h1>
         <StatusBadge status={order.status} />
         <StatusBadge status={order.paymentStatus} />
         <span className="text-muted-foreground text-sm">placed {dt(order.placedAt)}</span>
