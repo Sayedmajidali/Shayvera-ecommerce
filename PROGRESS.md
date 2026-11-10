@@ -949,3 +949,14 @@ login 248 (budget 250).
   asks for an explicit "LIVE" confirmation for live keys, creates a webhook secret (keeps an existing one on
   re-runs), backs up and writes `.env.production` single-quoted, prints the webhook URL/secret/events,
   restarts and runs `payments:verify`. All prompt paths exercised against a scratch env file.
+
+## Refunds made in the Razorpay dashboard
+
+- `refund.processed` for a refund the store did not start (no matching `razorpayRefundId`) is now recorded:
+  amount reserved with the same over-refund guard, `Refund` row (method RAZORPAY, "Refunded in the Razorpay
+  dashboard"), then the normal settlement (payment status, credit note, customer email). Full refunds of an
+  order that has not shipped set `requiresAttention` so staff cancel instead of shipping; an amount above the
+  refundable balance is flagged instead of recorded. A webhook that beats the API response is matched to our
+  own refund via `notes.refundId`; duplicate-payment refunds stay with their job. Redeliveries are no-ops.
+- Razorpay API errors now log and show `field`/`reason` (its description is often just "invalid request
+  sent"). Tests: +3 integration, +1 unit.

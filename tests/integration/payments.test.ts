@@ -486,6 +486,84 @@ describe("refunds", () => {
     expect((await order(o.orderNumber)).paymentStatus).toBe("PARTIALLY_REFUNDED");
   });
 
+  it("records a refund made in the Razorpay dashboard (partial, then the rest)", async () => {
+    const o = await paidOrder();
+    const pay = await db.payment.findFirstOrThrow({
+      where: { orderId: o.orderId, status: "CAPTURED" },
+    });
+    const refundEntity = (id: string, amount: number) => ({
+      id,
+      entity: "refund",
+      amount,
+      status: "processed",
+      payment_id: pay.razorpayPaymentId,
+      notes: [],
+    });
+    await webhook("refund.processed", refundEntity("rfnd_dash1", 20_000), { key: "refund" });
+    let saved = await order(o.orderNumber);
+    expect(saved).toMatchObject({ paymentStatus: "PARTIALLY_REFUNDED", refundedPaise: 20_000 });
+    expect(saved.refunds[0]).toMatchObject({
+      status: "PROCESSED",
+      method: "RAZORPAY",
+      reason: "Refunded in the Razorpay dashboard",
+    });
+    // Redelivery of the same event changes nothing.
+    await webhook("refund.processed", refundEntity("rfnd_dash1", 20_000), { key: "refund" });
+    expect((await order(o.orderNumber)).refundedPaise).toBe(20_000);
+
+    await webhook("refund.processed", refundEntity("rfnd_dash2", o.totalPaise - 20_000), {
+      key: "refund",
+    });
+    saved = await order(o.orderNumber);
+    expect(saved).toMatchObject({ paymentStatus: "REFUNDED", refundedPaise: o.totalPaise });
+    // Still CONFIRMED (not shipped) → flagged so staff do not ship a refunded order.
+    expect(saved.requiresAttention).toBe(true);
+    expect(saved.attentionReason).toContain("Razorpay dashboard");
+    expect(await db.outboundEmail.count({ where: { template: "order-refunded" } })).toBe(2);
+  });
+
+  it("matches its own refund by notes.refundId when the webhook arrives first", async () => {
+    const o = await paidOrder();
+    await db.order.update({ where: { id: o.orderId }, data: { refundedPaise: 5_000 } });
+    const ours = await db.refund.create({
+      data: {
+        orderId: o.orderId,
+        amountPaise: 5_000,
+        reason: "x",
+        method: "RAZORPAY",
+        status: "PENDING",
+      },
+    });
+    await webhook(
+      "refund.processed",
+      { id: "rfnd_race", entity: "refund", amount: 5_000, notes: { refundId: ours.id } },
+      { key: "refund" },
+    );
+    const after = await db.refund.findUniqueOrThrow({ where: { id: ours.id } });
+    expect(after).toMatchObject({ status: "PROCESSED", razorpayRefundId: "rfnd_race" });
+    expect(await db.refund.count()).toBe(1);
+    expect((await order(o.orderNumber)).refundedPaise).toBe(5_000);
+  });
+
+  it("flags, instead of recording, a dashboard refund larger than what is refundable", async () => {
+    const o = await paidOrder();
+    const pay = await db.payment.findFirstOrThrow({ where: { orderId: o.orderId } });
+    await webhook(
+      "refund.processed",
+      {
+        id: "rfnd_big",
+        entity: "refund",
+        amount: o.totalPaise + 100,
+        payment_id: pay.razorpayPaymentId,
+      },
+      { key: "refund" },
+    );
+    const saved = await order(o.orderNumber);
+    expect(saved.refundedPaise).toBe(0);
+    expect(saved.requiresAttention).toBe(true);
+    expect(await db.refund.count()).toBe(0);
+  });
+
   it("refuses refunds for unpaid orders", async () => {
     const o = await onlineOrder();
     await expect(

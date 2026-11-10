@@ -953,9 +953,95 @@ async function settleRefund(refundId: string, success: boolean, failureReason: s
 }
 
 async function applyRefundWebhook(entity: Record<string, unknown>, processed: boolean) {
-  const refund = await db.refund.findUnique({ where: { razorpayRefundId: String(entity.id) } });
-  if (!refund) return;
-  await settleRefund(refund.id, processed, processed ? null : "Refund failed at gateway");
+  const razorpayRefundId = String(entity.id);
+  const failure = processed ? null : "Refund failed at gateway";
+  const refund = await db.refund.findUnique({ where: { razorpayRefundId } });
+  if (refund) return settleRefund(refund.id, processed, failure);
+
+  const notes =
+    entity.notes && typeof entity.notes === "object" && !Array.isArray(entity.notes)
+      ? (entity.notes as Record<string, unknown>)
+      : {};
+  // One of ours whose Razorpay id was not stored yet (the webhook beat the API response).
+  if (typeof notes.refundId === "string") {
+    const own = await db.refund.findUnique({ where: { id: notes.refundId } });
+    if (own) {
+      if (!own.razorpayRefundId)
+        await db.refund.update({ where: { id: own.id }, data: { razorpayRefundId } });
+      return settleRefund(own.id, processed, failure);
+    }
+  }
+  if (notes.reason === "duplicate") return; // duplicate-payment refunds are recorded by their job
+  if (processed) await recordExternalRefund(entity, razorpayRefundId);
+}
+
+/**
+ * A refund made outside the store (e.g. in the Razorpay dashboard) reaches us only as a
+ * `refund.processed` webhook. Record it against the order so refunded totals, payment status, the
+ * GST credit note and the customer email stay correct, exactly as for refunds issued from the admin.
+ */
+async function recordExternalRefund(entity: Record<string, unknown>, razorpayRefundId: string) {
+  const paymentId = typeof entity.payment_id === "string" ? entity.payment_id : null;
+  const amountPaise = Number(entity.amount);
+  if (!paymentId || !Number.isInteger(amountPaise) || amountPaise <= 0) return;
+  const payment = await db.payment.findUnique({ where: { razorpayPaymentId: paymentId } });
+  if (!payment) return;
+
+  let created: { id: string } | null = null;
+  try {
+    created = await db.$transaction(async (tx) => {
+      const reserved = await tx.$executeRaw`
+        UPDATE "Order" SET "refundedPaise" = "refundedPaise" + ${amountPaise}
+        WHERE id = ${payment.orderId} AND "refundedPaise" + ${amountPaise} <= "totalPaise"`;
+      if (reserved === 0) {
+        await tx.order.update({
+          where: { id: payment.orderId },
+          data: {
+            requiresAttention: true,
+            attentionReason: `Razorpay refund ${razorpayRefundId} exceeds the refundable amount — check Razorpay`,
+          },
+        });
+        return null;
+      }
+      const after = await tx.order.findUniqueOrThrow({ where: { id: payment.orderId } });
+      const full = after.refundedPaise >= after.totalPaise;
+      if (full && REFUND_STARTABLE.includes(after.status)) {
+        await transitionOrder(tx, {
+          orderId: after.id,
+          to: "REFUND_PENDING",
+          actor: SYSTEM,
+          note: "Refunded in the Razorpay dashboard",
+        });
+      } else if (full && !REFUND_COMPLETABLE.includes(after.status)) {
+        // Money is back with the customer but the order is still open: make sure it is not shipped.
+        await tx.order.update({
+          where: { id: after.id },
+          data: {
+            requiresAttention: true,
+            attentionReason:
+              "Fully refunded in the Razorpay dashboard — cancel this order if it should not ship",
+          },
+        });
+      }
+      return tx.refund.create({
+        data: {
+          orderId: payment.orderId,
+          paymentId: payment.id,
+          amountPaise,
+          reason: "Refunded in the Razorpay dashboard",
+          method: "RAZORPAY",
+          status: "PENDING",
+          razorpayRefundId,
+        },
+        select: { id: true },
+      });
+    });
+  } catch (error) {
+    // Same refund recorded concurrently (unique Razorpay refund id): nothing more to do.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return;
+    throw error;
+  }
+  if (created) await settleRefund(created.id, true, null);
 }
 
 /** Full refund of a specific captured payment (duplicate payments / unfulfillable late captures). */
