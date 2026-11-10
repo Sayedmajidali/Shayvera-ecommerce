@@ -294,16 +294,45 @@ export class ShiprocketShipments implements ShipmentOperations {
     return { labelUrl: url };
   }
 
-  async generateManifest(providerShipmentId: string) {
+  /**
+   * POST /manifests/generate. If the shipment was already manifested (400 "Manifest already generated",
+   * e.g. from the Shiprocket panel) or no URL comes back, fetch the existing one with
+   * POST /manifests/print {order_ids} — the documented way to re-download a manifest.
+   */
+  async generateManifest(providerShipmentId: string, providerOrderId?: string | null) {
+    let body: Json;
+    try {
+      body = (await this.client.request<unknown>({
+        method: "POST",
+        path: "/manifests/generate",
+        json: { shipment_id: [Number(providerShipmentId)] },
+        operation: "generate-manifest",
+        idempotent: true,
+      })) as Json;
+    } catch (error) {
+      const alreadyManifested =
+        error instanceof HttpError &&
+        error.status === 400 &&
+        /already/i.test(JSON.stringify(error.body ?? ""));
+      if (alreadyManifested && providerOrderId) return this.printManifest(providerOrderId);
+      throw error;
+    }
+    const url = str(body?.manifest_url);
+    if (url) return { manifestUrl: url };
+    if (providerOrderId) return this.printManifest(providerOrderId);
+    throw new ShiprocketRejected(String(body?.message ?? "Manifest not created"));
+  }
+
+  private async printManifest(providerOrderId: string) {
     const body = (await this.client.request<unknown>({
       method: "POST",
-      path: "/manifests/generate",
-      json: { shipment_id: [Number(providerShipmentId)] },
-      operation: "generate-manifest",
+      path: "/manifests/print",
+      json: { order_ids: [Number(providerOrderId)] },
+      operation: "print-manifest",
       idempotent: true,
     })) as Json;
     const url = str(body?.manifest_url);
-    if (!url) throw new ShiprocketRejected(String(body?.message ?? "Manifest not created"));
+    if (!url) throw new ShiprocketRejected(String(body?.message ?? "Manifest not available"));
     return { manifestUrl: url };
   }
 

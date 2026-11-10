@@ -126,7 +126,11 @@ export interface ShipmentOperations {
     date?: string | null;
   }): Promise<{ pickupScheduledAt: Date | null }>;
   generateLabel(providerShipmentId: string): Promise<{ labelUrl: string }>;
-  generateManifest(providerShipmentId: string): Promise<{ manifestUrl: string }>;
+  /** `providerOrderId` lets a provider fetch a manifest that was already generated (e.g. in its panel). */
+  generateManifest(
+    providerShipmentId: string,
+    providerOrderId?: string | null,
+  ): Promise<{ manifestUrl: string }>;
   track(awb: string): Promise<TrackingResult>;
   cancelShipment(p: { awb?: string | null; providerOrderId?: string | null }): Promise<void>;
   createReturn(input: ReturnShipmentInput): Promise<ProviderShipmentRef>;

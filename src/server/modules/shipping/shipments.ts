@@ -453,7 +453,7 @@ export async function schedulePickup(
   let manifestUrl = s.manifestUrl;
   if (!manifestUrl) {
     // Shiprocket: generate the manifest after the pickup request succeeds (best effort).
-    manifestUrl = await p.generateManifest(s.providerShipmentId!).then(
+    manifestUrl = await p.generateManifest(s.providerShipmentId!, s.providerOrderId).then(
       (m) => m.manifestUrl,
       () => null,
     );
@@ -501,7 +501,7 @@ export async function ensureDocument(shipmentId: string, kind: "label" | "manife
     return labelUrl;
   }
   const { manifestUrl } = await callProvider(
-    () => p.generateManifest(s.providerShipmentId!),
+    () => p.generateManifest(s.providerShipmentId!, s.providerOrderId),
     "generate-manifest",
   );
   await db.shipment.update({ where: { id: s.id }, data: { manifestUrl } });

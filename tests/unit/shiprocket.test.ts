@@ -5,6 +5,7 @@ import {
   ShiprocketProvider,
 } from "@/server/modules/shipping/providers/shiprocket/provider";
 import { MockShippingProvider } from "@/server/modules/shipping/providers/mock";
+import { ShiprocketShipments } from "@/server/modules/shipping/providers/shiprocket/shipments";
 import { HttpError } from "@/server/platform/http";
 
 const BASE = "https://apiv2.shiprocket.in/v1/external";
@@ -198,5 +199,82 @@ describe("mock shipping provider", () => {
       codAvailable: false,
     });
     expect(await p.checkServiceability(q("932001"))).toEqual({ kind: "not_serviceable" });
+  });
+});
+
+describe("Shiprocket manifests", () => {
+  /** Routes requests by path; records the bodies sent. */
+  const harness = (routes: Record<string, () => Response>) => {
+    const sent: { path: string; body: unknown }[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname.replace("/v1/external", "");
+      if (path === "/auth/login")
+        return new Response(JSON.stringify({ token: jwt(3600) }), { status: 200 });
+      sent.push({ path, body: init?.body ? JSON.parse(String(init.body)) : null });
+      const route = routes[path];
+      if (!route) throw new Error(`unexpected ${path}`);
+      return route();
+    });
+    const client = new ShiprocketClient({
+      baseUrl: BASE,
+      email: "a@b.in",
+      password: "x",
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+    return { ops: new ShiprocketShipments(client), sent };
+  };
+  const json =
+    (body: unknown, status = 200) =>
+    () =>
+      new Response(JSON.stringify(body), { status });
+
+  it("returns the generated manifest URL", async () => {
+    const { ops, sent } = harness({
+      "/manifests/generate": json({ status: 1, manifest_url: "https://s3/m1.pdf" }),
+    });
+    expect(await ops.generateManifest("16090109", "348456385")).toEqual({
+      manifestUrl: "https://s3/m1.pdf",
+    });
+    expect(sent).toEqual([{ path: "/manifests/generate", body: { shipment_id: [16090109] } }]);
+  });
+
+  it("re-downloads an already generated manifest with /manifests/print (official 400 example)", async () => {
+    const { ops, sent } = harness({
+      "/manifests/generate": json(
+        {
+          message:
+            "Manifest already generated for some shipment_ids, Please try again after removin them",
+          status_code: 400,
+          already_manifested_shipment_ids: [16090109],
+        },
+        400,
+      ),
+      "/manifests/print": json({ manifest_url: "https://s3/print.pdf" }),
+    });
+    expect(await ops.generateManifest("16090109", "348456385")).toEqual({
+      manifestUrl: "https://s3/print.pdf",
+    });
+    expect(sent.at(-1)).toEqual({ path: "/manifests/print", body: { order_ids: [348456385] } });
+  });
+
+  it("falls back to /manifests/print when generate returns an empty URL", async () => {
+    const { ops } = harness({
+      "/manifests/generate": json({ status: 1, manifest_url: "" }),
+      "/manifests/print": json({ manifest_url: "https://s3/print.pdf" }),
+    });
+    expect((await ops.generateManifest("1", "2")).manifestUrl).toBe("https://s3/print.pdf");
+  });
+
+  it("still fails clearly without an order id or when print has nothing", async () => {
+    const already = json({ message: "Manifest already generated", status_code: 400 }, 400);
+    const a = harness({ "/manifests/generate": already });
+    expect(await a.ops.generateManifest("1").catch((e) => e)).toBeInstanceOf(HttpError);
+    const b = harness({
+      "/manifests/generate": already,
+      "/manifests/print": json({ manifest_url: "" }),
+    });
+    expect(await b.ops.generateManifest("1", "2").catch((e) => (e as Error).message)).toBe(
+      "Manifest not available",
+    );
   });
 });

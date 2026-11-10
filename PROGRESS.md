@@ -902,3 +902,15 @@ login 248 (budget 250).
   storefront checked in a production build (categories, prices, pack picker, stock, draft/archived hidden).
 - **Contact details** stay in Admin → Settings (support email/phone); the contact page and footer now render
   them as `mailto:`/`tel:` links (`telHref`, unit-tested).
+
+## Shiprocket docs review (2026-11-10)
+
+- Compared the integration with Shiprocket's current API reference (Postman collection behind
+  apidocs.shiprocket.in) and the "API Document Helpsheet": login (API user, 240 h token), serviceability,
+  adhoc order, AWB, pickup, label, manifest, tracking, cancel, returns and the webhook rules (POST JSON,
+  `x-api-key`, 200 reply, no shiprocket/kartrocket/sr/kr in the URL) all match.
+- Gap fixed: `/manifests/generate` returns 400 "Manifest already generated" for an already-manifested
+  shipment (e.g. done in the Shiprocket panel); the app now re-downloads it with `/manifests/print`
+  {order_ids} (helpsheet step 8). 4 unit tests from the official examples.
+- Not used (not needed yet): NDR actions, wallet balance, wrapper API, Shiprocket invoice (the app issues its
+  own GST invoices), product/inventory sync, international.
