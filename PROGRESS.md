@@ -925,3 +925,17 @@ login 248 (budget 250).
   EMAIL_REPLY_TO` single-quoted, backs up `.env.production`, restarts and sends a test email. Verified the
   written file and that a password with `@ $ % ^ # & / :` round-trips through the app's URL decoding.
   Not verified here: a real delivery through Hostinger (needs the mailbox password on the server).
+
+## Branded order emails
+
+- New email layout (`notifications/email-layout.ts`) used by every store email: PNG logo
+  (`public/brand/email-logo.png`, 8.5 KB — Gmail/Outlook do not display SVG/WebP), green top bar, 600px
+  column that shrinks on phones, table layout with inline styles only, hidden inbox preview line, footer
+  with support contact and site link. Helpers: `emailButton` (bulletproof table-cell button), `emailPanel`,
+  `emailSectionTitle`.
+- Order emails: headline per event, "Hi <first name>", expected-delivery panel on confirmation (courier
+  estimate from checkout; hidden once past), tracking panel when shipped, items, full price breakdown
+  (subtotal, coupon, shipping/Free, COD fee, GST, "To pay on delivery"/"Total paid", GST-inclusive note),
+  payment method, delivery address, "View/Track your order" button, invoice link after delivery.
+- Tests: 3 integration tests (content, free shipping/past ETA, HTML escaping); full suite 490 passing.
+  Previewed at 700px and 375px. Not checked in real Gmail/Outlook clients from here.
