@@ -356,6 +356,11 @@ export class ShiprocketShipments implements ShipmentOperations {
     return parseTracking(body);
   }
 
+  /**
+   * Cancels a booking at Shiprocket. Cancelling only the AWB sends the Shiprocket order back to "NEW"
+   * (it stays in the panel with "Ship Now"), and a re-booking here always creates a new order with the
+   * next reference — so the Shiprocket order is cancelled too. "Already cancelled" counts as done.
+   */
   async cancelShipment(p: { awb?: string | null; providerOrderId?: string | null }) {
     if (p.awb)
       await this.client.request({
@@ -365,7 +370,8 @@ export class ShiprocketShipments implements ShipmentOperations {
         operation: "cancel-shipment",
         idempotent: true,
       });
-    else if (p.providerOrderId)
+    if (!p.providerOrderId) return;
+    try {
       await this.client.request({
         method: "POST",
         path: "/orders/cancel",
@@ -373,6 +379,15 @@ export class ShiprocketShipments implements ShipmentOperations {
         operation: "cancel-order",
         idempotent: true,
       });
+    } catch (error) {
+      const alreadyCancelled =
+        error instanceof HttpError &&
+        error.status !== null &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        /already\s+cancel/i.test(JSON.stringify(error.body ?? ""));
+      if (!alreadyCancelled) throw error;
+    }
   }
 
   async createReturn(input: ReturnShipmentInput) {

@@ -298,3 +298,59 @@ describe("Shiprocket create-order errors", () => {
     );
   });
 });
+
+describe("Shiprocket cancellation", () => {
+  const setup = (orderCancel: () => Response) => {
+    const sent: { path: string; body: unknown }[] = [];
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname.replace("/v1/external", "");
+      if (path === "/auth/login")
+        return new Response(JSON.stringify({ token: jwt(3600) }), { status: 200 });
+      sent.push({ path, body: init?.body ? JSON.parse(String(init.body)) : null });
+      if (path === "/orders/cancel/shipment/awbs")
+        return new Response(
+          JSON.stringify({ message: "Bulk Shipment cancellation is in progress" }),
+        );
+      if (path === "/orders/cancel") return orderCancel();
+      throw new Error(`unexpected ${path}`);
+    });
+    const client = new ShiprocketClient({
+      baseUrl: BASE,
+      email: "a@b.in",
+      password: "x",
+      fetchImpl: fetchImpl as typeof fetch,
+    });
+    return { ops: new ShiprocketShipments(client), sent };
+  };
+
+  it("cancels the AWB and then the Shiprocket order, so nothing is left as NEW", async () => {
+    const { ops, sent } = setup(() => new Response(null, { status: 204 }));
+    await ops.cancelShipment({ awb: "SRSC9085553253", providerOrderId: "348456385" });
+    expect(sent).toEqual([
+      { path: "/orders/cancel/shipment/awbs", body: { awbs: ["SRSC9085553253"] } },
+      { path: "/orders/cancel", body: { ids: [348456385] } },
+    ]);
+  });
+
+  it("treats an already cancelled order as done but surfaces other failures", async () => {
+    const done = setup(
+      () =>
+        new Response(JSON.stringify({ message: "Order is already cancelled" }), { status: 400 }),
+    );
+    await expect(done.ops.cancelShipment({ awb: "A1", providerOrderId: "1" })).resolves.toBe(
+      undefined,
+    );
+    const broken = setup(
+      () => new Response(JSON.stringify({ message: "Invalid order id" }), { status: 422 }),
+    );
+    expect(
+      await broken.ops.cancelShipment({ awb: "A1", providerOrderId: "1" }).catch((e) => e),
+    ).toBeInstanceOf(HttpError);
+  });
+
+  it("cancels just the order when no AWB was assigned yet", async () => {
+    const { ops, sent } = setup(() => new Response(null, { status: 204 }));
+    await ops.cancelShipment({ providerOrderId: "7" });
+    expect(sent.map((s) => s.path)).toEqual(["/orders/cancel"]);
+  });
+});
