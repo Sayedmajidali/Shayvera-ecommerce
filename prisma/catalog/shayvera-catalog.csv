@@ -1,0 +1,146 @@
+category,product,pack_grams,mrp_inr,gst_percent,status
+Makhana,Makhana,50,100,5.0,active
+Makhana,Makhana,100,175,5.0,active
+Makhana,Makhana,200,310,5.0,active
+Makhana,Makhana,500,715,5.0,active
+Makhana,Makhana,1000,1385,5.0,active
+Makhana,Jeera Makhana,50,115,5.0,active
+Makhana,Jeera Makhana,100,190,5.0,active
+Makhana,Jeera Makhana,200,335,5.0,active
+Makhana,Jeera Makhana,500,770,5.0,active
+Makhana,Jeera Makhana,1000,1500,5.0,active
+Makhana,Peri Peri Makhana,50,115,5.0,active
+Makhana,Peri Peri Makhana,100,190,5.0,active
+Makhana,Peri Peri Makhana,200,335,5.0,active
+Makhana,Peri Peri Makhana,500,770,5.0,active
+Makhana,Peri Peri Makhana,1000,1500,5.0,active
+Makhana,Plain Makhana,50,110,5.0,active
+Makhana,Plain Makhana,100,175,5.0,active
+Makhana,Plain Makhana,200,310,5.0,active
+Makhana,Plain Makhana,500,715,5.0,active
+Makhana,Plain Makhana,1000,1385,5.0,active
+Fruit & Vegetable Powders,Pomegranate Powder,50,75,5.0,active
+Fruit & Vegetable Powders,Pomegranate Powder,100,135,5.0,active
+Fruit & Vegetable Powders,Pomegranate Powder,200,260,5.0,active
+Fruit & Vegetable Powders,Pomegranate Powder,500,630,5.0,active
+Fruit & Vegetable Powders,Pomegranate Powder,1000,1245,5.0,active
+Fruit & Vegetable Powders,Carrot Powder,50,55,5.0,active
+Fruit & Vegetable Powders,Carrot Powder,100,100,5.0,active
+Fruit & Vegetable Powders,Carrot Powder,200,190,5.0,active
+Fruit & Vegetable Powders,Carrot Powder,500,460,5.0,active
+Fruit & Vegetable Powders,Carrot Powder,1000,910,5.0,active
+Fruit & Vegetable Powders,Moringa Powder,50,50,5.0,active
+Fruit & Vegetable Powders,Moringa Powder,100,90,5.0,active
+Fruit & Vegetable Powders,Moringa Powder,200,170,5.0,active
+Fruit & Vegetable Powders,Moringa Powder,500,405,5.0,active
+Fruit & Vegetable Powders,Moringa Powder,1000,795,5.0,active
+Fruit & Vegetable Powders,Beet Root Powder,50,50,5.0,active
+Fruit & Vegetable Powders,Beet Root Powder,100,90,5.0,active
+Fruit & Vegetable Powders,Beet Root Powder,200,170,5.0,active
+Fruit & Vegetable Powders,Beet Root Powder,500,405,5.0,active
+Fruit & Vegetable Powders,Beet Root Powder,1000,795,5.0,active
+Fruit & Vegetable Powders,Amla Powder,50,65,5.0,active
+Fruit & Vegetable Powders,Amla Powder,100,125,5.0,active
+Fruit & Vegetable Powders,Amla Powder,200,235,5.0,active
+Fruit & Vegetable Powders,Amla Powder,500,570,5.0,active
+Fruit & Vegetable Powders,Amla Powder,1000,1130,5.0,active
+Spice Powders,Ginger Powder,50,40,5.0,active
+Spice Powders,Ginger Powder,100,65,5.0,active
+Spice Powders,Ginger Powder,200,125,5.0,active
+Spice Powders,Ginger Powder,500,290,5.0,active
+Spice Powders,Ginger Powder,1000,575,5.0,active
+Spice Powders,Garlic Powder,50,25,5.0,active
+Spice Powders,Garlic Powder,100,45,5.0,active
+Spice Powders,Garlic Powder,200,75,5.0,active
+Spice Powders,Garlic Powder,500,170,5.0,active
+Spice Powders,Garlic Powder,1000,330,5.0,active
+Spice Powders,Turmeric Powder,50,30,5.0,active
+Spice Powders,Turmeric Powder,100,45,5.0,active
+Spice Powders,Turmeric Powder,200,80,5.0,active
+Spice Powders,Turmeric Powder,500,180,5.0,active
+Spice Powders,Turmeric Powder,1000,350,5.0,active
+Spice Powders,Chilly Powder,50,35,5.0,active
+Spice Powders,Chilly Powder,100,60,5.0,active
+Spice Powders,Chilly Powder,200,110,5.0,active
+Spice Powders,Chilly Powder,500,260,5.0,active
+Spice Powders,Chilly Powder,1000,505,5.0,active
+Spice Powders,Coriander Powder,50,30,5.0,active
+Spice Powders,Coriander Powder,100,45,5.0,active
+Spice Powders,Coriander Powder,200,80,5.0,active
+Spice Powders,Coriander Powder,500,180,5.0,active
+Spice Powders,Coriander Powder,1000,350,5.0,active
+Masalas,Garam Masala,50,55,5.0,active
+Masalas,Garam Masala,100,100,5.0,active
+Masalas,Garam Masala,200,190,5.0,active
+Masalas,Garam Masala,500,460,5.0,active
+Masalas,Garam Masala,1000,910,5.0,active
+Masalas,Chat Masala,50,60,5.0,active
+Masalas,Chat Masala,100,110,5.0,active
+Masalas,Chat Masala,200,215,5.0,active
+Masalas,Chat Masala,500,515,5.0,active
+Masalas,Chat Masala,1000,1020,5.0,active
+Masalas,Paneer Masala,50,80,5.0,active
+Masalas,Paneer Masala,100,145,5.0,active
+Masalas,Paneer Masala,200,280,5.0,active
+Masalas,Paneer Masala,500,685,5.0,active
+Masalas,Paneer Masala,1000,1355,5.0,active
+Masalas,Mutton Masala,50,90,5.0,active
+Masalas,Mutton Masala,100,170,5.0,active
+Masalas,Mutton Masala,200,325,5.0,active
+Masalas,Mutton Masala,500,795,5.0,active
+Masalas,Mutton Masala,1000,1580,5.0,active
+Masalas,Chicken Masala,50,80,5.0,active
+Masalas,Chicken Masala,100,145,5.0,active
+Masalas,Chicken Masala,200,280,5.0,active
+Masalas,Chicken Masala,500,685,5.0,active
+Masalas,Chicken Masala,1000,1355,5.0,active
+Masalas,Vegetable Masala,50,60,5.0,active
+Masalas,Vegetable Masala,100,110,5.0,active
+Masalas,Vegetable Masala,200,215,5.0,active
+Masalas,Vegetable Masala,500,515,5.0,active
+Masalas,Vegetable Masala,1000,1020,5.0,active
+Masalas,Sambhar Masala,50,65,5.0,active
+Masalas,Sambhar Masala,100,120,5.0,active
+Masalas,Sambhar Masala,200,225,5.0,active
+Masalas,Sambhar Masala,500,550,5.0,active
+Masalas,Sambhar Masala,1000,1090,5.0,active
+Dry Fruits & Nuts,Cashew,50,110,5.0,active
+Dry Fruits & Nuts,Cashew,100,210,5.0,active
+Dry Fruits & Nuts,Cashew,200,415,5.0,active
+Dry Fruits & Nuts,Cashew,500,1020,5.0,active
+Dry Fruits & Nuts,Cashew,1000,2025,5.0,active
+Dry Fruits & Nuts,Almond,50,145,5.0,active
+Dry Fruits & Nuts,Almond,100,280,5.0,active
+Dry Fruits & Nuts,Almond,200,550,5.0,active
+Dry Fruits & Nuts,Almond,500,1355,5.0,active
+Dry Fruits & Nuts,Almond,1000,2695,5.0,active
+Dry Fruits & Nuts,Raisins,50,55,5.0,active
+Dry Fruits & Nuts,Raisins,100,95,5.0,active
+Dry Fruits & Nuts,Raisins,200,180,5.0,active
+Dry Fruits & Nuts,Raisins,500,430,5.0,active
+Dry Fruits & Nuts,Raisins,1000,855,5.0,active
+Dry Fruits & Nuts,Walnuts,50,10,5.0,draft
+Dry Fruits & Nuts,Walnuts,100,10,5.0,draft
+Dry Fruits & Nuts,Walnuts,200,10,5.0,draft
+Dry Fruits & Nuts,Walnuts,500,15,5.0,draft
+Dry Fruits & Nuts,Walnuts,1000,15,5.0,draft
+Seeds,Chia Seeds,50,65,5.0,active
+Seeds,Chia Seeds,100,125,5.0,active
+Seeds,Chia Seeds,200,235,5.0,active
+Seeds,Chia Seeds,500,570,5.0,active
+Seeds,Chia Seeds,1000,1130,5.0,active
+Seeds,Flax Seeds,50,30,5.0,active
+Seeds,Flax Seeds,100,45,5.0,active
+Seeds,Flax Seeds,200,85,5.0,active
+Seeds,Flax Seeds,500,190,5.0,active
+Seeds,Flax Seeds,1000,375,5.0,active
+Seeds,Sunflower Seeds,50,35,5.0,active
+Seeds,Sunflower Seeds,100,55,5.0,active
+Seeds,Sunflower Seeds,200,100,5.0,active
+Seeds,Sunflower Seeds,500,235,5.0,active
+Seeds,Sunflower Seeds,1000,460,5.0,active
+Seeds,Pumpkin Seeds,50,70,5.0,active
+Seeds,Pumpkin Seeds,100,130,5.0,active
+Seeds,Pumpkin Seeds,200,250,5.0,active
+Seeds,Pumpkin Seeds,500,605,5.0,active
+Seeds,Pumpkin Seeds,1000,1200,5.0,active

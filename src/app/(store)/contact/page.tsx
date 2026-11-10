@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { ContactForm } from "@/components/store/contact-form";
 import { PageIntro } from "@/components/store/page-intro";
-import { stateName } from "@/lib/india";
+import { stateName, telHref } from "@/lib/india";
 import { getStoreSettings } from "@/server/modules/settings/queries";
 
 export const metadata: Metadata = { title: "Contact us", alternates: { canonical: "/contact" } };
@@ -21,7 +21,12 @@ export default async function ContactPage() {
             <Mail className="text-brand size-5" aria-hidden />
             <div>
               <p className="font-medium">Email</p>
-              <p className="text-muted-foreground">{s.supportEmail}</p>
+              <a
+                href={`mailto:${s.supportEmail}`}
+                className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+              >
+                {s.supportEmail}
+              </a>
             </div>
           </div>
           {s.supportPhone && (
@@ -29,7 +34,12 @@ export default async function ContactPage() {
               <Phone className="text-brand size-5" aria-hidden />
               <div>
                 <p className="font-medium">Phone</p>
-                <p className="text-muted-foreground">{s.supportPhone}</p>
+                <a
+                  href={telHref(s.supportPhone)}
+                  className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                >
+                  {s.supportPhone}
+                </a>
               </div>
             </div>
           )}

@@ -109,3 +109,11 @@ export function formatIndianMobile(e164: string): string {
   const d = normalizeIndianPhone(e164);
   return d.length === 10 ? `+91 ${d.slice(0, 5)} ${d.slice(5)}` : e164;
 }
+
+/** `tel:` link for a store phone number: 10-digit Indian numbers (mobile or STD landline, with or
+ * without +91/0) get +91; anything else keeps its digits and a leading +. */
+export function telHref(phone: string): string {
+  const digits = normalizeIndianPhone(phone);
+  if (/^[1-9]\d{9}$/.test(digits) && !/^\+(?!91)/.test(phone.trim())) return `tel:+91${digits}`;
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}

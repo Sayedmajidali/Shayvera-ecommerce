@@ -37,3 +37,13 @@ describe("India validators", () => {
     expect(isValidGstin("27AAPFU0939F1Z")).toBe(false);
   });
 });
+
+describe("telHref", () => {
+  it("links Indian numbers with +91 and keeps other numbers as dialled", async () => {
+    const { telHref } = await import("@/lib/india");
+    expect(telHref("7980004324")).toBe("tel:+917980004324");
+    expect(telHref("+91 79800 04324")).toBe("tel:+917980004324");
+    expect(telHref("080-4567 8901")).toBe("tel:+918045678901"); // STD landline
+    expect(telHref("+44 20 7946 0958")).toBe("tel:+442079460958");
+  });
+});

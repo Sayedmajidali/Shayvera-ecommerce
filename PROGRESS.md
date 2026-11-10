@@ -884,3 +884,21 @@ login 248 (budget 250).
   products, orders, users, migrations and all 75 image files matched the original. The destructive "replace live
   data" procedure in `deploy/VPS_DEPLOYMENT.md` §11 was not executed here (its file-wipe step was blocked in the
   sandbox); its restore commands are the same ones the separate-database test used.
+
+## Catalogue from the MRP workbook + tappable contact details
+
+- **`prisma/catalog/shayvera-catalog.csv`**: generated from `Shayvera_Professional_MRP_Calculator_20pct.xlsx`
+  ("SKU MRP Calculator" sheet) — 29 products × 5 pack sizes (50 g – 1 kg) = 145 rows, price = the sheet's
+  "Suggested MRP incl. GST", GST 5% (the sheet's placeholder; verify per HSN), grouped into 6 categories
+  (Makhana, Fruit & Vegetable Powders, Spice Powders, Masalas, Dry Fruits & Nuts, Seeds). Walnuts is `draft`
+  because the sheet marks its costs incomplete (MRP ₹10–15).
+- **`npm run catalog:import-csv`** (`scripts/import-catalog-csv.ts`, module `catalog/importers/catalog-csv.ts`):
+  dry run by default; `--apply` writes in one transaction. Matches categories/products by slug and pack sizes
+  by SKU (`SHV-<SLUG>-<GRAMS>G`), so re-running only updates prices/names; `--stock N` applies only to newly
+  created pack sizes (with an INITIAL ledger entry). Products missing from the file are archived and emptied
+  categories hidden (`--keep-others` to skip). Existing products with the same name are taken over (old packs
+  deactivated, URL/reviews/order history kept). Packed weight = contents + ~10% (min 20 g). Audited.
+- Verified: 7 integration tests; applied twice to a database with the demo catalogue (second run: 0 changes);
+  storefront checked in a production build (categories, prices, pack picker, stock, draft/archived hidden).
+- **Contact details** stay in Admin → Settings (support email/phone); the contact page and footer now render
+  them as `mailto:`/`tel:` links (`telHref`, unit-tested).

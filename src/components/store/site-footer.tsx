@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { Logo } from "@/components/store/logo";
 import { NewsletterForm } from "@/components/store/newsletter-form";
-import { stateName } from "@/lib/india";
+import { stateName, telHref } from "@/lib/india";
 import { getNavCategories } from "@/server/modules/catalog/queries";
 import { getStoreSettings } from "@/server/modules/settings/queries";
 
@@ -29,11 +29,17 @@ export async function SiteFooter() {
           </p>
           <ul className="text-muted-foreground mt-6 space-y-2 text-sm">
             <li className="flex items-center gap-2">
-              <Mail className="size-4" aria-hidden /> {settings.supportEmail}
+              <Mail className="size-4" aria-hidden />
+              <a href={`mailto:${settings.supportEmail}`} className="hover:text-foreground">
+                {settings.supportEmail}
+              </a>
             </li>
             {settings.supportPhone && (
               <li className="flex items-center gap-2">
-                <Phone className="size-4" aria-hidden /> {settings.supportPhone}
+                <Phone className="size-4" aria-hidden />
+                <a href={telHref(settings.supportPhone)} className="hover:text-foreground">
+                  {settings.supportPhone}
+                </a>
               </li>
             )}
             {settings.city && (
