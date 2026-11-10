@@ -141,10 +141,21 @@ export function parseCreateResponse(body: unknown): ProviderShipmentRef {
   const b = body as Json;
   const orderId = str(b?.order_id);
   const shipmentId = str(b?.shipment_id);
-  if (!orderId || !shipmentId)
+  if (!orderId || !shipmentId) {
+    const message = b?.message ? String(b.message).slice(0, 120) : "";
+    // "Wrong Pickup location entered…" comes with the accepted nicknames in `data`: show them.
+    const names = Array.isArray(b?.data)
+      ? (b.data as unknown[]).filter((n): n is string => typeof n === "string").slice(0, 10)
+      : [];
+    const hint = /pickup location/i.test(message)
+      ? names.length
+        ? ` Shiprocket accepts: ${names.map((n) => `"${n}"`).join(", ")} — use one of these as the pickup location name in Admin → Settings.`
+        : " Check that the pickup location name in Admin → Settings matches an active pickup address nickname in Shiprocket exactly."
+      : "";
     throw new ShiprocketUnexpectedResponse(
-      `Unexpected create-order response${b?.message ? `: ${String(b.message).slice(0, 120)}` : ""}`,
+      `Unexpected create-order response${message ? `: ${message}` : ""}${hint}`,
     );
+  }
   return { providerOrderId: orderId, providerShipmentId: shipmentId, awb: str(b.awb_code) };
 }
 

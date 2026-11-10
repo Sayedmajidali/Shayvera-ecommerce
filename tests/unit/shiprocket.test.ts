@@ -278,3 +278,23 @@ describe("Shiprocket manifests", () => {
     );
   });
 });
+
+describe("Shiprocket create-order errors", () => {
+  it("names the accepted pickup locations when the nickname is wrong", async () => {
+    const { parseCreateResponse } =
+      await import("@/server/modules/shipping/providers/shiprocket/shipments");
+    const wrong = {
+      message: "Wrong Pickup location entered. Please choose one location from the data given",
+      data: ["work"],
+    };
+    expect(() => parseCreateResponse(wrong)).toThrow(
+      /Wrong Pickup location entered.*Shiprocket accepts: "work" — use one of these/,
+    );
+    expect(() => parseCreateResponse({ message: wrong.message })).toThrow(
+      /matches an active pickup address nickname/,
+    );
+    expect(() => parseCreateResponse({ message: "Something else" })).toThrow(
+      /^Unexpected create-order response: Something else$/,
+    );
+  });
+});
