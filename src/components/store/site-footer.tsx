@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Mail, MapPin, Phone } from "lucide-react";
+import { InstagramIcon } from "@/components/store/instagram-icon";
 import { Logo } from "@/components/store/logo";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { stateName, telHref } from "@/lib/india";
+import { siteConfig } from "@/lib/site";
 import { getNavCategories } from "@/server/modules/catalog/queries";
 import { getStoreSettings } from "@/server/modules/settings/queries";
 
@@ -42,6 +44,18 @@ export async function SiteFooter() {
                 </a>
               </li>
             )}
+            <li className="flex items-center gap-2">
+              <InstagramIcon className="size-4" />
+              <a
+                href={siteConfig.instagram.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground"
+                aria-label={`Shayvera Food on Instagram, ${siteConfig.instagram.handle} (opens in a new tab)`}
+              >
+                {siteConfig.instagram.handle}
+              </a>
+            </li>
             {settings.city && (
               <li className="flex items-center gap-2">
                 <MapPin className="size-4" aria-hidden /> {settings.city},{" "}

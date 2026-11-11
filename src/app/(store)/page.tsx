@@ -557,6 +557,7 @@ export default async function HomePage() {
                 "@type": "Organization",
                 name: settings.storeName,
                 url: siteConfig.url,
+                sameAs: [siteConfig.instagram.url],
                 email: settings.supportEmail,
                 ...(settings.supportPhone ? { telephone: settings.supportPhone } : {}),
               },

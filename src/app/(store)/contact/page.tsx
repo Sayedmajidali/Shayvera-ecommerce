@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { ContactForm } from "@/components/store/contact-form";
+import { InstagramIcon } from "@/components/store/instagram-icon";
 import { PageIntro } from "@/components/store/page-intro";
 import { stateName, telHref } from "@/lib/india";
 import { siteConfig } from "@/lib/site";
@@ -58,6 +59,20 @@ export default async function ContactPage() {
               </div>
             </div>
           )}
+          <div className="flex gap-3">
+            <InstagramIcon className="text-brand size-5 shrink-0" />
+            <div>
+              <p className="font-medium">Instagram</p>
+              <a
+                href={siteConfig.instagram.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+              >
+                {siteConfig.instagram.handle}
+              </a>
+            </div>
+          </div>
           <div className="flex gap-3">
             <Clock className="text-brand size-5 shrink-0" aria-hidden />
             <div>

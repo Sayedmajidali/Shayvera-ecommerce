@@ -5,6 +5,7 @@ export const siteConfig = {
   tagline: "Rooted in Trust, Crafted with Care",
   /** Customer care mailbox, listed on the Contact page next to the support email (Admin → Settings). */
   customerCareEmail: "customercare@shayvera.in",
+  instagram: { handle: "@shayverafood", url: "https://www.instagram.com/shayverafood/" },
   description:
     "Shayvera Food brings honest, everyday food back to Indian kitchens — spices and masalas, dry fruits, nuts and roasted makhana, carefully selected and hygienically packed.",
   url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
