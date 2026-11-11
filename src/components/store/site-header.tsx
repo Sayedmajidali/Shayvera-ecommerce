@@ -42,6 +42,7 @@ export async function SiteHeader() {
             categories={categories.map((c) => ({ name: c.name, slug: c.slug }))}
             signedIn={Boolean(user)}
             isAdmin={user?.role === "ADMIN"}
+            logo={<Logo />}
           />
           <Logo className="origin-left transition-transform duration-300 group-data-[scrolled]/header:scale-[0.9]" />
           <nav aria-label="Main" className="ml-4 hidden items-center gap-0.5 lg:flex">

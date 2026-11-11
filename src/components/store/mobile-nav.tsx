@@ -11,10 +11,13 @@ export function MobileNav({
   categories,
   signedIn,
   isAdmin,
+  logo,
 }: {
   categories: { name: string; slug: string }[];
   signedIn: boolean;
   isAdmin: boolean;
+  /** The brand logo (server-rendered <Logo />), shown at the top of the menu. */
+  logo?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
@@ -27,9 +30,11 @@ export function MobileNav({
       </SheetTrigger>
       <SheetContent side="left" className="overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="heading-display text-2xl font-medium">
-            Shayvera<span className="text-brand">.</span>
-          </SheetTitle>
+          <SheetTitle className="sr-only">Menu</SheetTitle>
+          {/* Clicking the logo goes home; close the menu on the way. */}
+          <div onClick={close} className="w-fit">
+            {logo}
+          </div>
         </SheetHeader>
         <div className="px-5">
           <SearchBox onNavigate={close} />
