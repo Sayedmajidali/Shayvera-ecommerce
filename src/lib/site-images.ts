@@ -95,20 +95,20 @@ export const SITE_IMAGE_SLOTS = [
   },
   {
     slot: "certHalal",
-    defaultNote: "Halal seal",
+    defaultNote: "Halal logo",
     label: "Certification — Halal Certified",
     where: "Certifications section on the home and About pages (shown round, about 110px).",
     recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
-    defaultUrl: "/brand/certs/halal.svg",
+    defaultUrl: "/brand/certs/halal.png",
     minDimension: 100,
   },
   {
     slot: "certRqc",
-    defaultNote: "RQC seal",
+    defaultNote: "RQC Certified badge",
     label: "Certification — RQC Certified",
     where: "Certifications section on the home and About pages (shown round, about 110px).",
     recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
-    defaultUrl: "/brand/certs/rqc.svg",
+    defaultUrl: "/brand/certs/rqc.png",
     minDimension: 100,
   },
   {
@@ -122,11 +122,11 @@ export const SITE_IMAGE_SLOTS = [
   },
   {
     slot: "certUkasl",
-    defaultNote: "UKASL seal",
+    defaultNote: "UKASL logo",
     label: "Certification — UKASL Certified",
     where: "Certifications section on the home and About pages (shown round, about 110px).",
     recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
-    defaultUrl: "/brand/certs/ukasl.svg",
+    defaultUrl: "/brand/certs/ukasl.png",
     minDimension: 100,
   },
   {
