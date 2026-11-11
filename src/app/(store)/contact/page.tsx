@@ -59,20 +59,21 @@ export default async function ContactPage() {
               </div>
             </div>
           )}
-          <div className="flex gap-3">
+          <a
+            href={siteConfig.instagram.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex gap-3"
+            aria-label={`Shayvera Food on Instagram, ${siteConfig.instagram.handle} (opens in a new tab)`}
+          >
             <InstagramIcon className="text-brand size-5 shrink-0" />
             <div>
               <p className="font-medium">Instagram</p>
-              <a
-                href={siteConfig.instagram.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-              >
+              <span className="text-muted-foreground group-hover:text-foreground underline-offset-4 group-hover:underline">
                 {siteConfig.instagram.handle}
-              </a>
+              </span>
             </div>
-          </div>
+          </a>
           <div className="flex gap-3">
             <Clock className="text-brand size-5 shrink-0" aria-hidden />
             <div>

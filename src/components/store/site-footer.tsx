@@ -44,15 +44,15 @@ export async function SiteFooter() {
                 </a>
               </li>
             )}
-            <li className="flex items-center gap-2">
-              <InstagramIcon className="size-4" />
+            <li>
               <a
                 href={siteConfig.instagram.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-foreground"
+                className="hover:text-foreground inline-flex items-center gap-2"
                 aria-label={`Shayvera Food on Instagram, ${siteConfig.instagram.handle} (opens in a new tab)`}
               >
+                <InstagramIcon className="size-4" />
                 {siteConfig.instagram.handle}
               </a>
             </li>
