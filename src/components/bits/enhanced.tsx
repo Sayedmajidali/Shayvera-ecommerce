@@ -17,7 +17,6 @@ const ShinyText = lazy(() => import("@/components/react-bits/shiny-text"));
 const SpotlightCard = lazy(() => import("@/components/react-bits/spotlight-card"));
 const TiltedCard = lazy(() => import("@/components/react-bits/tilted-card"));
 const LogoLoop = lazy(() => import("@/components/react-bits/logo-loop"));
-const ScrollVelocity = lazy(() => import("@/components/react-bits/scroll-velocity"));
 const CountUp = lazy(() => import("@/components/react-bits/count-up"));
 
 // Brand colours (from the logo) for components that take explicit colours.
@@ -53,7 +52,6 @@ export function StarCta({ href, children }: { href: string; children: ReactNode 
             duration={5}
             stars={2}
             glow={0.7}
-            sparkle
             className="inline-flex h-12 items-center gap-2 px-7 text-[15px] font-medium [&_svg]:size-4"
           >
             {children}
@@ -213,28 +211,14 @@ function StaticTrust({
   );
 }
 
-/** Brand ticker that speeds up and skews with scroll velocity (ScrollVelocity); CSS marquee first. */
-export function VelocityTicker({ words, fallback }: { words: string; fallback: ReactNode }) {
-  // Touch devices keep the CSS marquee (runs on the compositor): the scroll-linked version does
-  // JavaScript work on every scroll frame, which competes with finger scrolling.
-  const [ref, on] = useEnhance<HTMLDivElement>("interaction", true, { finePointer: true });
+/**
+ * Brand ticker band. Always the CSS marquee, which runs on the compositor: the scroll-linked
+ * React Bits ScrollVelocity did JavaScript work on every scroll frame and made scrolling heavier.
+ */
+export function VelocityTicker({ fallback }: { words?: string; fallback: ReactNode }) {
   return (
-    <div ref={ref} className="bg-deep text-deep-foreground overflow-hidden" aria-hidden>
-      {on ? (
-        <Suspense fallback={fallback}>
-          <ScrollVelocity
-            texts={[words]}
-            velocity={40}
-            className="heading-display px-3 text-xl italic sm:text-2xl"
-            parallaxClassName="py-4"
-            numCopies={6}
-            damping={50}
-            stiffness={400}
-          />
-        </Suspense>
-      ) : (
-        fallback
-      )}
+    <div className="bg-deep text-deep-foreground overflow-hidden" aria-hidden>
+      {fallback}
     </div>
   );
 }

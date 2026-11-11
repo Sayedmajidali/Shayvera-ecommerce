@@ -1,4 +1,3 @@
-import { ViewTransition } from "react";
 import { RevealObserver } from "@/components/motion/reveal-observer";
 import { StoreOverlays } from "@/components/store/store-overlays";
 import { SiteFooter } from "@/components/store/site-footer";
@@ -21,8 +20,7 @@ export default async function StoreLayout({ children }: LayoutProps<"/">) {
       </a>
       <SiteHeader />
       <main id="main" className="flex-1">
-        {/* Route changes cross-fade (see ::view-transition-*(.page) in globals.css). */}
-        <ViewTransition default="page">{children}</ViewTransition>
+        {children}
       </main>
       <SiteFooter />
       <RevealObserver />

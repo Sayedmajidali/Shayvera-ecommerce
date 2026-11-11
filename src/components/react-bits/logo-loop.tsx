@@ -1017,6 +1017,10 @@ const createEngine = (
   };
 
   const onScroll = () => {
+    if (config.current.scrollBoost <= 0) {
+      st.scrollT = 0;
+      return;
+    }
     const now = performance.now();
     const y = window.scrollY;
     if (st.scrollT && now > st.scrollT) {

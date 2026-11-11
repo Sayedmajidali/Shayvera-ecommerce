@@ -1,17 +1,16 @@
 /**
  * SplitText from React Bits (https://reactbits.dev, SplitText-TS-TW), installed with
  * `npx shadcn@latest add @react-bits/SplitText-TS-TW`. Local changes: strict-TypeScript fixes only.
- * Uses GSAP (SplitText + ScrollTrigger) — load it lazily (see components/motion/split-heading.tsx).
+ * Uses GSAP (SplitText; an IntersectionObserver starts the reveal) — load it lazily (see components/motion/split-heading.tsx).
  */
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText as GSAPSplitText } from "gsap/SplitText";
 import { useGSAP } from "@gsap/react";
 
-gsap.registerPlugin(ScrollTrigger, GSAPSplitText, useGSAP);
+gsap.registerPlugin(GSAPSplitText, useGSAP);
 
 export type SplitTextEffect = "rise" | "fade" | "blur" | "flip" | "pop" | "skew" | "wave";
 
@@ -167,13 +166,12 @@ const SplitText = ({
       const marginMatch = /^(-?\d+(?:\.\d+)?)(px|em|rem|%)?$/.exec(rootMargin);
       const marginValue = marginMatch?.[1] ? parseFloat(marginMatch[1]) : 0;
       const marginUnit = marginMatch ? marginMatch[2] || "px" : "px";
-      const sign =
-        marginValue === 0
-          ? ""
-          : marginValue < 0
-            ? `-=${Math.abs(marginValue)}${marginUnit}`
-            : `+=${marginValue}${marginUnit}`;
-      const start = `top ${startPct}%${sign}`;
+      // The reveal starts once the element's top passes `startPct`% of the viewport (shifted by a px
+      // rootMargin). An IntersectionObserver rather than GSAP ScrollTrigger: ScrollTrigger keeps a
+      // global scroll listener (and per-scroll work) alive for the life of the page.
+      const marginPx = marginUnit === "px" ? marginValue : 0;
+      let inView = trigger === "load";
+      let io: IntersectionObserver | null = null;
       const unit: "chars" | "words" | "lines" = splitType.includes("chars")
         ? "chars"
         : splitType.includes("words")
@@ -396,10 +394,7 @@ const SplitText = ({
           }
           if (revealed) return undefined;
           intro = reveal(true, {
-            scrollTrigger:
-              trigger === "load"
-                ? undefined
-                : { trigger: el, start, once: true, fastScrollEnd: true, anticipatePin: 0.4 },
+            paused: !inView,
             onComplete: () => {
               revealed = true;
               intro = null;
@@ -414,6 +409,18 @@ const SplitText = ({
       });
       setReady(true);
       if (revealed) queue();
+      if (!inView) {
+        io = new IntersectionObserver(
+          (entries) => {
+            if (!entries.some((entry) => entry.isIntersecting)) return;
+            inView = true;
+            io?.disconnect();
+            intro?.play();
+          },
+          { rootMargin: `0px 0px ${Math.round(marginPx - (startPct / 100 >= 1 ? 0 : (1 - startPct / 100) * window.innerHeight))}px 0px` },
+        );
+        io.observe(el);
+      }
 
       el.addEventListener("pointerenter", onEnter);
       el.addEventListener("pointermove", onMove);
@@ -431,9 +438,7 @@ const SplitText = ({
         movers.forEach((node) => {
           node.style.translate = "";
         });
-        ScrollTrigger.getAll().forEach((st) => {
-          if (st.trigger === el) st.kill();
-        });
+        io?.disconnect();
         splitInstance.revert();
       };
     },

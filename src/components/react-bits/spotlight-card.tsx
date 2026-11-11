@@ -194,9 +194,21 @@ const SpotlightCard = ({
       noise.style.opacity = String(state.presence * s.grain);
     };
 
+    // While the page is being scrolled (HeaderShell sets <html data-scrolling>), hold the light where
+    // it is rather than measuring layout and repainting every frame; resume when scrolling stops.
+    const html = document.documentElement;
+    let held = 0;
     const tick = (now: number) => {
       raf = 0;
       if (!alive) return;
+      if (html.hasAttribute("data-scrolling")) {
+        window.clearTimeout(held);
+        held = window.setTimeout(() => {
+          held = 0;
+          wake();
+        }, 160);
+        return;
+      }
       const s = settingsRef.current;
       const dt = Math.min(0.05, Math.max(0.001, (now - last) / 1000));
       last = now;
@@ -313,6 +325,7 @@ const SpotlightCard = ({
 
     return () => {
       alive = false;
+      window.clearTimeout(held);
       cancelAnimationFrame(raf);
       observer.disconnect();
       window.removeEventListener("pointermove", onMove);

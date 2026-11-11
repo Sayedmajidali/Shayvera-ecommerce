@@ -46,7 +46,7 @@ function NavButton({
       onClick={onClick}
       aria-label={dir === "prev" ? "Previous image" : "Next image"}
       className={cn(
-        "bg-background/90 hover:bg-background text-foreground focus-visible:ring-ring/40 absolute top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full shadow-sm backdrop-blur transition outline-none hover:scale-105 focus-visible:ring-[3px] active:scale-95",
+        "bg-background/95 hover:bg-background text-foreground focus-visible:ring-ring/40 absolute top-1/2 z-10 flex size-10 -translate-y-1/2 items-center justify-center rounded-full shadow-sm transition outline-none hover:scale-105 focus-visible:ring-[3px] active:scale-95",
         dir === "prev" ? "left-3" : "right-3",
         className,
       )}
@@ -169,7 +169,7 @@ export function ProductGallery({ images, name }: { images: Img[]; name: string }
               onClick={next}
               className="[@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100"
             />
-            <p className="bg-background/85 absolute bottom-3 left-3 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums backdrop-blur">
+            <p className="bg-background/95 absolute bottom-3 left-3 rounded-full px-2.5 py-1 text-xs font-medium tabular-nums">
               {active + 1} / {count}
             </p>
           </>
@@ -178,7 +178,7 @@ export function ProductGallery({ images, name }: { images: Img[]; name: string }
           type="button"
           onClick={() => setFullscreen(true)}
           aria-label="View images fullscreen"
-          className="bg-background/90 hover:bg-background focus-visible:ring-ring/40 absolute right-3 bottom-3 z-10 flex size-10 items-center justify-center rounded-full shadow-sm backdrop-blur transition outline-none hover:scale-105 focus-visible:ring-[3px] active:scale-95"
+          className="bg-background/95 hover:bg-background focus-visible:ring-ring/40 absolute right-3 bottom-3 z-10 flex size-10 items-center justify-center rounded-full shadow-sm transition outline-none hover:scale-105 focus-visible:ring-[3px] active:scale-95"
         >
           <Expand className="size-4" aria-hidden />
         </button>

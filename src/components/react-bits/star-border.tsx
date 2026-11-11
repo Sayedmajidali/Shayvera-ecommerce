@@ -516,8 +516,20 @@ const StarBorder = <T extends React.ElementType = "button">({
       });
     };
 
+    // While the page is being scrolled (header-shell sets <html data-scrolling>), hold the last
+    // drawn frame instead of repainting the canvas every frame; resume when scrolling stops.
+    const html = document.documentElement;
+    let held = 0;
     const frame = (now: number) => {
       raf = 0;
+      if (html.hasAttribute("data-scrolling") && !state.hovered) {
+        window.clearTimeout(held);
+        held = window.setTimeout(() => {
+          held = 0;
+          wake();
+        }, 160);
+        return;
+      }
       if (resizePending) {
         resizePending = false;
         applyMeasure();
@@ -669,6 +681,7 @@ const StarBorder = <T extends React.ElementType = "button">({
 
     return () => {
       alive = false;
+      window.clearTimeout(held);
       wakeRef.current = null;
       cancelAnimationFrame(raf);
       resizeObserver.disconnect();

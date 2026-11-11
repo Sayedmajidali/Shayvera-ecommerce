@@ -77,7 +77,7 @@ function SectionHeading({
 
 const TICKER = ["Spices", "Dry fruits", "Makhana", "Herbal", "Food", "Nuts", "Masalas"];
 
-/** CSS marquee shown first; upgraded to React Bits ScrollVelocity on the first scroll. */
+/** Brand ticker band (CSS marquee, runs on the compositor). */
 function Ticker() {
   return <VelocityTicker words={TICKER.join(" · ") + " ·"} fallback={<CssTicker />} />;
 }
@@ -176,7 +176,7 @@ export default async function HomePage() {
         />
         <div className="container-page grid items-center gap-12 pt-10 pb-16 sm:pt-14 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:pb-24">
           <div>
-            <p className="animate-fade-up border-primary/15 bg-card/70 text-primary inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.2em] uppercase backdrop-blur">
+            <p className="animate-fade-up border-primary/15 bg-card/90 text-primary inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.2em] uppercase">
               <span className="bg-leaf size-1.5 rounded-full" aria-hidden />
               Spices · Dry fruits · Makhana · Herbal
             </p>
@@ -375,7 +375,7 @@ export default async function HomePage() {
                       </span>
                     </p>
                   </div>
-                  <span className="group-hover:bg-brand flex size-9 shrink-0 items-center justify-center rounded-full bg-white/15 backdrop-blur transition-[background-color,transform] duration-300 group-hover:-rotate-45">
+                  <span className="group-hover:bg-brand flex size-9 shrink-0 items-center justify-center rounded-full bg-white/25 transition-[background-color,transform] duration-300 group-hover:-rotate-45">
                     <ArrowRight className="size-4" aria-hidden />
                   </span>
                 </div>

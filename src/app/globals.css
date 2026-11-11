@@ -127,7 +127,7 @@
   --shadow-soft: var(--shadow-soft);
   --shadow-lift: var(--shadow-lift);
 
-  --animate-fade-up: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-up: fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   --animate-float: float 9s ease-in-out infinite;
   --animate-badge-pop: badge-pop 420ms cubic-bezier(0.34, 1.6, 0.64, 1) both;
   --animate-heart-pop: heart-pop 450ms cubic-bezier(0.34, 1.6, 0.64, 1) both;
@@ -388,7 +388,7 @@
   scale: 0.985;
 }
 .is-revealing:not([data-reveal="words"]) {
-  animation: reveal-up 700ms var(--ease-out) both;
+  animation: reveal-up 700ms var(--ease-out) backwards;
   animation-delay: var(--reveal-delay, 0ms);
 }
 
@@ -405,7 +405,7 @@
 }
 [data-reveal="words"].is-revealing .rw,
 .reveal-words-load .rw {
-  animation: word-in 700ms var(--ease-out) both;
+  animation: word-in 700ms var(--ease-out) backwards;
   animation-delay: calc(var(--words-delay, 0ms) + var(--reveal-delay, 0ms) + var(--w, 0) * 55ms);
 }
 @keyframes word-in {
@@ -446,28 +446,22 @@
   }
 }
 
-/* Route changes cross-fade quickly (React <ViewTransition>); the header stays put. */
-::view-transition-old(.page) {
-  animation: 140ms var(--ease-out) both vt-out;
+/* Page changes fade in quickly (StoreTemplate adds .page-enter after the first page). A plain CSS
+   animation on the new page only: no view-transition snapshots of the whole page. */
+.page-enter {
+  animation: page-enter 240ms var(--ease-out) backwards;
 }
-::view-transition-new(.page) {
-  animation: 260ms var(--ease-out) both vt-in;
-}
-@keyframes vt-out {
-  to {
-    opacity: 0;
-  }
-}
-@keyframes vt-in {
+@keyframes page-enter {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    translate: 0 8px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
-  ::view-transition-new(*) {
+  ::view-transition-new(*),
+  .page-enter {
     animation: none !important;
   }
   .marquee {
@@ -569,7 +563,7 @@
   }
 
   .admin-page-enter {
-    animation: admin-enter 260ms var(--ease-out, ease-out) both;
+    animation: admin-enter 260ms var(--ease-out, ease-out) backwards;
   }
 }
 
@@ -587,5 +581,14 @@
 @media (prefers-reduced-motion: reduce) {
   .admin-page-enter {
     animation: none;
+  }
+}
+
+/* While the page is scrolling (mouse devices; set by HeaderShell), page content ignores the pointer:
+   no hover animations on cards passing under a still cursor, and no per-frame hit-testing. */
+@media (hover: hover) and (pointer: fine) {
+  html[data-scrolling] main,
+  html[data-scrolling] footer {
+    pointer-events: none;
   }
 }

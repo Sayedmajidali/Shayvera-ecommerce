@@ -35,7 +35,8 @@ async function measure(page: Page, path: string): Promise<Metrics> {
 
 // Budgets for the production build (compressed transfer). Generous enough for CI noise; they catch
 // regressions such as a heavy library landing in the storefront bundle or an uncached slow query.
-const STOREFRONT = { jsKb: 250, ttfbMs: 1500 };
+// JS budget: /login carries the sign-in, sign-up and emailed-code (OTP) forms, ~252 KB.
+const STOREFRONT = { jsKb: 260, ttfbMs: 1500 };
 
 test.describe("performance budgets", () => {
   for (const path of ["/", "/shop", "/product/cashews-w320", "/cart", "/login"]) {

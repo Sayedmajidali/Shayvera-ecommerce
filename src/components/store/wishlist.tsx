@@ -116,7 +116,7 @@ export function WishlistButton({
       aria-pressed={saved}
       aria-label={label}
       className={cn(
-        "bg-background/90 hover:bg-background focus-visible:ring-ring/40 flex size-9 items-center justify-center rounded-full shadow-sm backdrop-blur transition outline-none hover:scale-105 focus-visible:ring-[3px] active:scale-90",
+        "bg-background/95 hover:bg-background focus-visible:ring-ring/40 flex size-9 items-center justify-center rounded-full shadow-sm transition outline-none hover:scale-105 focus-visible:ring-[3px] active:scale-90",
         className,
       )}
     >

@@ -64,9 +64,23 @@ export function RevealObserver() {
 
     // Content streamed in after the first commit (Suspense) is picked up too.
     let raf = 0;
-    const mo = new MutationObserver(() => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(scan);
+    // Only additions that can hold reveal targets trigger a re-scan (not, e.g., text updates from
+    // counters or effects rewriting their own markup on every frame).
+    const relevant = (records: MutationRecord[]) =>
+      records.some((record) =>
+        Array.from(record.addedNodes).some(
+          (node) =>
+            node instanceof Element &&
+            (node.matches(SELECTOR) ||
+              node.querySelector("[data-reveal], [data-reveal-stagger]") !== null),
+        ),
+      );
+    const mo = new MutationObserver((records) => {
+      if (raf || !relevant(records)) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        scan();
+      });
     });
     mo.observe(root, { childList: true, subtree: true });
 
