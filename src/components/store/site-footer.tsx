@@ -32,8 +32,8 @@ export async function SiteFooter() {
           <ul className="text-muted-foreground mt-6 space-y-2 text-sm">
             <li className="flex items-center gap-2">
               <Mail className="size-4" aria-hidden />
-              <a href={`mailto:${settings.supportEmail}`} className="hover:text-foreground">
-                {settings.supportEmail}
+              <a href={`mailto:${siteConfig.customerCareEmail}`} className="hover:text-foreground">
+                {siteConfig.customerCareEmail}
               </a>
             </li>
             {settings.supportPhone && (
