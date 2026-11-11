@@ -66,7 +66,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["sharp", "razorpay"],
   images: {
-    localPatterns: [{ pathname: "/media/**" }],
+    localPatterns: [{ pathname: "/media/**" }, { pathname: "/brand/**" }],
     formats: ["image/avif", "image/webp"],
   },
   turbopack: {

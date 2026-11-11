@@ -30,6 +30,7 @@ import {
   type TrustItem,
 } from "@/components/bits/enhanced";
 import { PantryGallery, type PantryPhoto } from "@/components/bits/pantry-gallery";
+import { Certifications } from "@/components/store/certifications";
 import { RatingStars } from "@/components/store/rating-stars";
 import { formatINR } from "@/lib/money";
 import { getHomeData } from "@/server/modules/catalog/queries";
@@ -477,6 +478,9 @@ export default async function HomePage() {
       <section className="border-y py-6">
         <TrustLoop items={trust} />
       </section>
+
+      {/* Certifications (logos editable in Admin → Site images) */}
+      <Certifications />
 
       {/* Testimonials */}
       {testimonials.length > 0 && (

@@ -75,6 +75,69 @@ export const SITE_IMAGE_SLOTS = [
     defaultUrl: "/brand/icon.png",
     minDimension: 48,
   },
+  {
+    slot: "certFssai",
+    defaultNote: "FSSAI logo",
+    label: "Certification — FSSAI",
+    where: "Certifications section on the home and About pages (shown round, about 110px).",
+    recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
+    defaultUrl: "/brand/certs/fssai.png",
+    minDimension: 100,
+  },
+  {
+    slot: "certGmp",
+    defaultNote: "GMP seal",
+    label: "Certification — GMP Certified",
+    where: "Certifications section on the home and About pages (shown round, about 110px).",
+    recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
+    defaultUrl: "/brand/certs/gmp.svg",
+    minDimension: 100,
+  },
+  {
+    slot: "certHalal",
+    defaultNote: "Halal seal",
+    label: "Certification — Halal Certified",
+    where: "Certifications section on the home and About pages (shown round, about 110px).",
+    recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
+    defaultUrl: "/brand/certs/halal.svg",
+    minDimension: 100,
+  },
+  {
+    slot: "certRqc",
+    defaultNote: "RQC seal",
+    label: "Certification — RQC Certified",
+    where: "Certifications section on the home and About pages (shown round, about 110px).",
+    recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
+    defaultUrl: "/brand/certs/rqc.svg",
+    minDimension: 100,
+  },
+  {
+    slot: "certIso",
+    defaultNote: "ISO logo",
+    label: "Certification — ISO Certified",
+    where: "Certifications section on the home and About pages (shown round, about 110px).",
+    recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
+    defaultUrl: "/brand/certs/iso.png",
+    minDimension: 100,
+  },
+  {
+    slot: "certLabTested",
+    defaultNote: "Lab Tested badge",
+    label: "Certification — Lab Tested",
+    where: "Certifications section on the home and About pages (shown round, about 110px).",
+    recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
+    defaultUrl: "/brand/certs/lab-tested.png",
+    minDimension: 100,
+  },
+  {
+    slot: "certMsme",
+    defaultNote: "MSME Registered badge",
+    label: "Certification — MSME Registered",
+    where: "Certifications section on the home and About pages (shown round, about 110px).",
+    recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
+    defaultUrl: "/brand/certs/msme.png",
+    minDimension: 100,
+  },
 ] as const;
 
 export type SiteImageSlot = (typeof SITE_IMAGE_SLOTS)[number]["slot"];
@@ -89,3 +152,14 @@ export type SiteImages = Partial<Record<SiteImageSlot, SiteImageValue>>;
 
 /** Stable public address of a slot's current image (redirects to the upload or the default). */
 export const siteImageHref = (slot: SiteImageSlot) => `/site-image/${slot}`;
+
+/** Certifications shown in the storefront's Certifications section (each logo is a site image slot). */
+export const CERTIFICATIONS = [
+  { slot: "certFssai", name: "FSSAI" },
+  { slot: "certIso", name: "ISO Certified" },
+  { slot: "certGmp", name: "GMP Certified" },
+  { slot: "certHalal", name: "Halal Certified" },
+  { slot: "certRqc", name: "RQC Certified" },
+  { slot: "certLabTested", name: "Lab Tested" },
+  { slot: "certMsme", name: "MSME Registered" },
+] as const satisfies readonly { slot: SiteImageSlot; name: string }[];

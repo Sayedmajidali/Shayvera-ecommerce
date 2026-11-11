@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getSiteImages } from "@/server/modules/settings/site-images";
 import { HandHeart, PackageCheck, Sprout } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Certifications } from "@/components/store/certifications";
 import { PageIntro } from "@/components/store/page-intro";
 import { StatCount } from "@/components/bits/enhanced";
 import { getStoreStats } from "@/server/modules/catalog/store-stats";
@@ -104,7 +105,8 @@ export default async function AboutPage() {
           </div>
         ))}
       </div>
-      <div className="mt-16 text-center">
+      <Certifications bare className="mt-8 pb-0" />
+      <div className="mt-12 text-center">
         <Button asChild size="lg">
           <Link href="/shop">Shop our pantry</Link>
         </Button>
