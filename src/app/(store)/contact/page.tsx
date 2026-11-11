@@ -19,7 +19,7 @@ export default async function ContactPage() {
         <ContactForm />
         <aside className="space-y-6 text-sm">
           <div className="flex gap-3">
-            <Mail className="text-brand size-5" aria-hidden />
+            <Mail className="text-brand size-5 shrink-0" aria-hidden />
             <div>
               <p className="font-medium">Email</p>
               <a
@@ -32,7 +32,7 @@ export default async function ContactPage() {
           </div>
           {siteConfig.customerCareEmail !== s.supportEmail && (
             <div className="flex gap-3">
-              <Mail className="text-brand size-5" aria-hidden />
+              <Mail className="text-brand size-5 shrink-0" aria-hidden />
               <div>
                 <p className="font-medium">Customer care</p>
                 <a
@@ -46,7 +46,7 @@ export default async function ContactPage() {
           )}
           {s.supportPhone && (
             <div className="flex gap-3">
-              <Phone className="text-brand size-5" aria-hidden />
+              <Phone className="text-brand size-5 shrink-0" aria-hidden />
               <div>
                 <p className="font-medium">Phone</p>
                 <a
@@ -59,7 +59,7 @@ export default async function ContactPage() {
             </div>
           )}
           <div className="flex gap-3">
-            <Clock className="text-brand size-5" aria-hidden />
+            <Clock className="text-brand size-5 shrink-0" aria-hidden />
             <div>
               <p className="font-medium">Hours</p>
               <p className="text-muted-foreground">Mon–Sat, 10am – 6pm IST</p>
@@ -67,9 +67,9 @@ export default async function ContactPage() {
           </div>
           {s.addressLine1 && (
             <div className="flex gap-3">
-              <MapPin className="text-brand size-5" aria-hidden />
+              <MapPin className="text-brand size-5 shrink-0" aria-hidden />
               <div>
-                <p className="font-medium">Studio</p>
+                <p className="font-medium">Office</p>
                 <p className="text-muted-foreground">
                   {s.addressLine1}
                   {s.addressLine2 ? `, ${s.addressLine2}` : ""}
