@@ -113,6 +113,111 @@ export function StaffManager({
     }
   };
 
+  const roleControl = (s: StaffRow, self: boolean) =>
+    self ? (
+      <span className="text-sm">{s.adminRole?.name ?? "No role"}</span>
+    ) : (
+      <Select
+        value={s.adminRole?.id ?? ""}
+        disabled={busy !== null}
+        onValueChange={(roleId) =>
+          run(
+            `role-${s.id}`,
+            () => apiFetch(`/api/admin/staff/${s.id}`, { method: "PATCH", body: { roleId } }),
+            "Role updated",
+          )
+        }
+      >
+        <SelectTrigger className="w-40" aria-label={`Role for ${s.name}`}>
+          <SelectValue placeholder="No role" />
+        </SelectTrigger>
+        <SelectContent>
+          {roles.map((r) => (
+            <SelectItem key={r.id} value={r.id}>
+              {r.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+
+  const statusBadge = (s: StaffRow) =>
+    s.status === "DISABLED" ? (
+      <Badge variant="destructive">Disabled</Badge>
+    ) : s.invitePending ? (
+      <Badge variant="warning">Invite pending</Badge>
+    ) : (
+      <Badge variant="success">Active</Badge>
+    );
+
+  /** Resend invite, block/unblock sign-in, and remove staff access (revoke). */
+  const actions = (s: StaffRow) => (
+    <>
+      {s.invitePending && s.status === "ACTIVE" && (
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={busy !== null}
+          onClick={() =>
+            run(
+              `invite-${s.id}`,
+              () => apiFetch(`/api/admin/staff/${s.id}/invite`, { method: "POST", body: {} }),
+              "Invitation re-sent",
+            )
+          }
+        >
+          <Mail /> Resend invite
+        </Button>
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={busy !== null}
+        title={
+          s.status === "ACTIVE"
+            ? "Block this person from signing in (you can enable them again)"
+            : "Let this person sign in again"
+        }
+        onClick={() =>
+          run(
+            `status-${s.id}`,
+            () =>
+              apiFetch(`/api/admin/staff/${s.id}`, {
+                method: "PATCH",
+                body: { status: s.status === "ACTIVE" ? "DISABLED" : "ACTIVE" },
+              }),
+            s.status === "ACTIVE" ? "Staff member disabled" : "Staff member enabled",
+          )
+        }
+      >
+        <Lock /> {s.status === "ACTIVE" ? "Disable" : "Enable"}
+      </Button>
+      <ConfirmButton
+        title={`Remove admin access for ${s.name}?`}
+        description="They lose access to the admin straight away and are signed out. Their account stays as a normal customer account, so their orders are kept."
+        confirmLabel="Remove access"
+        onConfirm={() =>
+          void run(
+            `remove-${s.id}`,
+            () => apiFetch(`/api/admin/staff/${s.id}`, { method: "DELETE" }),
+            "Admin access removed",
+          )
+        }
+        trigger={
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy !== null}
+            className="text-destructive hover:text-destructive"
+            aria-label={`Remove admin access for ${s.name}`}
+          >
+            <UserMinus /> Remove access
+          </Button>
+        }
+      />
+    </>
+  );
+
   return (
     <section aria-labelledby="staff-heading">
       <div className="mb-4 flex items-end justify-between gap-4">
@@ -123,7 +228,34 @@ export function StaffManager({
           <Plus /> Invite staff
         </Button>
       </div>
-      <Card className="gap-0 py-0">
+      {/* Phones and narrow windows: one card per person, every action visible. */}
+      <ul className="space-y-3 md:hidden">
+        {staff.map((s) => {
+          const self = s.id === currentUserId;
+          return (
+            <li key={s.id} data-testid={`staff-card-${s.email}`}>
+              <Card className="gap-3 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {s.name} {self && <span className="text-muted-foreground">(you)</span>}
+                    </p>
+                    <p className="text-muted-foreground truncate text-xs">{s.email}</p>
+                  </div>
+                  {statusBadge(s)}
+                </div>
+                <div className="text-muted-foreground flex items-center justify-between gap-3 text-sm">
+                  {roleControl(s, self)}
+                  <span className="shrink-0 text-xs">Last active {fmt(s.lastActiveAt)}</span>
+                </div>
+                {!self && <div className="flex flex-wrap gap-2 border-t pt-3">{actions(s)}</div>}
+              </Card>
+            </li>
+          );
+        })}
+      </ul>
+
+      <Card className="hidden gap-0 py-0 md:flex">
         <Table>
           <TableHeader>
             <TableRow>
@@ -145,116 +277,18 @@ export function StaffManager({
                     </p>
                     <p className="text-muted-foreground text-xs">{s.email}</p>
                   </TableCell>
-                  <TableCell>
-                    {self ? (
-                      <span className="text-sm">{s.adminRole?.name ?? "No role"}</span>
-                    ) : (
-                      <Select
-                        value={s.adminRole?.id ?? ""}
-                        disabled={busy !== null}
-                        onValueChange={(roleId) =>
-                          run(
-                            `role-${s.id}`,
-                            () =>
-                              apiFetch(`/api/admin/staff/${s.id}`, {
-                                method: "PATCH",
-                                body: { roleId },
-                              }),
-                            "Role updated",
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-40" aria-label={`Role for ${s.name}`}>
-                          <SelectValue placeholder="No role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roles.map((r) => (
-                            <SelectItem key={r.id} value={r.id}>
-                              {r.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {s.status === "DISABLED" ? (
-                      <Badge variant="destructive">Disabled</Badge>
-                    ) : s.invitePending ? (
-                      <Badge variant="warning">Invite pending</Badge>
-                    ) : (
-                      <Badge variant="success">Active</Badge>
-                    )}
-                  </TableCell>
+                  <TableCell>{roleControl(s, self)}</TableCell>
+                  <TableCell>{statusBadge(s)}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     {fmt(s.lastActiveAt)}
                   </TableCell>
                   <TableCell>
-                    {!self && (
-                      <div className="flex justify-end gap-1">
-                        {s.invitePending && s.status === "ACTIVE" && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            disabled={busy !== null}
-                            onClick={() =>
-                              run(
-                                `invite-${s.id}`,
-                                () =>
-                                  apiFetch(`/api/admin/staff/${s.id}/invite`, {
-                                    method: "POST",
-                                    body: {},
-                                  }),
-                                "Invitation re-sent",
-                              )
-                            }
-                          >
-                            <Mail /> Resend
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={busy !== null}
-                          onClick={() =>
-                            run(
-                              `status-${s.id}`,
-                              () =>
-                                apiFetch(`/api/admin/staff/${s.id}`, {
-                                  method: "PATCH",
-                                  body: { status: s.status === "ACTIVE" ? "DISABLED" : "ACTIVE" },
-                                }),
-                              s.status === "ACTIVE"
-                                ? "Staff member disabled"
-                                : "Staff member enabled",
-                            )
-                          }
-                        >
-                          <Lock /> {s.status === "ACTIVE" ? "Disable" : "Enable"}
-                        </Button>
-                        <ConfirmButton
-                          title={`Remove staff access for ${s.name}?`}
-                          description="They will be signed out. Their account stays as a normal customer account."
-                          confirmLabel="Remove access"
-                          onConfirm={() =>
-                            void run(
-                              `remove-${s.id}`,
-                              () => apiFetch(`/api/admin/staff/${s.id}`, { method: "DELETE" }),
-                              "Staff access removed",
-                            )
-                          }
-                          trigger={
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busy !== null}
-                              aria-label={`Remove ${s.name}`}
-                            >
-                              <UserMinus />
-                            </Button>
-                          }
-                        />
-                      </div>
+                    {self ? (
+                      <p className="text-muted-foreground text-right text-xs">
+                        Another Owner can change your access
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap justify-end gap-1">{actions(s)}</div>
                     )}
                   </TableCell>
                 </TableRow>
