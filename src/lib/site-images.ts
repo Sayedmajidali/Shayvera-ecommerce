@@ -121,6 +121,15 @@ export const SITE_IMAGE_SLOTS = [
     minDimension: 100,
   },
   {
+    slot: "certUkasl",
+    defaultNote: "UKASL seal",
+    label: "Certification — UKASL Certified",
+    where: "Certifications section on the home and About pages (shown round, about 110px).",
+    recommended: "The official logo from your certificate; square PNG, at least 300×300px.",
+    defaultUrl: "/brand/certs/ukasl.svg",
+    minDimension: 100,
+  },
+  {
     slot: "certLabTested",
     defaultNote: "Lab Tested badge",
     label: "Certification — Lab Tested",
@@ -160,6 +169,7 @@ export const CERTIFICATIONS = [
   { slot: "certGmp", name: "GMP Certified" },
   { slot: "certHalal", name: "Halal Certified" },
   { slot: "certRqc", name: "RQC Certified" },
+  { slot: "certUkasl", name: "UKASL Certified" },
   { slot: "certLabTested", name: "Lab Tested" },
   { slot: "certMsme", name: "MSME Registered" },
 ] as const satisfies readonly { slot: SiteImageSlot; name: string }[];
