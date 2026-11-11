@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default async function ShippingReturnsPage() {
   const s = await getStoreSettings();
   return (
-    <LegalPage title="Shipping & returns" updated="5 November 2026">
+    <LegalPage title="Shipping & returns">
       <h2>Shipping</h2>
       <ul>
         <li>We ship across India. Orders are dispatched within 1–2 business days.</li>
