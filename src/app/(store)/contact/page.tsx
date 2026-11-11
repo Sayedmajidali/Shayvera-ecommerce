@@ -3,6 +3,7 @@ import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { ContactForm } from "@/components/store/contact-form";
 import { PageIntro } from "@/components/store/page-intro";
 import { stateName, telHref } from "@/lib/india";
+import { siteConfig } from "@/lib/site";
 import { getStoreSettings } from "@/server/modules/settings/queries";
 
 export const metadata: Metadata = { title: "Contact us", alternates: { canonical: "/contact" } };
@@ -29,6 +30,20 @@ export default async function ContactPage() {
               </a>
             </div>
           </div>
+          {siteConfig.customerCareEmail !== s.supportEmail && (
+            <div className="flex gap-3">
+              <Mail className="text-brand size-5" aria-hidden />
+              <div>
+                <p className="font-medium">Customer care</p>
+                <a
+                  href={`mailto:${siteConfig.customerCareEmail}`}
+                  className="text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+                >
+                  {siteConfig.customerCareEmail}
+                </a>
+              </div>
+            </div>
+          )}
           {s.supportPhone && (
             <div className="flex gap-3">
               <Phone className="text-brand size-5" aria-hidden />
