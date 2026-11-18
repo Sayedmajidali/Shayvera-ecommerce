@@ -45,11 +45,15 @@ export function ProductPurchase({
 
   const initial = variants.find((v) => v.stock > 0) ?? variants[0]!;
   const [selected, setSelected] = useState<Record<string, string>>(initial.options);
+  const [selectedVariantId, setSelectedVariantId] = useState(initial.id);
   const [qty, setQty] = useState(1);
 
+  // Some catalogs use the variant name (e.g. "100g", "200g") without structured
+  // options. In that case there are no option keys to render, so select by name/id.
   const variant =
-    variants.find((v) => optionNames.every((n) => v.options[n] === selected[n])) ??
-    (optionNames.length === 0 ? variants[0] : undefined);
+    optionNames.length === 0
+      ? (variants.find((v) => v.id === selectedVariantId) ?? initial)
+      : variants.find((v) => optionNames.every((n) => v.options[n] === selected[n]));
 
   const valuesFor = (name: string) =>
     [...new Set(variants.map((v) => v.options[name]).filter(Boolean))] as string[];
@@ -72,6 +76,40 @@ export function ProductPurchase({
         <Price paise={variant.pricePaise} compareAtPaise={variant.compareAtPricePaise} size="lg" />
       )}
       <p className="text-muted-foreground -mt-4 text-xs">Inclusive of all taxes</p>
+
+      {optionNames.length === 0 && variants.length > 1 && (
+        <fieldset>
+          <legend className="mb-2.5 text-sm">
+            <span className="font-medium">Choose an option</span>
+          </legend>
+          <div className="flex flex-wrap gap-2">
+            {variants.map((v) => {
+              const isSelected = variant?.id === v.id;
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => {
+                    setSelectedVariantId(v.id);
+                    setQty(1);
+                  }}
+                  className={cn(
+                    "relative rounded-full border px-4 py-2 text-sm transition",
+                    isSelected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "bg-card hover:border-foreground/40",
+                    v.stock <= 0 && !isSelected && "text-muted-foreground line-through decoration-1",
+                  )}
+                >
+                  {v.name}
+                  {v.stock <= 0 && <span className="sr-only"> (out of stock)</span>}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      )}
 
       {optionNames.map((name) => (
         <fieldset key={name}>
