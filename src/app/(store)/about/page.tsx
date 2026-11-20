@@ -125,7 +125,7 @@ export default async function AboutPage() {
           <h2 id="media-coverage-heading" className="heading-display mt-2 text-3xl sm:text-4xl">
             Media coverage
           </h2>
-          <p class="text-muted-foreground mx-auto mt-3 max-w-2xl text-sm leading-6">
+          <p className="text-muted-foreground mx-auto mt-3 max-w-2xl text-sm leading-6">
             Shayvera Food Private Limited has been featured across 10 digital media platforms,
             highlighting our expanding range of spices, makhana, seeds and natural powders.
           </p>
@@ -150,7 +150,10 @@ export default async function AboutPage() {
               </div>
               <div className="mt-4 flex items-end justify-between gap-2">
                 <p className="text-sm font-semibold">{publication}</p>
-                <ArrowUpRight className="text-primary size-4 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
+                <ArrowUpRight
+                  className="text-primary size-4 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                  aria-hidden
+                />
               </div>
             </a>
           ))}
