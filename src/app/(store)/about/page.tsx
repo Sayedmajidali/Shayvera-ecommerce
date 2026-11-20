@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { getSiteImages } from "@/server/modules/settings/site-images";
-import { HandHeart, PackageCheck, Sprout } from "lucide-react";
+import { ArrowUpRight, HandHeart, Newspaper, PackageCheck, Sprout } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Certifications } from "@/components/store/certifications";
 import { PageIntro } from "@/components/store/page-intro";
@@ -33,6 +33,19 @@ const promises = [
     text: "What we wouldn’t feed our own family, we won’t sell to yours.",
   },
 ];
+
+const mediaCoverage = [
+  ["Weekly Hunt", "https://weeklyhunt.in/news/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds-and-natural-powders"],
+  ["Founder Times", "https://www.foundertimes.in/article/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds"],
+  ["Daily News Axis", "https://www.dailynewsaxis.com/business/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds"],
+  ["Hind Mirror", "https://hindmirror.in/business/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds"],
+  ["TDI News", "https://tdinews.in/article/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds"],
+  ["Latest Bharat", "https://latestbharat.com/article/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds"],
+  ["Bharat Standard", "https://bharat-standard.com/article/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds"],
+  ["The Economic Wires", "https://www.theeconomicwires.com/article/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds"],
+  ["One Business India", "https://onebusinessindia.com/articles/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds"],
+  ["Medium", "https://medium.com/@gupta30kartik/shayvera-food-private-limited-expands-its-range-of-spices-makhana-seeds-and-natural-powders-6e8413d35082"],
+] as const;
 
 export default async function AboutPage() {
   const [stats, site] = await Promise.all([getStoreStats(), getSiteImages()]);
@@ -105,6 +118,45 @@ export default async function AboutPage() {
           </div>
         ))}
       </div>
+
+      <section className="mx-auto mt-16 max-w-5xl" aria-labelledby="media-coverage-heading">
+        <div className="mb-7 text-center">
+          <p className="text-brand text-xs font-semibold tracking-[0.22em] uppercase">In the news</p>
+          <h2 id="media-coverage-heading" className="heading-display mt-2 text-3xl sm:text-4xl">
+            Media coverage
+          </h2>
+          <p class="text-muted-foreground mx-auto mt-3 max-w-2xl text-sm leading-6">
+            Shayvera Food Private Limited has been featured across 10 digital media platforms,
+            highlighting our expanding range of spices, makhana, seeds and natural powders.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {mediaCoverage.map(([publication, href], index) => (
+            <a
+              key={href}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group bg-card hover:border-primary/30 flex min-h-32 flex-col justify-between rounded-2xl border p-5 transition-colors"
+              aria-label={`Read Shayvera coverage from ${publication} (opens in a new tab)`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="bg-brand-soft text-brand flex size-9 items-center justify-center rounded-full">
+                  <Newspaper className="size-4" aria-hidden />
+                </span>
+                <span className="text-muted-foreground text-xs tabular-nums">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              </div>
+              <div className="mt-4 flex items-end justify-between gap-2">
+                <p className="text-sm font-semibold">{publication}</p>
+                <ArrowUpRight className="text-primary size-4 shrink-0 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
+              </div>
+            </a>
+          ))}
+        </div>
+      </section>
+
       <Certifications bare className="mt-8 pb-0" />
       <div className="mt-12 text-center">
         <Button asChild size="lg">
